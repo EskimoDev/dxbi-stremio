@@ -1,130 +1,147 @@
-<h1 align="center">DX.BI</h1>
-
 <p align="center">
-  <b>A cinematic, Netflix-style skin for <a href="https://github.com/REVENGE977/stremio-enhanced">Stremio Enhanced</a>.</b><br>
-  One theme + one plugin · works with your existing addons and most plugins · no accounts, no API keys.
+  <img src="screenshots/banner.jpg" alt="DX.BI" width="100%">
 </p>
 
 <p align="center">
-  <a href="https://github.com/notdxbi/dxbi-stremio/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/notdxbi/dxbi-stremio?label=release&color=e50914"></a>
-  <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-222"></a>
+  <b>A Netflix-style look for <a href="https://github.com/REVENGE977/stremio-enhanced">Stremio Enhanced</a>.</b><br>
+  One theme + one plugin. Works with your existing addons. Nothing to configure.
 </p>
 
 <p align="center">
-  <img src="screenshots/home.jpg" alt="Home with the rotating billboard" width="100%">
+  <a href="https://github.com/notdxbi/dxbi-stremio/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/notdxbi/dxbi-stremio?label=release&color=e50914&style=flat-square"></a>
+  <img alt="Windows · macOS · Linux" src="https://img.shields.io/badge/Windows%20·%20macOS%20·%20Linux-222?style=flat-square">
+  <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-222?style=flat-square"></a>
 </p>
+
+<p align="center">
+  <img src="screenshots/home.jpg" alt="DX.BI home screen" width="100%">
+</p>
+
+> [!NOTE]
+> **About this project** — DX.BI is a personal fan project I made for my own use and decided to share. It was built with the help of [Claude Code](https://www.anthropic.com/claude-code), Anthropic's AI coding assistant. It isn't affiliated with Netflix, Stremio or Stremio Enhanced.
+
+---
 
 ## Install
 
-**Windows** — open PowerShell and paste:
+You need **[Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced/releases)** (v1.2 or newer).
 
+**1. Run one command**
+
+Windows — open **PowerShell** and paste:
 ```powershell
 irm https://github.com/notdxbi/dxbi-stremio/releases/latest/download/install.ps1 | iex
 ```
 
-**Linux / macOS** — open a terminal and paste:
-
+macOS / Linux — open **Terminal** and paste:
 ```bash
 curl -fsSL https://github.com/notdxbi/dxbi-stremio/releases/latest/download/install.sh | bash
 ```
 
-Then restart Stremio Enhanced and in **Settings → Enhanced**: **Apply** the *dx.bi* theme and switch the *dx.bi* plugin **on**.
+**2. Restart Stremio Enhanced**
+
+**3. Turn it on** — *Settings → Enhanced*: click **Apply** on the **dx.bi** theme, and switch the **dx.bi** plugin **on**.
+
+That's it. Updates are offered automatically inside the app.
 
 <details>
-<summary>Manual install</summary>
+<summary><b>Prefer to install by hand?</b></summary>
+<br>
 
-1. Download [`dxbi.theme.css`](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi.theme.css) and [`dxbi.plugin.js`](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi.plugin.js) from the [latest release](https://github.com/notdxbi/dxbi-stremio/releases/latest).
-2. In Stremio Enhanced → **Settings → Enhanced**: **Open Themes Folder** → drop the `.css` in; **Open Plugins Folder** → drop the `.js` in.
+1. Download [`dxbi.theme.css`](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi.theme.css) and [`dxbi.plugin.js`](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi.plugin.js).
+2. In Stremio Enhanced: *Settings → Enhanced* → **Open Themes Folder** (put the `.css` there) and **Open Plugins Folder** (put the `.js` there).
 3. Restart, apply the theme, enable the plugin.
-
-Folders, if you'd rather copy them yourself: Windows `%APPDATA%\stremio-enhanced`, macOS `~/Library/Application Support/stremio-enhanced`, Linux `~/.config/stremio-enhanced` (each has `themes/` and `plugins/`).
 </details>
 
-Updates: both files carry an `@updateUrl`, so Stremio Enhanced offers new versions automatically.
+---
 
 ## What you get
 
-| | |
-|---|---|
-| **Intro** | A 4-second cinematic intro film — the logo lands, the camera dives into it and it bursts into ribbons of light — with its own score. Pre-rendered and embedded (~265 KB), so it plays perfectly smooth while the app loads. Skip with <kbd>Esc</kbd>/<kbd>Enter</kbd>/click. |
-| **Interface sounds** | Soft, designed sounds for tabs, opening titles, previews, My List, player controls and keyboard navigation. Synthesised on the fly — no audio files. |
-| **Billboard** | Full-width rotating banner with title art, IMDb rating, year, runtime, genres, synopsis, **Play** and **More Info**. |
-| **Rows** | Netflix-style horizontal carousels with arrows and page indicators. Rows that only show an addon error are hidden. |
-| **Hover previews** | A card grows out of the poster: backdrop + logo, **Play**, **My List** (real Stremio library), more info, rating, length, genres. |
-| **Ratings everywhere** | IMDb badges on posters from *your addons' own data* — Cinemeta, TMDB, anime catalogs, streaming catalogs — with Cinemeta filling gaps. Skipped on posters that already print a rating (RPDB & co). |
-| **Continue Watching** | Wide landscape cards with title art and red progress bars. |
-| **Details pages** | Full-bleed backdrops, cleaner metadata, a glass panel for episodes and streams. |
-| **Player** | ±10s buttons, centred title, play/pause feedback, a dot-style speed picker, and a clean subtitles panel with ticks. |
-| **Everything else** | Discover, Library, Search, Calendar, Addons, Settings, menus, dialogs and toasts restyled to match. |
-| **Settings** | Accent colour (8 choices, the intro follows it), billboard source and speed, sound volume, and an on/off switch for every feature. Changes apply instantly. |
-
 <p align="center">
-  <img src="screenshots/intro-1.jpg" alt="Intro — logo" width="49%">
-  <img src="screenshots/intro-2.jpg" alt="Intro — light ribbons" width="49%">
-</p>
-<p align="center">
-  <img src="screenshots/preview.jpg" alt="Hover preview card" width="49%">
-  <img src="screenshots/detail.jpg" alt="Movie page" width="49%">
-</p>
-<p align="center">
-  <img src="screenshots/series.jpg" alt="Series page with episodes" width="49%">
-  <img src="screenshots/player-subs.jpg" alt="Player subtitles panel" width="49%">
-</p>
-<p align="center">
-  <img src="screenshots/discover.jpg" alt="Discover" width="49%">
-  <img src="screenshots/settings.jpg" alt="dx.bi settings" width="30%">
+  <img src="screenshots/intro.webp" alt="DX.BI intro" width="70%">
 </p>
 
-## Works with
+- **Cinematic intro** with its own sound — plays once at startup, skip with <kbd>Esc</kbd>
+- **Rotating billboard** on Home with title art, rating, synopsis, **Play** and **More Info**
+- **Netflix-style rows** — scroll sideways with arrows
+- **Hover previews** — rest on a title for a card with **Play**, **My List**, rating and genres
+- **IMDb ratings** on posters, using data from your own addons
+- **Wide Continue Watching** cards with title art and progress
+- **Redesigned player** — ±10 seconds, clean subtitle and speed menus
+- **Subtle interface sounds** (adjustable or off)
+- **Everything restyled** — Discover, Library, Search, Calendar, Addons, Settings
+- **8 accent colours** and an on/off switch for every feature
 
-Tested together with dx.bi (layouts adapt, nothing overlaps):
+<table>
+  <tr>
+    <td><img src="screenshots/preview.jpg" alt="Hover preview"></td>
+    <td><img src="screenshots/detail.jpg" alt="Movie page"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Hover preview</sub></td>
+    <td align="center"><sub>Movie page</sub></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/series.jpg" alt="Series page"></td>
+    <td><img src="screenshots/discover.jpg" alt="Discover"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Series page</sub></td>
+    <td align="center"><sub>Discover</sub></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/player.jpg" alt="Player"></td>
+    <td><img src="screenshots/player-subs.jpg" alt="Subtitles menu"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Player</sub></td>
+    <td align="center"><sub>Subtitles menu</sub></td>
+  </tr>
+</table>
 
-| Plugin | |
-|---|---|
-| TheIntroDB, IntroDB, Stremio Intro Skip, AniSkip | ✅ skip buttons restyled to match |
-| Stream Quality Picker, Stream Keyword Filter, Stream Finder, FilterStreams, ExpandStreamTitles | ✅ their panels stack neatly on top of the streams list |
-| Enhanced Video Player | ✅ its subtitle-style panel becomes a matching "Style" column |
-| Context Menu Fix | ✅ account menu and context menus styled correctly |
-| Stremio Addon Manager, Addon Organizer | ✅ |
-| Collapsible Filters, Poster Size, Close Preview Panel, Discover Watched Filter, Random Pick, Library Stats, Library Folders, Slash to Search | ✅ |
-| Picture in Picture | ✅ |
-| Dynamic Hero, Horizontal Navigation, EnhancedCovers, Enhanced Title Bar | ❌ turn off — dx.bi already does these and they fight over the same layout |
-| Lumen | ❌ turn off — it's another full redesign |
-
-Addons: anything that provides catalogs/metadata/streams works — dx.bi reads what your addons return rather than assuming Cinemeta.
+---
 
 ## Settings
 
-**Settings → Enhanced → dx.bi → ⚙** — accent colour · billboard on/off, content, rotation · hover previews · IMDb ratings · wide Continue Watching · player extras · intro animation · intro sound · interface sounds · sound volume.
+*Settings → Enhanced → dx.bi → ⚙*
 
-## Privacy & performance
+<img src="screenshots/settings.jpg" alt="DX.BI settings" width="420" align="right">
 
-- **No tracking, no accounts, no keys.** dx.bi only talks to endpoints Stremio already uses: Cinemeta (`v3-cinemeta.strem.io`) for ratings and the billboard, MetaHub (`images.metahub.space`) for artwork, and Google Fonts for *Inter* and *Bebas Neue*.
-- Ratings/details are cached in the app's local storage (capped, expire after 3 days).
-- **My List** uses Stremio's own library — the same thing the bookmark button does.
-- Built to stay out of the way: work happens only when the page changes, metadata loads lazily for posters near the screen, nothing animates forever, and idle CPU use is effectively zero.
+- Accent colour
+- Billboard on/off, content and speed
+- Hover previews
+- IMDb ratings on posters
+- Wide Continue Watching
+- Player extras
+- Intro animation and intro sound
+- Interface sounds and volume
 
-## Uninstall
+Changes apply instantly.
 
-Switch the dx.bi plugin off and apply the **Default** theme (or delete the two files). Nothing else is changed.
+<br clear="right">
 
-## Troubleshooting
+---
 
-- **Looks half-styled?** Both the theme must be applied *and* the plugin enabled, and the conflicting plugins above turned off.
-- **No intro?** It plays once per app start. Check *Intro animation* in the dx.bi settings.
-- **Too many/too few sounds?** *Interface sounds* and *Sound volume* in the dx.bi settings.
-- **Something overlaps after a Stremio update?** Stremio's web UI changes occasionally — open an issue with a screenshot.
+## Works with
 
-## Make it yours
+**Addons:** any — DX.BI uses whatever your addons provide (Cinemeta, TMDB, anime catalogs, streaming catalogs…).
 
-The intro is generated, not hand-animated: [`tools/`](tools) contains the scripts that render the film and score. Change the text, colour or timing and re-render.
+**Plugins:** tested with TheIntroDB, IntroDB, Stremio Intro Skip, AniSkip, Stream Quality Picker, Stream Keyword Filter, Stream Finder, FilterStreams, ExpandStreamTitles, Enhanced Video Player, Context Menu Fix, Addon Manager, Picture in Picture, Collapsible Filters, Poster Size, Close Preview Panel, Discover Watched Filter, Random Pick, Library Stats, Library Folders and Slash to Search.
 
-## Credits
+**Turn these off** (they do the same job and clash): Dynamic Hero, Horizontal Navigation, EnhancedCovers, Enhanced Title Bar, Lumen.
 
-- [Stremio](https://www.stremio.com/) and [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced).
-- [Bebas Neue](https://github.com/dharmatype/Bebas-Neue) and [Inter](https://rsms.me/inter/) (SIL Open Font License).
-- Inspired by the Netflix interface. **dx.bi is an independent fan project and is not affiliated with, endorsed by, or connected to Netflix, Inc. or Stremio.** No Netflix logos, fonts, images or sounds are used — the intro and every sound are original.
+---
 
-## License
+## FAQ
 
-[MIT](LICENSE)
+**It looks half-styled.** Make sure the theme is applied *and* the plugin is on, and that the plugins listed under *Turn these off* are disabled.
+
+**How do I remove it?** Switch the plugin off and apply the *Default* theme. Nothing else is changed.
+
+**Does it collect anything?** No. No tracking, accounts or keys. It only loads ratings/artwork from Cinemeta and MetaHub (which Stremio already uses) and fonts from Google Fonts.
+
+**Something overlaps after a Stremio update?** Stremio changes its web UI now and then — [open an issue](https://github.com/notdxbi/dxbi-stremio/issues) with a screenshot.
+
+---
+
+<sub>Built on <a href="https://www.stremio.com/">Stremio</a> and <a href="https://github.com/REVENGE977/stremio-enhanced">Stremio Enhanced</a>. Fonts: <a href="https://github.com/dharmatype/Bebas-Neue">Bebas Neue</a> and <a href="https://rsms.me/inter/">Inter</a> (SIL OFL). Inspired by the Netflix interface; no Netflix logos, fonts, images or sounds are used — the intro and all sounds are original (see <a href="tools">tools</a>). Not affiliated with Netflix, Inc. or Stremio. <a href="CHANGELOG.md">Changelog</a> · <a href="LICENSE">MIT License</a>.</sub>
