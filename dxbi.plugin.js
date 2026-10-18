@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews, IMDb ratings on posters, wide Continue Watching, a Netflix-style player, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.2.0
+ * @version 2.2.1
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -502,7 +502,23 @@
     show(i, instant) {
       if (!this.el || !this.items.length) return;
       this.index = (i + this.items.length) % this.items.length;
-      this.el.querySelectorAll(".dx-hero-slide").forEach((s, n) => s.classList.toggle("is-active", n === this.index));
+      this.el.classList.toggle("is-first", !!instant);
+      this.el.querySelectorAll(".dx-hero-slide").forEach((slide, n) => {
+        const backdrop = slide.querySelector(".dx-hero-backdrop");
+        if (n === this.index) {
+          clearTimeout(backdrop._kbOff);
+          if (!slide.classList.contains("is-active")) {
+            backdrop.classList.remove("kb");
+            void backdrop.offsetWidth; // restart the slow zoom from the beginning
+            backdrop.classList.add("kb");
+          }
+          slide.classList.add("is-active");
+        } else if (slide.classList.contains("is-active")) {
+          slide.classList.remove("is-active");
+          // keep zooming while it fades out, then reset quietly
+          backdrop._kbOff = setTimeout(() => backdrop.classList.remove("kb"), 1400);
+        }
+      });
       this.el.querySelectorAll(".dx-hero-dot").forEach((d, n) => {
         d.classList.remove("is-active");
         if (n === this.index) {
