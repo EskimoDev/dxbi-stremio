@@ -83,6 +83,7 @@ That's it. Updates are offered automatically inside the app.
 - **Stream sorting & filters** — sort by quality, seeds or size; filter by quality, language, source, provider, ⚡ instant and HDR
 - **Wide Continue Watching** cards with title art and progress
 - **Redesigned player** — seek-bar thumbnail previews, time remaining, ±10 seconds, Next Episode, clean subtitle and speed menus
+- **Picture enhancement (upscaler)** — real-time GPU upscaling: **[Anime4K](https://github.com/bloc97/Anime4K)** restore + upscale networks for anime, contrast-adaptive sharpening for movies, HDR handled correctly
 - **Subtle interface sounds** (adjustable or off)
 - **Everything restyled** — Discover, Library, Search, Calendar, Addons, Settings
 - **8 accent colours** and an on/off switch for every feature
@@ -113,6 +114,17 @@ That's it. Updates are offered automatically inside the app.
     <td align="center"><sub>Subtitles menu</sub></td>
   </tr>
 </table>
+
+### Picture enhancement (upscaler)
+
+Make anime — especially older or lower-resolution episodes — look cleaner and sharper, in real time on your GPU:
+
+- **Anime4K** runs the actual [Anime4K](https://github.com/bloc97/Anime4K) v4 *Restore* and *Upscale* neural-network shaders by bloc97 (the same ones anime upscaler websites use), inside the player.
+- **Sharpen** gives live action a crisp, high-quality upscale with AMD-style contrast-adaptive sharpening.
+- **Auto** uses Anime4K for anime and Sharpen for everything else.
+- HDR films keep their correct colours (tone-mapped like Stremio's own picture), subtitles stay on top, and if your GPU ever can't keep up it steps down automatically.
+
+Switch it in the dx.bi settings or with the **✨** button in the player.
 
 ### Stream sorting & filters
 
@@ -146,6 +158,7 @@ It reads what your addons already show, so it works with any stream addon. Your 
 - IMDb ratings on posters
 - Wide Continue Watching
 - Player extras
+- Picture enhancement — Off / Auto / Sharpen / Anime4K (quality or fast)
 - Seek bar previews
 - Time remaining
 - Stream sorting & filters
@@ -216,6 +229,7 @@ Tested together with DX.BI — layouts adapt and nothing overlaps.
 - **[Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced)** by REVENGE977 — makes themes and plugins possible.
 - **[Modern Glass](https://github.com/Fxy6969/Stremio-Glass-Theme)** by Fxy (with MrBlu03) — the theme I started from before building DX.BI, and the home of several plugins listed above.
 - Every plugin author linked above — thank you for making Stremio better.
+- **[Anime4K](https://github.com/bloc97/Anime4K)** by bloc97 — the restore/upscale shaders used by Picture enhancement, included unmodified under the MIT licence ([LICENSE-ANIME4K](LICENSE-ANIME4K)).
 - **Cinemeta** and **MetaHub** for metadata and artwork.
 - Fonts: [Bebas Neue](https://github.com/dharmatype/Bebas-Neue) and [Inter](https://rsms.me/inter/) (SIL Open Font License).
 - Built with the help of [Claude Code](https://www.anthropic.com/claude-code).

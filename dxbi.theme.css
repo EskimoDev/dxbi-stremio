@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description Cinematic, Netflix-inspired interface for dx.bi. Pair it with the dx.bi plugin for the billboard, carousels, previews, ratings and player extras.
- * @version 2.4.0
+ * @version 2.5.0
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.theme.css
  */
@@ -3831,8 +3831,33 @@ body:has(.dx-player-title) #app .custom-episode-title {
     overflow: hidden !important;
 }
 
-.dx-scrub.has-frame .dx-scrub-frame {
+.dx-scrub.has-frame .dx-scrub-frame,
+.dx-scrub.is-loading .dx-scrub-frame {
     display: block;
+}
+
+/* loading: a 16:9 dark box with a soft moving sheen until the frame arrives */
+.dx-scrub.is-loading:not(.has-frame) .dx-scrub-frame {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background: #141414;
+}
+
+.dx-scrub.is-loading:not(.has-frame) .dx-scrub-frame canvas {
+    visibility: hidden;
+}
+
+.dx-scrub.is-loading:not(.has-frame) .dx-scrub-frame::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.08) 50%, transparent 70%);
+    animation: dx-scrub-sheen 1.1s linear infinite;
+}
+
+@keyframes dx-scrub-sheen {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
 }
 
 .dx-scrub-frame canvas {
@@ -3878,4 +3903,66 @@ body:has(.dx-player-title) #app .custom-episode-title {
 /* dx.bi's card already shows the time — hide Stremio's small tooltip while it's there */
 body:has(.dx-scrub) > [class*="seek-tooltip"] {
     display: none !important;
+}
+
+/* =====================================================================
+   22. PICTURE ENHANCEMENT (plugin): upscaled canvas over the video
+   ===================================================================== */
+
+.dx-enhance {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    image-rendering: auto;
+}
+
+/* The video's own subtitle lines would sit under the canvas — dx.bi redraws them on top */
+#app [class*="player-container"] video[data-dx-enhanced]::cue {
+    visibility: hidden !important;
+}
+
+.dx-enhance-subs {
+    position: absolute;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15em;
+    pointer-events: none;
+    text-align: center;
+}
+
+.dx-enhance-cue {
+    display: inline-block;
+    max-width: 90%;
+    padding: 0.05em 0.35em;
+    line-height: 1.3;
+    white-space: pre-line;
+}
+
+.dx-enh-btn.is-on svg {
+    color: var(--dx-accent) !important;
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--dx-accent) 60%, transparent));
+}
+
+.dx-player-toast {
+    position: absolute;
+    z-index: 6;
+    top: 6rem;
+    left: 50%;
+    padding: 0.6rem 1.1rem;
+    border-radius: 999px;
+    background: rgba(20, 20, 20, 0.85);
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -6px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.dx-player-toast.is-on {
+    opacity: 1;
+    transform: translate(-50%, 0);
 }

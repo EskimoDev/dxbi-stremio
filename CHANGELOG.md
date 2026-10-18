@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.5.0
+- **Seek bar previews now work with real streams.** Most streams play through Stremio's local converter (the player only sees a `blob:` URL), so previews now use the streaming server's own thumbnail endpoint. A coarse-to-fine thumbnail strip builds quietly in the background (pausing while the film buffers), so hovering shows a nearby frame instantly and the exact frame a moment later.
+- The preview checks the pointer's real position on every move.
+- **Picture enhancement (upscaler)**: real-time WebGL2 processing with a small mpv user-shader runtime running bloc97's **Anime4K** v4 Restore + Upscale CNN shaders (quality and fast), plus AMD-style contrast-adaptive sharpening for live action. Auto picks per title. HDR10 is tone-mapped to match Stremio's own picture, native subtitles are redrawn on top, and it steps down automatically if frames start dropping. ✨ button in the player.
+
 ## 2.4.0
 - **Seek bar previews**: point at the progress bar to see a thumbnail of that moment and its time, Netflix-style; works while dragging too. Frames are cached and only fetched when the cursor rests, to keep bandwidth low.
 - Fixed the seek-bar knob sitting half its width to the right of the true position.
