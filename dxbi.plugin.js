@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews, IMDb ratings on posters, wide Continue Watching, stream sorting & filters, a Netflix-style player, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.5.0
+ * @version 2.5.1
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -890,14 +890,22 @@
       if (!this.eligible(card)) return;
       clearTimeout(this.openTimer);
       const warm = this.el && this.el.classList.contains("is-open");
+      // Moving between titles: keep the current card up until the next one replaces it,
+      // otherwise its close would cancel the open that's on its way
+      if (warm) clearTimeout(this.closeTimer);
       this.openTimer = setTimeout(() => {
         if (card.isConnected && card.matches(":hover")) this.open(card);
+        else if (warm) this.scheduleClose();
       }, warm ? 160 : 600);
     },
 
     onOut(e) {
       const card = e.target.closest && e.target.closest('[class*="meta-item-container"]');
-      if (card && !card.contains(e.relatedTarget)) clearTimeout(this.openTimer);
+      if (!card || card.contains(e.relatedTarget)) return;
+      clearTimeout(this.openTimer);
+      // passed over a title on the way somewhere else: close unless we're heading into the card
+      const open = this.el && this.el.classList.contains("is-open");
+      if (open && card !== this.card && !this.el.contains(e.relatedTarget)) this.scheduleClose();
     },
 
     ensureEl() {

@@ -14,6 +14,10 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/notdxbi/dxbi-stremio/releases/download/v2.5.1/dxbi-promo.mp4"><b>▶ Watch the 50-second preview</b></a>
+</p>
+
+<p align="center">
   <img src="screenshots/home.jpg" alt="DX.BI home screen" width="100%">
 </p>
 
