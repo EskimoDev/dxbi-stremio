@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.0
+- **Stream sorting & filters** above every streams list: sort by addon order, best quality, most seeds, largest or smallest; filter by quality, language (from flags and release names), source, provider, ⚡ instant (cached debrid) and HDR/DV. Works with any stream addon, remembers your choices, and never moves Stremio's own elements (uses CSS order), so streams that arrive late slot in correctly.
+- README: clear note that DX.BI is a reskin, not a streaming service; linked list of compatible plugins with credits.
+
 ## 2.2.1
 - Billboard transitions reworked: only the pictures cross-fade; the old title fades out completely before the new one fades in, with no movement — text stays crisp instead of looking washed out mid-change. The outgoing picture keeps its slow zoom until it has faded (no jump).
 - Genre / cast / director pills (details page and Discover panel): text is now optically centred.

@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
- * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews, IMDb ratings on posters, wide Continue Watching, a Netflix-style player, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.2.1
+ * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews, IMDb ratings on posters, wide Continue Watching, stream sorting & filters, a Netflix-style player, a cinematic intro and interface sounds. Use with the dx.bi theme.
+ * @version 2.3.0
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -43,6 +43,7 @@
     ratings: true,
     wideContinue: true,
     playerExtras: true,
+    streamTools: true,
     splash: true,
     introSound: true,
     uiSounds: true,
@@ -96,6 +97,7 @@
     { key: "ratings", type: "toggle", label: "IMDb ratings on posters", description: "Small IMDb badge on posters, from your addons' data (Cinemeta fills any gaps).", defaultValue: DEFAULTS.ratings },
     { key: "wideContinue", type: "toggle", label: "Wide Continue Watching", description: "Show Continue Watching as landscape cards with title art.", defaultValue: DEFAULTS.wideContinue },
     { key: "playerExtras", type: "toggle", label: "Netflix-style player extras", description: "Back/forward 10 seconds buttons, title in the control bar and play/pause feedback.", defaultValue: DEFAULTS.playerExtras },
+    { key: "streamTools", type: "toggle", label: "Stream sorting & filters", description: "Sort streams by quality, seeds or size and filter by quality, language, source, provider, instant and HDR.", defaultValue: DEFAULTS.streamTools },
     { key: "splash", type: "toggle", label: "Intro animation", description: "Plays once each time the app starts.", defaultValue: DEFAULTS.splash },
     { key: "introSound", type: "toggle", label: "Intro sound", description: "Play the intro's score (a 'ta-dum', a chord and a whoosh).", defaultValue: DEFAULTS.introSound },
     { key: "uiSounds", type: "toggle", label: "Interface sounds", description: "Soft sounds for tabs, opening titles, previews, My List, player controls and keyboard navigation.", defaultValue: DEFAULTS.uiSounds },
@@ -169,6 +171,7 @@
     chevronDown: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
     chevronLeft: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
     chevronRight: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+    sort: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M3.5 16.5L7 20l3.5-3.5M17 20V4M13.5 7.5L17 4l3.5 3.5"/></svg>',
     pause: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="5.5" y="4" width="4.5" height="16" rx="1"/><rect x="14" y="4" width="4.5" height="16" rx="1"/></svg>',
     plus: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
     check: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
@@ -1309,6 +1312,316 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Streams: sort + filter bar above the streams list. Reads what any addon writes
+  // (quality, size, seeds, flags, provider, debrid status) — no addon-specific setup.
+  // Items are reordered with CSS `order` and hidden with an attribute, never moved,
+  // so Stremio can keep adding streams as addons answer.
+  // ---------------------------------------------------------------------------
+
+  const FLAG_LANG = {
+    GB: "English", US: "English", AU: "English", CA: "English", IE: "English", NZ: "English",
+    IT: "Italian", ES: "Spanish", MX: "Spanish (Latino)", AR: "Spanish (Latino)", CO: "Spanish (Latino)", CL: "Spanish (Latino)",
+    FR: "French", BE: "French", DE: "German", AT: "German", CH: "German", RU: "Russian", UA: "Ukrainian",
+    PT: "Portuguese", BR: "Portuguese (Brazil)", JP: "Japanese", KR: "Korean", CN: "Chinese", TW: "Chinese", HK: "Chinese",
+    IN: "Hindi", PL: "Polish", NL: "Dutch", TR: "Turkish", SE: "Swedish", NO: "Norwegian", DK: "Danish", FI: "Finnish",
+    CZ: "Czech", SK: "Slovak", HU: "Hungarian", GR: "Greek", RO: "Romanian", BG: "Bulgarian", RS: "Serbian", HR: "Croatian",
+    SI: "Slovenian", IL: "Hebrew", SA: "Arabic", AE: "Arabic", EG: "Arabic", TH: "Thai", VN: "Vietnamese", ID: "Indonesian",
+    MY: "Malay", PH: "Filipino", IR: "Persian", LT: "Lithuanian", LV: "Latvian", EE: "Estonian",
+  };
+  const LANG_WORDS = [
+    [/\bmulti(?:[ .-]?audio|[ .-]?lang)?\b/i, "Multi audio"],
+    [/\bdual[ .-]?audio\b/i, "Dual audio"],
+    [/\benglish\b/i, "English"], [/\bitalian[oa]?\b/i, "Italian"], [/\b(?:french|truefrench|vff|vfq)\b/i, "French"],
+    [/\b(?:german|deutsch)\b/i, "German"], [/\b(?:spanish|castellano|espa[nñ]ol)\b/i, "Spanish"], [/\blatino\b/i, "Spanish (Latino)"],
+    [/\brussian\b/i, "Russian"], [/\bhindi\b/i, "Hindi"], [/\bjapanese\b/i, "Japanese"], [/\bkorean\b/i, "Korean"],
+    [/\bportugu[eê]se?\b/i, "Portuguese"], [/\bpolish\b/i, "Polish"], [/\bturkish\b/i, "Turkish"], [/\barabic\b/i, "Arabic"],
+  ];
+  const QUALITY_LABEL = { 2160: "4K", 1440: "1440p", 1080: "1080p", 720: "720p", 480: "SD", 0: "Unknown" };
+  const SOURCE_RANK = { Remux: 4, BluRay: 3, WEB: 2, HDTV: 1, Other: 0, CAM: -10 };
+  const SORTS = [
+    ["default", "Addon order"],
+    ["quality", "Best quality"],
+    ["seeds", "Most seeds"],
+    ["size-desc", "Largest first"],
+    ["size-asc", "Smallest first"],
+  ];
+
+  function parseStream(el) {
+    const nameEl = el.querySelector('[class*="addon-name"]');
+    const name = ((nameEl && nameEl.innerText) || "").trim();
+    const all = el.innerText || "";
+    const firstLine = name.split("\n")[0].trim() || "Unknown";
+    const bracket = /^\s*\[([^\]]+)\]/.exec(firstLine);
+    const provider = firstLine.replace(/^\s*\[[^\]]*\]\s*/, "").trim() || firstLine;
+    const instant = (bracket && /\+|⚡|instant|cached/i.test(bracket[1])) || /⚡|\binstant\b|\bcached\b/i.test(firstLine);
+
+    let res = 0;
+    if (/\b(?:2160p|4k|uhd)\b/i.test(all)) res = 2160;
+    else if (/\b1440p\b/i.test(all)) res = 1440;
+    else if (/\b(?:1080p|fhd)\b/i.test(all)) res = 1080;
+    else if (/\b720p\b/i.test(all)) res = 720;
+    else if (/\b(?:576p|480p|360p|sd|dvdrip|xvid)\b/i.test(all)) res = 480;
+
+    const dv = /\b(?:dv|dovi|dolby[ .-]?vision)\b/i.test(all);
+    const hdr = dv || /\bhdr(?:10\+?)?\b/i.test(all);
+
+    let size = 0;
+    const sm = /(\d+(?:[.,]\d+)?)\s*(TB|GB|MB)\b/i.exec(all);
+    if (sm) size = parseFloat(sm[1].replace(",", ".")) * { TB: 1e12, GB: 1e9, MB: 1e6 }[sm[2].toUpperCase()];
+
+    const seedMatch = /👤\s*(\d+)/u.exec(all) || /🌱\s*(\d+)/u.exec(all) || /\bseed(?:er)?s?\W{0,3}(\d+)/i.exec(all) || /(\d+)\s*seed/i.exec(all);
+    const seeds = seedMatch ? parseInt(seedMatch[1], 10) : -1;
+
+    let source = "Other";
+    if (/\bremux\b/i.test(all)) source = "Remux";
+    else if (/\b(?:blu-?ray|bdrip|brrip|bdremux|bd25|bd50)\b/i.test(all)) source = "BluRay";
+    else if (/\bweb[ .-]?(?:dl|rip)?\b/i.test(all)) source = "WEB";
+    else if (/\bhdtv\b/i.test(all)) source = "HDTV";
+    else if (/\b(?:cam|hdcam|camrip|telesync|hdts|ts|tc)\b/i.test(all)) source = "CAM";
+
+    const langs = new Set();
+    for (const m of all.matchAll(/([\u{1F1E6}-\u{1F1FF}])([\u{1F1E6}-\u{1F1FF}])/gu)) {
+      const code = String.fromCharCode(m[1].codePointAt(0) - 0x1f1e6 + 65, m[2].codePointAt(0) - 0x1f1e6 + 65);
+      langs.add(FLAG_LANG[code] || code);
+    }
+    for (const [re, label] of LANG_WORDS) if (re.test(all)) langs.add(label);
+    if (!langs.size) langs.add("Not listed (usually English)");
+
+    return { provider, instant, res, hdr, dv, size, seeds, source, langs: [...langs] };
+  }
+
+  const streamTools = {
+    cache: new WeakMap(),
+    state: (() => {
+      const base = { sort: "default", quality: [], lang: [], source: [], provider: [], instant: false, hdr: false };
+      try { return { ...base, ...JSON.parse(localStorage.getItem("dxbi.streams") || "{}") }; } catch (_) { return base; }
+    })(),
+    open: null,
+    sig: "",
+
+    save() {
+      try { localStorage.setItem("dxbi.streams", JSON.stringify(this.state)); } catch (_) { /* ignore */ }
+    },
+
+    data(el) {
+      const sig = el.textContent.length;
+      const hit = this.cache.get(el);
+      if (hit && hit.sig === sig) return hit.data;
+      const data = parseStream(el);
+      this.cache.set(el, { sig, data });
+      return data;
+    },
+
+    ensure() {
+      const panel = document.querySelector('[class*="metadetails-content"] [class*="streams-list-container"]');
+      const list = panel && panel.querySelector(':scope > [class*="streams-container"]');
+      let bar = panel && panel.querySelector(":scope > .dx-streambar");
+      if (!settings.streamTools || !list || !list.offsetParent) {
+        if (bar) bar.remove();
+        if (list) this.reset(list);
+        return;
+      }
+      const items = [...list.querySelectorAll(':scope > [class*="stream-container"]')];
+      if (items.length < 3) {
+        if (bar) bar.hidden = true;
+        this.reset(list);
+        return;
+      }
+      if (!bar) {
+        bar = this.build();
+        panel.insertBefore(bar, list);
+      }
+      bar.hidden = false;
+      list.classList.add("dx-sortable");
+      const rows = items.map((el) => [el, this.data(el)]);
+      this.apply(list, rows, bar);
+    },
+
+    reset(list) {
+      list.classList.remove("dx-sortable");
+      for (const el of list.querySelectorAll(':scope > [class*="stream-container"]')) {
+        el.style.order = "";
+        el.removeAttribute("data-dx-hide");
+      }
+      list.parentElement?.querySelector(":scope > .dx-stream-empty")?.remove();
+    },
+
+    // What filter values exist in this list (with counts)
+    facets(rows) {
+      const count = (key) => {
+        const map = new Map();
+        for (const [, d] of rows) for (const v of [].concat(d[key])) map.set(v, (map.get(v) || 0) + 1);
+        return map;
+      };
+      const quality = count("res");
+      return {
+        quality: [2160, 1440, 1080, 720, 480, 0].filter((q) => quality.has(q)).map((q) => [String(q), QUALITY_LABEL[q], quality.get(q)]),
+        lang: [...count("langs")].sort((a, b) => (a[0] === "Not listed (usually English)") - (b[0] === "Not listed (usually English)") || b[1] - a[1]).map(([v, n]) => [v, v, n]),
+        source: Object.keys(SOURCE_RANK).map((s) => [s, s === "WEB" ? "WEB-DL / WEBRip" : s, count("source").get(s)]).filter((x) => x[2]),
+        provider: [...count("provider")].sort((a, b) => b[1] - a[1]).map(([v, n]) => [v, v, n]),
+        instant: rows.filter(([, d]) => d.instant).length,
+        hdr: rows.filter(([, d]) => d.hdr).length,
+      };
+    },
+
+    matches(d) {
+      const s = this.state;
+      if (s.quality.length && !s.quality.includes(String(d.res))) return false;
+      if (s.source.length && !s.source.includes(d.source)) return false;
+      if (s.provider.length && !s.provider.includes(d.provider)) return false;
+      if (s.lang.length && !d.langs.some((l) => s.lang.includes(l))) return false;
+      if (s.instant && !d.instant) return false;
+      if (s.hdr && !d.hdr) return false;
+      return true;
+    },
+
+    score(d) {
+      return d.res * 10 + (d.dv ? 3 : d.hdr ? 2 : 0) + (SOURCE_RANK[d.source] || 0);
+    },
+
+    apply(list, rows, bar) {
+      const s = this.state;
+      // Ignore saved choices that don't exist in this title's streams (keeps old preferences from hiding everything)
+      const f = this.facets(rows);
+      const present = (key, values) => values.filter((v) => f[key].some(([x]) => x === v));
+      const active = {
+        quality: present("quality", s.quality), lang: present("lang", s.lang),
+        source: present("source", s.source), provider: present("provider", s.provider),
+      };
+      const saved = { ...s };
+      Object.assign(s, active);
+      s.instant = saved.instant && f.instant > 0;
+      s.hdr = saved.hdr && f.hdr > 0;
+
+      const ranked = rows.map(([el, d], i) => ({ el, d, i, keep: this.matches(d) }));
+      const by = {
+        quality: (a, b) => this.score(b.d) - this.score(a.d) || (b.d.instant - a.d.instant) || b.d.seeds - a.d.seeds || b.d.size - a.d.size,
+        seeds: (a, b) => b.d.seeds - a.d.seeds || this.score(b.d) - this.score(a.d),
+        "size-desc": (a, b) => b.d.size - a.d.size,
+        "size-asc": (a, b) => (a.d.size || Infinity) - (b.d.size || Infinity),
+      }[s.sort];
+      const order = by ? [...ranked].sort((a, b) => by(a, b) || a.i - b.i) : ranked;
+      order.forEach((r, pos) => {
+        const o = by ? String(pos) : "";
+        if (r.el.style.order !== o) r.el.style.order = o;
+        if (r.keep) r.el.removeAttribute("data-dx-hide");
+        else r.el.setAttribute("data-dx-hide", "");
+      });
+      const shown = ranked.filter((r) => r.keep).length;
+
+      // restore the user's full saved preferences (we only narrowed them for this title)
+      Object.assign(this.state, saved);
+
+      const sig = JSON.stringify([f, active, s.sort, s.instant, s.hdr, shown, rows.length]);
+      if (sig !== this.sig || !bar.firstChild) {
+        this.sig = sig;
+        this.renderBar(bar, f, active, shown, rows.length);
+      }
+
+      let empty = list.parentElement.querySelector(":scope > .dx-stream-empty");
+      if (!shown) {
+        if (!empty) {
+          empty = document.createElement("div");
+          empty.className = "dx-stream-empty";
+          empty.innerHTML = 'No streams match these filters.<button type="button" data-act="reset">Clear filters</button>';
+          list.parentElement.insertBefore(empty, list);
+        }
+      } else if (empty) {
+        empty.remove();
+      }
+    },
+
+    build() {
+      const bar = document.createElement("div");
+      bar.className = "dx-streambar";
+      bar.addEventListener("click", (e) => this.onClick(e));
+      return bar;
+    },
+
+    renderBar(bar, f, active, shown, total) {
+      const s = this.state;
+      const chip = (key, label, values, count) => {
+        const on = values.length > 0;
+        const text = on ? (values.length === 1 ? values[0] : `${label} · ${values.length}`) : label;
+        return `<button type="button" class="dx-sb-btn${on ? " is-on" : ""}${this.open === key ? " is-open" : ""}" data-menu="${key}">${esc(text)}${ICONS.chevronDown}</button>`;
+      };
+      const label = (key, v) => (f[key].find(([x]) => x === v) || [, v])[1];
+      const sortLabel = (SORTS.find(([k]) => k === s.sort) || SORTS[0])[1];
+      let html = `<div class="dx-sb-row">`;
+      html += `<button type="button" class="dx-sb-btn dx-sb-sort${this.open === "sort" ? " is-open" : ""}" data-menu="sort">${ICONS.sort}${esc(sortLabel)}${ICONS.chevronDown}</button>`;
+      html += `<span class="dx-sb-div"></span>`;
+      if (f.quality.length > 1) html += chip("quality", "Quality", active.quality.map((v) => label("quality", v)));
+      if (f.lang.length > 1) html += chip("lang", "Language", active.lang);
+      if (f.source.length > 1) html += chip("source", "Source", active.source.map((v) => label("source", v)));
+      if (f.provider.length > 1) html += chip("provider", "Provider", active.provider);
+      if (f.instant && f.instant < total) html += `<button type="button" class="dx-sb-btn dx-sb-toggle${s.instant ? " is-on" : ""}" data-toggle="instant">⚡ Instant</button>`;
+      if (f.hdr && f.hdr < total) html += `<button type="button" class="dx-sb-btn dx-sb-toggle${s.hdr ? " is-on" : ""}" data-toggle="hdr">HDR / DV</button>`;
+      const filtered = active.quality.length || active.lang.length || active.source.length || active.provider.length || s.instant || s.hdr;
+      html += `<span class="dx-sb-count">${shown === total ? `${total} streams` : `${shown} of ${total}`}</span>`;
+      if (filtered || s.sort !== "default") html += `<button type="button" class="dx-sb-reset" data-act="reset">Reset</button>`;
+      html += `</div>`;
+
+      if (this.open) {
+        const opts = this.open === "sort"
+          ? SORTS.map(([k, l]) => ({ v: k, l, on: s.sort === k }))
+          : f[this.open].map(([v, l, n]) => ({ v, l, n, on: (active[this.open] || []).includes(v) }));
+        html += `<div class="dx-sb-menu" data-for="${this.open}">` + opts.map((o) =>
+          `<button type="button" class="dx-sb-opt${o.on ? " is-on" : ""}" data-val="${esc(o.v)}"><span class="dx-sb-check">${o.on ? ICONS.check : ""}</span><span class="dx-sb-label">${esc(o.l)}</span>${o.n ? `<span class="dx-sb-n">${o.n}</span>` : ""}</button>`
+        ).join("") + `</div>`;
+      }
+      bar.innerHTML = html;
+    },
+
+    onClick(e) {
+      const t = e.target.closest("button");
+      if (!t) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const s = this.state;
+      if (t.dataset.menu) {
+        this.open = this.open === t.dataset.menu ? null : t.dataset.menu;
+        sfx.play("menu", 0.8);
+      } else if (t.dataset.toggle) {
+        s[t.dataset.toggle] = !s[t.dataset.toggle];
+        sfx.play(s[t.dataset.toggle] ? "toggleOn" : "toggleOff");
+      } else if (t.dataset.act === "reset") {
+        Object.assign(s, { sort: "default", quality: [], lang: [], source: [], provider: [], instant: false, hdr: false });
+        this.open = null;
+        sfx.play("tick", 1.2);
+      } else if (t.dataset.val !== undefined) {
+        const key = t.closest(".dx-sb-menu").dataset.for;
+        if (key === "sort") {
+          s.sort = t.dataset.val;
+          this.open = null;
+        } else {
+          const set = new Set(s[key]);
+          set.has(t.dataset.val) ? set.delete(t.dataset.val) : set.add(t.dataset.val);
+          s[key] = [...set];
+        }
+        sfx.play("tick", 1.2);
+      }
+      this.save();
+      this.sig = "";
+      this.ensure();
+    },
+
+    closeMenu(e) {
+      if (!this.open) return;
+      if (e && e.target instanceof Element && e.target.closest(".dx-streambar")) return;
+      this.open = null;
+      this.sig = "";
+      this.ensure();
+    },
+  };
+
+  function onStreamDocClick(e) {
+    const t = e.target instanceof Element ? e.target : null;
+    const reset = t && t.closest(".dx-stream-empty [data-act='reset']");
+    if (reset) streamTools.onClick({ target: reset, preventDefault() {}, stopPropagation() {} });
+    else streamTools.closeMenu(e);
+  }
+
+  // ---------------------------------------------------------------------------
   // UI sounds — synthesised once into buffers (no audio files), then played instantly
   // ---------------------------------------------------------------------------
 
@@ -1529,6 +1842,7 @@
 
   function sync() {
     const steps = [updateRoute, brandTitle, () => player.ensure()];
+    if (currentRoute() === "detail") steps.push(() => streamTools.ensure());
     if (currentRoute() !== "player") {
       steps.push(() => hero.ensure(), () => carouselRows().forEach(enhanceRow), syncCards);
     }
@@ -1541,7 +1855,7 @@
   const mo = new MutationObserver((records) => {
     for (const r of records) {
       // Ignore changes we made ourselves
-      if (r.target.closest && r.target.closest(".dx-hero, .dx-preview, .dx-row-pages, .dx-wide-art, .dx-player-title, .dx-player-flash")) continue;
+      if (r.target.closest && r.target.closest(".dx-hero, .dx-preview, .dx-row-pages, .dx-wide-art, .dx-player-title, .dx-player-flash, .dx-streambar, .dx-stream-empty")) continue;
       scheduleSync();
       return;
     }
@@ -1571,6 +1885,7 @@
     window.addEventListener("resize", onResize);
     document.addEventListener("visibilitychange", onHash);
     document.addEventListener("click", onSoundClick, true);
+    document.addEventListener("click", onStreamDocClick, true);
     document.addEventListener("keydown", onSoundKey, true);
     document.addEventListener("focusin", onSoundFocus, true);
     // Prepare the sounds after the intro so they never compete with it
@@ -1594,6 +1909,7 @@
       window.removeEventListener("resize", onResize);
       document.removeEventListener("visibilitychange", onHash);
       document.removeEventListener("click", onSoundClick, true);
+      document.removeEventListener("click", onStreamDocClick, true);
       document.removeEventListener("keydown", onSoundKey, true);
       document.removeEventListener("focusin", onSoundFocus, true);
       if (sfx.ctx) sfx.ctx.close().catch(() => {});
@@ -1601,7 +1917,8 @@
       preview.close(true);
       preview.el?.remove();
       player.detach();
-      document.querySelectorAll(".dx-arrow, .dx-row-pages, .dx-badge, .dx-wide-art, .dx-splash, .dx-seek, .dx-player-title, .dx-player-flash").forEach((n) => n.remove());
+      document.querySelectorAll(".dx-arrow, .dx-row-pages, .dx-badge, .dx-wide-art, .dx-splash, .dx-seek, .dx-player-title, .dx-player-flash, .dx-streambar, .dx-stream-empty").forEach((n) => n.remove());
+      document.querySelectorAll(".dx-sortable").forEach((l) => streamTools.reset(l));
       document.querySelectorAll("[data-dx-key]").forEach((n) => { delete n.dataset.dxKey; });
     },
   };

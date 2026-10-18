@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description Cinematic, Netflix-inspired interface for dx.bi. Pair it with the dx.bi plugin for the billboard, carousels, previews, ratings and player extras.
- * @version 2.2.1
+ * @version 2.3.0
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.theme.css
  */
@@ -3559,4 +3559,217 @@ body:has(.dx-player-title) #app .custom-episode-title {
 
 #app [id^="skip-"][id$="-button"] * {
     color: #000 !important;
+}
+
+/* =====================================================================
+   20. STREAM SORT & FILTER BAR (plugin)
+   ===================================================================== */
+
+/* Sorting uses CSS order, so the list must be a flex column */
+#app [class*="streams-container"].dx-sortable {
+    display: flex !important;
+    flex-direction: column;
+}
+
+#app [class*="streams-container"].dx-sortable > [data-dx-hide] {
+    display: none !important;
+}
+
+.dx-streambar {
+    flex: none;
+    padding: 0.85rem 0.85rem 0.75rem;
+    border-bottom: 1px solid var(--dx-line);
+    overflow: visible !important;
+}
+
+.dx-streambar[hidden] {
+    display: none;
+}
+
+.dx-sb-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    overflow: visible !important;
+}
+
+.dx-sb-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    height: 2rem;
+    padding: 0.12em 0.7rem 0 0.8rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--dx-line);
+    color: var(--dx-text-2);
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.dx-sb-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+.dx-sb-btn svg {
+    width: 0.85rem;
+    height: 0.85rem;
+    flex: none;
+    margin-top: -0.12em;
+    transition: transform 0.2s var(--dx-ease-out);
+}
+
+.dx-sb-btn.is-open svg:last-child {
+    transform: rotate(180deg);
+}
+
+.dx-sb-btn.is-on {
+    background: #fff;
+    border-color: #fff;
+    color: #000;
+}
+
+.dx-sb-sort {
+    padding-left: 0.7rem;
+    color: #fff;
+}
+
+.dx-sb-sort svg:first-child {
+    width: 0.95rem;
+    height: 0.95rem;
+}
+
+.dx-sb-toggle {
+    padding-right: 0.8rem;
+}
+
+.dx-sb-div {
+    width: 1px;
+    height: 1.2rem;
+    margin: 0 0.15rem;
+    background: var(--dx-line-strong);
+}
+
+.dx-sb-count {
+    margin-left: auto;
+    padding-left: 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--dx-text-3);
+    white-space: nowrap;
+}
+
+.dx-sb-reset {
+    padding: 0.2rem 0.1rem;
+    background: none;
+    border: 0;
+    color: var(--dx-text-2);
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.dx-sb-reset:hover {
+    color: #fff;
+}
+
+/* The open menu unfolds in place (no clipping inside the panel) */
+.dx-sb-menu {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.65rem;
+    padding: 0.6rem;
+    border-radius: var(--dx-radius);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--dx-line);
+    animation: dx-fade 0.18s ease both;
+}
+
+.dx-sb-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 2rem;
+    padding: 0.12em 0.75rem 0 0.55rem;
+    border-radius: var(--dx-radius-s);
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--dx-text-2);
+    font-size: 0.84rem;
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.dx-sb-opt:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+}
+
+.dx-sb-opt.is-on {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    font-weight: 700;
+}
+
+.dx-sb-check {
+    display: inline-flex;
+    width: 0.95rem;
+    height: 0.95rem;
+    flex: none;
+    border-radius: 3px;
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.35);
+    margin-top: -0.12em;
+}
+
+.dx-sb-opt.is-on .dx-sb-check {
+    background: var(--dx-accent);
+    box-shadow: none;
+    color: #fff;
+}
+
+.dx-sb-check svg {
+    width: 100%;
+    height: 100%;
+    padding: 1px;
+}
+
+.dx-sb-n {
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--dx-text-3);
+}
+
+.dx-stream-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 2.5rem 1rem;
+    color: var(--dx-text-2);
+    font-size: 0.95rem;
+    text-align: center;
+}
+
+.dx-stream-empty button {
+    height: 2.2rem;
+    padding: 0 1rem;
+    border-radius: var(--dx-radius);
+    background: #fff;
+    color: #000;
+    font-weight: 700;
+    cursor: pointer;
 }
