@@ -1,3 +1,8 @@
 *.plugin.json
 .DS_Store
 Thumbs.db
+tools/fonts/
+tools/frames/
+tools/prev/
+*.webm
+*.wav

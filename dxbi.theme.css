@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description Cinematic, Netflix-inspired interface for dx.bi. Pair it with the dx.bi plugin for the billboard, carousels, previews, ratings and player extras.
- * @version 2.1.0
+ * @version 2.2.0
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.theme.css
  */
@@ -698,9 +698,10 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
 #app [class*="meta-item-placeholder"] [class*="poster-container"],
 #app [class*="placeholder"] [class*="poster-container"] {
     border-radius: var(--dx-radius) !important;
-    background: linear-gradient(100deg, var(--dx-surface) 40%, var(--dx-surface-2) 50%, var(--dx-surface) 60%) !important;
-    background-size: 300% 100% !important;
-    animation: dx-shimmer 1.6s linear infinite;
+    /* static on purpose: rows from broken addons stay placeholders forever, and an endless
+       animation on dozens of them would cost CPU the whole time Home is open */
+    background: var(--dx-surface) !important;
+    animation: none !important;
 }
 
 #app [class*="meta-row-placeholder-container"] [class*="title-bar-container"],
@@ -716,10 +717,6 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     color: transparent !important;
 }
 
-@keyframes dx-shimmer {
-    from { background-position: 100% 0; }
-    to { background-position: -100% 0; }
-}
 
 /* =====================================================================
    6. BILLBOARD (built by the plugin)
@@ -753,6 +750,7 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
 .dx-hero-backdrop {
     position: absolute;
     inset: 0;
+    will-change: transform;
     background-size: cover;
     background-position: center 20%;
     transform: scale(1.06);
@@ -963,10 +961,6 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
 
 .dx-hero.is-static .dx-hero-dot.is-active::after {
     animation: none;
-}
-
-.dx-hero.is-paused .dx-hero-dot.is-active::after {
-    animation-play-state: paused;
 }
 
 @keyframes dx-progress {
@@ -1236,14 +1230,25 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     cursor: pointer;
 }
 
-.dx-preview.is-open .dx-preview-media {
+.dx-preview-media {
+    overflow: hidden;
+}
+
+.dx-preview-media::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: inherit;
+    transform-origin: 60% 40%;
+}
+
+.dx-preview.is-open .dx-preview-media::before {
     animation: dx-preview-zoom 6s ease-out both;
-    background-size: 108% auto, cover;
 }
 
 @keyframes dx-preview-zoom {
-    from { background-size: 100% auto, cover; }
-    to { background-size: 108% auto, cover; }
+    from { transform: scale(1); }
+    to { transform: scale(1.08); }
 }
 
 .dx-preview-media::after {
@@ -1427,17 +1432,14 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     color: #646464;
 }
 
-/* ---------- Intro ---------- */
+/* ---------- Intro (pre-rendered film, see plugin) ---------- */
 .dx-splash {
     position: fixed;
     inset: 0;
     z-index: 100000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: radial-gradient(ellipse at center, #120204 0%, #000 65%);
-    overflow: hidden;
-    transition: opacity 0.7s ease, visibility 0.7s;
+    background: #000;
+    cursor: pointer;
+    transition: opacity 0.6s ease, visibility 0.6s;
 }
 
 .dx-splash.is-done {
@@ -1445,87 +1447,34 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     visibility: hidden;
 }
 
-.dx-splash-mark {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    font-family: "Bebas Neue", "Inter", sans-serif;
-    font-size: clamp(6rem, 21vw, 24rem);
-    line-height: 1;
-    letter-spacing: 0.02em;
-    color: var(--dx-accent);
-    text-shadow: 0 0 40px color-mix(in srgb, var(--dx-accent) 45%, transparent);
-    animation: dx-intro-mark 2.9s cubic-bezier(0.7, 0, 0.35, 1) both;
-}
-
-.dx-splash-mark span {
-    display: inline-block;
-    font: inherit;
-    color: inherit;
-    animation: dx-intro-letter 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-
-.dx-splash-mark span:nth-child(1) { animation-delay: 0.05s; }
-.dx-splash-mark span:nth-child(2) { animation-delay: 0.12s; }
-.dx-splash-mark span:nth-child(3) { animation-delay: 0.19s; }
-.dx-splash-mark span:nth-child(4) { animation-delay: 0.26s; }
-.dx-splash-mark span:nth-child(5) { animation-delay: 0.33s; }
-
-@keyframes dx-intro-letter {
-    from { opacity: 0; transform: translateY(0.25em) scaleY(1.4); filter: blur(10px); }
-    to { opacity: 1; transform: none; filter: blur(0); }
-}
-
-/* hold → slow push-in → dive through the logo */
-@keyframes dx-intro-mark {
-    0% { transform: scale(0.92); }
-    35% { transform: scale(1); opacity: 1; filter: blur(0); }
-    52% { transform: scale(1.12); opacity: 1; filter: blur(0); }
-    80% { transform: scale(7); opacity: 0.4; filter: blur(3px); }
-    100% { transform: scale(14); opacity: 0; filter: blur(8px); }
-}
-
-.dx-splash-rays {
+.dx-splash-video {
     position: absolute;
     inset: 0;
-    z-index: 1;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000;
 }
 
-.dx-ray {
+/* Fallback when video can't play: opacity/transform only, so it stays on the compositor */
+.dx-splash-mark {
     position: absolute;
     left: 50%;
-    top: -15vh;
-    width: var(--w);
-    height: 130vh;
-    margin-left: calc(var(--w) / -2);
-    background: linear-gradient(180deg, transparent 0%, var(--c) 30%, var(--c) 70%, transparent 100%);
-    box-shadow: 0 0 1.2vw color-mix(in srgb, var(--c) 60%, transparent);
-    opacity: 0;
-    transform: translateX(var(--from)) scaleX(0.2);
-    animation: dx-intro-ray 1.45s var(--d) cubic-bezier(0.6, 0, 0.3, 1) both;
+    top: 50%;
+    font-family: "Bebas Neue", "Inter", sans-serif;
+    font-size: clamp(5rem, 16vw, 18rem);
+    line-height: 1;
+    color: var(--dx-accent);
+    transform: translate(-50%, -50%);
+    animation: dx-intro-fallback 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    will-change: transform, opacity;
 }
 
-@keyframes dx-intro-ray {
-    0% { opacity: 0; transform: translateX(var(--from)) scaleX(0.2); }
-    20% { opacity: var(--a); }
-    75% { opacity: calc(var(--a) * 0.8); }
-    100% { opacity: 0; transform: translateX(var(--to)) scaleX(4); }
-}
-
-.dx-splash-flash {
-    position: absolute;
-    inset: 0;
-    z-index: 3;
-    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.55), transparent 55%);
-    opacity: 0;
-    animation: dx-intro-flash 0.9s 1.55s ease-out both;
-    pointer-events: none;
-}
-
-@keyframes dx-intro-flash {
-    0% { opacity: 0; }
-    25% { opacity: 0.6; }
-    100% { opacity: 0; }
+@keyframes dx-intro-fallback {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.92); }
+    30% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    75% { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
 }
 
 /* =====================================================================
@@ -2225,6 +2174,10 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     box-shadow: var(--dx-shadow-2) !important;
     backdrop-filter: blur(20px);
     overflow: hidden;
+}
+
+/* Animate the menu's content, never the container: other plugins hide containers with inline opacity */
+#app [class*="menu-container"][class*="menu-direction"] > * {
     animation: dx-pop 0.18s var(--dx-ease-out) both;
 }
 
@@ -3140,7 +3093,9 @@ body .am-modal {
 }
 
 /* Skip intro / recap button from TheIntroDB */
-body #tidb-active-btn {
+body #tidb-active-btn,
+body #skiprange-active-btn,
+body #skiprange-upgrade-btn {
     padding: 0.85rem 1.5rem 0.85rem 1.25rem !important;
     border-radius: var(--dx-radius) !important;
     border: 1.5px solid rgba(255, 255, 255, 0.75) !important;
@@ -3153,13 +3108,16 @@ body #tidb-active-btn {
     box-shadow: var(--dx-shadow-2);
 }
 
-body #tidb-active-btn:hover {
+body #tidb-active-btn:hover,
+body #skiprange-active-btn:hover,
+body #skiprange-upgrade-btn:hover {
     background: #fff !important;
     color: #000 !important;
     border-color: #fff !important;
 }
 
-body #tidb-active-btn:hover img {
+body #tidb-active-btn:hover img,
+body #skiprange-active-btn:hover img {
     filter: none !important;
 }
 
@@ -3231,4 +3189,360 @@ body #tidb-active-btn:hover img {
     display: none;
     width: 0;
     height: 0;
+}
+
+/* =====================================================================
+   17. CONTEXT MENU FIX compatibility
+   That plugin clones the account button (and other menus) into
+   .context-menu-portal outside #app, so give the clones the same look.
+   ===================================================================== */
+
+.context-menu-portal [class*="menu-button-container"] {
+    display: flex !important;
+    align-items: center;
+    gap: 0.4rem;
+    height: 2.5rem !important;
+    padding: 0 0.4rem !important;
+    border-radius: var(--dx-radius) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    overflow: visible !important;
+}
+
+.context-menu-portal [class*="menu-button-container"] > [class*="avatar"] {
+    flex: none;
+    width: 2rem !important;
+    height: 2rem !important;
+    border: 0 !important;
+    border-radius: var(--dx-radius-s) !important;
+    overflow: hidden;
+}
+
+.context-menu-portal [class*="menu-button-container"] > [class*="avatar"] img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
+}
+
+.context-menu-portal [class*="menu-button-container"] > svg {
+    flex: none;
+    width: 1.1rem !important;
+    height: 1.1rem !important;
+    color: var(--dx-text);
+}
+
+.context-menu-portal [class*="menu-container"][class*="menu-direction"],
+.context-menu-portal [class*="nav-menu-container"] {
+    border-radius: var(--dx-radius-l) !important;
+    background: rgba(22, 22, 27, 0.97) !important;
+    border: 1px solid var(--dx-line-strong) !important;
+    box-shadow: var(--dx-shadow-2) !important;
+    overflow: hidden;
+}
+
+.context-menu-portal [class*="menu-container"][class*="menu-direction"] [class*="nav-menu-container"] {
+    border: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Account menu (both in-app and cloned) */
+[class*="nav-menu-container"] [class*="user-info-container"] [class*="avatar"],
+[class*="nav-menu-container"] [class*="avatar"] {
+    border: 0 !important;
+    border-radius: var(--dx-radius) !important;
+    box-shadow: 0 0 0 1px var(--dx-line-strong);
+}
+
+[class*="nav-menu-container"] [class*="nav-menu-option-container"] {
+    border-radius: var(--dx-radius);
+    transition: background-color 0.15s;
+}
+
+[class*="nav-menu-container"] [class*="nav-menu-option-container"]:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+[class*="nav-menu-container"] [class*="nav-menu-option-container"] svg {
+    color: var(--dx-text-2);
+}
+
+/* While Context Menu Fix shows its clone, hide the original button underneath */
+body:has(.context-menu-portal [class*="menu-button-container"]) #app nav [class*="menu-button-container"] {
+    visibility: hidden;
+}
+
+/* =====================================================================
+   18. ENHANCED VIDEO PLAYER compatibility (subtitle style panel + title)
+   ===================================================================== */
+
+/* dx.bi shows the title in the control bar; hide the duplicate */
+body:has(.dx-player-title) #app .custom-series-name,
+body:has(.dx-player-title) #app .custom-episode-title {
+    display: none !important;
+}
+
+#app [class*="subtitles-menu-container"] .enhanced-subtitle-customize-section {
+    width: 22rem;
+    max-height: 100%;
+    padding: 0 1.5rem 1.25rem;
+    overflow-y: auto;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.9rem;
+    color: var(--dx-text-2);
+}
+
+#app .enhanced-subtitle-customize-header {
+    display: flex;
+    align-items: center;
+    padding: 1.35rem 0 0.75rem;
+    font-size: 0 !important;
+}
+
+#app .enhanced-subtitle-customize-header > * {
+    display: none !important;
+}
+
+#app .enhanced-subtitle-customize-header::after {
+    content: "Style";
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+#app .enhanced-subtitle-presets-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+}
+
+#app .enhanced-subtitle-preset-btn {
+    height: 2rem;
+    padding: 0 0.85rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid transparent;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--dx-text-2);
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+#app .enhanced-subtitle-preset-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+#app .enhanced-subtitle-preset-btn.selected {
+    background: #fff;
+    color: #000;
+}
+
+#app .enhanced-subtitle-preview-section {
+    margin-bottom: 1rem;
+}
+
+#app .enhanced-subtitle-preview-label,
+#app .enhanced-stepper-header,
+#app .enhanced-select-header,
+#app .enhanced-color-header,
+#app .enhanced-text-header {
+    margin-bottom: 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dx-text-3);
+}
+
+#app .enhanced-subtitle-preview-box {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    height: 5.5rem;
+    padding: 0.75rem;
+    border-radius: var(--dx-radius);
+    background:
+        linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.35)),
+        url("https://images.metahub.space/background/medium/tt1375666/img") center / cover,
+        #333;
+    overflow: hidden;
+}
+
+#app .enhanced-subtitle-preview-text {
+    max-width: 100%;
+    text-align: center;
+    white-space: normal;
+}
+
+#app .enhanced-settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem 0.75rem;
+}
+
+#app .enhanced-stepper-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 2.5rem;
+    border-radius: var(--dx-radius);
+    background: rgba(255, 255, 255, 0.07);
+}
+
+#app .enhanced-stepper-button {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--dx-radius);
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+}
+
+#app .enhanced-stepper-button:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+#app .enhanced-stepper-button svg {
+    width: 0.9rem;
+    height: 0.9rem;
+}
+
+#app .enhanced-stepper-value {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #fff;
+}
+
+#app .enhanced-select,
+#app .enhanced-text-input {
+    width: 100%;
+    height: 2.5rem;
+    padding: 0 0.75rem;
+    border-radius: var(--dx-radius);
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid transparent;
+    color: #fff;
+    font-size: 0.85rem;
+    appearance: auto;
+}
+
+#app .enhanced-select:focus,
+#app .enhanced-text-input:focus {
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+#app .enhanced-select option {
+    background: #262626;
+    color: #fff;
+}
+
+#app .enhanced-color-content {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    height: 2.5rem;
+    padding: 0 0.5rem;
+    border-radius: var(--dx-radius);
+    background: rgba(255, 255, 255, 0.07);
+}
+
+#app .enhanced-color-input {
+    width: 1.6rem;
+    height: 1.6rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    appearance: none;
+}
+
+#app .enhanced-color-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+#app .enhanced-color-input::-webkit-color-swatch {
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+}
+
+#app .enhanced-color-value {
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--dx-text-2);
+}
+
+/* =====================================================================
+   19. STREAM PLUGINS compatibility (Stream Keyword Filter, Stream Finder,
+   FilterStreams, Stream Quality Picker…). Anything a plugin inserts next to
+   the streams/episodes panel is stacked on top of it as one column.
+   ===================================================================== */
+
+#app [class*="metadetails-content"]:has(> :not([class*="meta-preview"]):not([class*="spacing"]):not([class*="streams-list"]):not([class*="videos-list"])) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) clamp(28rem, 31vw, 42rem);
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+    column-gap: 1.5rem;
+    padding-right: var(--dx-gutter) !important;
+}
+
+#app [class*="metadetails-content"]:has(> :not([class*="meta-preview"]):not([class*="spacing"]):not([class*="streams-list"]):not([class*="videos-list"])) > [class*="meta-preview"] {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    min-height: 0;
+}
+
+#app [class*="metadetails-content"]:has(> :not([class*="meta-preview"]):not([class*="spacing"]):not([class*="streams-list"]):not([class*="videos-list"])) > [class*="spacing"] {
+    display: none !important;
+}
+
+#app [class*="metadetails-content"] > :not([class*="meta-preview"]):not([class*="spacing"]):not([class*="streams-list"]):not([class*="videos-list"]) {
+    grid-column: 2;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0.85rem 1rem !important;
+    background: rgba(19, 19, 23, 0.86) !important;
+    border: 1px solid var(--dx-line);
+    border-bottom: 0;
+    backdrop-filter: blur(24px) saturate(140%);
+    z-index: 2;
+}
+
+#app [class*="metadetails-content"] > :not([class*="meta-preview"]):not([class*="spacing"]):not([class*="streams-list"]):not([class*="videos-list"]):first-of-type,
+#app [class*="metadetails-content"] > [class*="spacing"] + :not([class*="streams-list"]):not([class*="videos-list"]) {
+    margin-top: 0.75rem !important;
+    border-radius: var(--dx-radius-l) var(--dx-radius-l) 0 0;
+}
+
+#app [class*="metadetails-content"]:has(> :not([class*="meta-preview"]):not([class*="spacing"]):not([class*="streams-list"]):not([class*="videos-list"])) > [class*="streams-list"],
+#app [class*="metadetails-content"]:has(> :not([class*="meta-preview"]):not([class*="spacing"]):not([class*="streams-list"]):not([class*="videos-list"])) > [class*="videos-list"] {
+    grid-column: 2;
+    grid-row: 4;
+    width: auto !important;
+    flex: none !important;
+    min-height: 0;
+    margin: 0 0 1.5rem 0 !important;
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+    animation: none;
+}
+
+/* Chips / inputs that stream plugins add: match dx.bi */
+#app [class*="metadetails-content"] [class*="chip"]:not([class*="chips"]) {
+    border-radius: 999px;
+}
+
+/* AniSkip shows its buttons inside Stremio's "up next" popup */
+#app [id^="skip-"][id$="-button"] {
+    border-radius: var(--dx-radius) !important;
+    background: #fff !important;
+}
+
+#app [id^="skip-"][id$="-button"] * {
+    color: #000 !important;
 }
