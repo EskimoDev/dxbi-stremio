@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.5.2
+- Fixed dropdowns not changing anything when the **Context Menu Fix** plugin is installed: Discover type, catalog and genre, Library type, and the season picker. That plugin shows a copy of each open dropdown. Pressing on the copy made Stremio close the real one before your choice reached it. dx.bi now passes the choice straight to the real option.
+- Those dropdown copies now match the width of their button instead of being capped at 125px.
+
 ## 2.5.1
 - Fixed hover previews not opening when you moved quickly from one open preview to another title. The old card's close was cancelling the new card's open. The current preview now stays up until the next one replaces it, and still closes as soon as you leave the row.
 

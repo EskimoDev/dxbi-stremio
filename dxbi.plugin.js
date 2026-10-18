@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews, IMDb ratings on posters, wide Continue Watching, stream sorting & filters, a Netflix-style player, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.5.1
+ * @version 2.5.2
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -2875,6 +2875,62 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Community plugin compatibility: Context Menu Fix dropdowns
+  // ---------------------------------------------------------------------------
+  // Context Menu Fix hides every open dropdown (Discover type/genre, Library, seasons) and shows
+  // a copy in a .context-menu-portal. Pressing on the copy makes Stremio close the real dropdown
+  // before the click lands, so the choice was lost. Hand the choice to the real option on press.
+
+  const DROPDOWN_OPTION = '[class*="option-"]';
+
+  function portalDropdown(target) {
+    const opt = target instanceof Element && target.closest(".context-menu-portal " + DROPDOWN_OPTION);
+    const clone = opt && opt.closest(".context-menu-portal").firstElementChild;
+    return clone && /dropdown/.test(clone.className) ? { opt, clone } : null;
+  }
+
+  function hiddenDropdown() {
+    return [...document.querySelectorAll('[class*="dropdown"][class*="open"]')]
+      .find((d) => !d.closest(".context-menu-portal") && d.style.left === "-9999px");
+  }
+
+  function onPortalPress(e) {
+    const hit = portalDropdown(e.target);
+    if (!hit) return;
+    // keep Stremio from treating this as a click outside its dropdown
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type !== "pointerdown") return;
+    const i = [...hit.clone.querySelectorAll(DROPDOWN_OPTION)].indexOf(hit.opt);
+    const real = hiddenDropdown()?.querySelectorAll(DROPDOWN_OPTION)[i];
+    if (!real) return;
+    real.click();
+    sfx.play("tick", 1.2);
+  }
+
+  // the press already chose; don't let the copy's own click choose again
+  function onPortalClick(e) {
+    if (!portalDropdown(e.target)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.target.closest(".context-menu-portal").remove();
+  }
+
+  // Context Menu Fix caps the copy at 125px; match it to its button like the real dropdown
+  const portalSizer = new MutationObserver((records) => {
+    for (const r of records) {
+      for (const node of r.addedNodes) {
+        if (!(node instanceof Element) || !node.classList.contains("context-menu-portal")) continue;
+        const clone = node.firstElementChild;
+        const button = clone && /dropdown/.test(clone.className) && hiddenDropdown()?.parentElement;
+        if (!button) continue;
+        clone.style.maxWidth = "none";
+        clone.style.width = button.getBoundingClientRect().width + "px";
+      }
+    }
+  });
+
+  // ---------------------------------------------------------------------------
   // Main loop
   // ---------------------------------------------------------------------------
 
@@ -2936,6 +2992,9 @@
     document.addEventListener("click", onStreamDocClick, true);
     document.addEventListener("keydown", onSoundKey, true);
     document.addEventListener("focusin", onSoundFocus, true);
+    for (const type of ["pointerdown", "mousedown", "touchstart"]) window.addEventListener(type, onPortalPress, { capture: true, passive: false });
+    window.addEventListener("click", onPortalClick, true);
+    portalSizer.observe(document.body, { childList: true });
     // Prepare the sounds after the intro so they never compete with it
     setTimeout(() => { if (settings.uiSounds) sfx.ensure(); }, 4500);
     sync();
@@ -2960,6 +3019,9 @@
       document.removeEventListener("click", onStreamDocClick, true);
       document.removeEventListener("keydown", onSoundKey, true);
       document.removeEventListener("focusin", onSoundFocus, true);
+      for (const type of ["pointerdown", "mousedown", "touchstart"]) window.removeEventListener(type, onPortalPress, true);
+      window.removeEventListener("click", onPortalClick, true);
+      portalSizer.disconnect();
       if (sfx.ctx) sfx.ctx.close().catch(() => {});
       hero.remove();
       preview.close(true);
