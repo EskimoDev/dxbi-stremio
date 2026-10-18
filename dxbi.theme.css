@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description Cinematic, Netflix-inspired interface for dx.bi. Pair it with the dx.bi plugin for the billboard, carousels, previews, ratings and player extras.
- * @version 2.3.0
+ * @version 2.4.0
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.theme.css
  */
@@ -2351,6 +2351,7 @@ body:has(.dx-player-title) #app [class*="player-container"] [class*="player-titl
     background: var(--dx-accent) !important;
     box-shadow: none !important;
     transition: transform 0.15s var(--dx-ease-out);
+    transform-origin: center;
 }
 
 #app [class*="player-container"] [class*="seek-bar-container"] [class*="slider-container"] {
@@ -2358,8 +2359,9 @@ body:has(.dx-player-title) #app [class*="player-container"] [class*="player-titl
     --thumb-size: 16px;
 }
 
+/* Stremio centres the knob with translateX(-50%) — keep that, only add the scale */
 #app [class*="player-container"] [class*="seek-bar-container"] [class*="thumb"] {
-    transform: scale(0);
+    transform: translateX(-50%) scale(0);
 }
 
 #app [class*="player-container"] [class*="seek-bar-container"]:hover [class*="slider-container"] {
@@ -2368,7 +2370,7 @@ body:has(.dx-player-title) #app [class*="player-container"] [class*="player-titl
 
 #app [class*="player-container"] [class*="seek-bar-container"]:hover [class*="thumb"],
 html[class*="active-slider-within"] #app [class*="player-container"] [class*="seek-bar-container"] [class*="thumb"] {
-    transform: scale(1.15);
+    transform: translateX(-50%) scale(1.15);
 }
 
 /* Button row */
@@ -3772,4 +3774,108 @@ body:has(.dx-player-title) #app .custom-episode-title {
     color: #000;
     font-weight: 700;
     cursor: pointer;
+}
+
+/* =====================================================================
+   21. SEEK BAR PREVIEW + NEXT EPISODE (plugin)
+   ===================================================================== */
+
+.dx-scrub {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    overflow: visible !important;
+}
+
+/* lighter fill from the playhead to the cursor */
+.dx-scrub-fill {
+    position: absolute;
+    top: 50%;
+    height: var(--track-size, 4px);
+    transform: translateY(-50%);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.35);
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.dx-scrub.is-on .dx-scrub-fill {
+    opacity: 1;
+}
+
+.dx-scrub-tip {
+    position: absolute;
+    bottom: calc(100% + 1.1rem);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+    transform: translateX(-50%) translateY(6px);
+    opacity: 0;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.dx-scrub.is-on .dx-scrub-tip {
+    opacity: 1;
+    transform: translateX(-50%);
+}
+
+.dx-scrub-frame {
+    display: none;
+    width: 16rem;
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    border-radius: 6px;
+    background: #000;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+    overflow: hidden !important;
+}
+
+.dx-scrub.has-frame .dx-scrub-frame {
+    display: block;
+}
+
+.dx-scrub-frame canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.dx-scrub-time {
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.75);
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: #fff;
+    white-space: nowrap;
+}
+
+/* Next Episode sits at the start of the right-hand group, like Netflix */
+#app [class*="player-container"] [class*="control-bar-buttons-container"] > [class*="spacing"] {
+    order: 3;
+}
+
+#app [class*="player-container"] [class*="control-bar-buttons-container"] > .dx-next {
+    order: 4;
+}
+
+#app [class*="player-container"] [class*="control-bar-buttons-container"] > [class*="control-bar-buttons-menu-container"],
+#app [class*="player-container"] [class*="control-bar-buttons-container"] > [class*="control-bar-buttons-menu-button"] {
+    order: 5;
+}
+
+/* Let the preview card rise above the bar (Stremio clips overflow on these) */
+#app [class*="player-container"] [class*="control-bar-layer"],
+#app [class*="player-container"] [class*="control-bar-container"],
+#app [class*="player-container"] [class*="seek-bar-container"],
+#app [class*="player-container"] [class*="seek-bar-container"] [class*="slider-wrapper"],
+#app [class*="player-container"] [class*="seek-bar-container"] [class*="slider-container"] {
+    overflow: visible !important;
+}
+
+/* dx.bi's card already shows the time — hide Stremio's small tooltip while it's there */
+body:has(.dx-scrub) > [class*="seek-tooltip"] {
+    display: none !important;
 }

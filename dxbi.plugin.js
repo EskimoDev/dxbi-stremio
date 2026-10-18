@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews, IMDb ratings on posters, wide Continue Watching, stream sorting & filters, a Netflix-style player, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.3.0
+ * @version 2.4.0
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -43,6 +43,8 @@
     ratings: true,
     wideContinue: true,
     playerExtras: true,
+    seekPreviews: true,
+    remainingTime: true,
     streamTools: true,
     splash: true,
     introSound: true,
@@ -97,6 +99,8 @@
     { key: "ratings", type: "toggle", label: "IMDb ratings on posters", description: "Small IMDb badge on posters, from your addons' data (Cinemeta fills any gaps).", defaultValue: DEFAULTS.ratings },
     { key: "wideContinue", type: "toggle", label: "Wide Continue Watching", description: "Show Continue Watching as landscape cards with title art.", defaultValue: DEFAULTS.wideContinue },
     { key: "playerExtras", type: "toggle", label: "Netflix-style player extras", description: "Back/forward 10 seconds buttons, title in the control bar and play/pause feedback.", defaultValue: DEFAULTS.playerExtras },
+    { key: "seekPreviews", type: "toggle", label: "Seek bar previews", description: "Show a thumbnail and time when you point at the progress bar (needs a direct stream; uses a little extra bandwidth).", defaultValue: DEFAULTS.seekPreviews },
+    { key: "remainingTime", type: "toggle", label: "Show time remaining", description: "The player clock counts down, like Netflix (click it to switch back).", defaultValue: DEFAULTS.remainingTime },
     { key: "streamTools", type: "toggle", label: "Stream sorting & filters", description: "Sort streams by quality, seeds or size and filter by quality, language, source, provider, instant and HDR.", defaultValue: DEFAULTS.streamTools },
     { key: "splash", type: "toggle", label: "Intro animation", description: "Plays once each time the app starts.", defaultValue: DEFAULTS.splash },
     { key: "introSound", type: "toggle", label: "Intro sound", description: "Play the intro's score (a 'ta-dum', a chord and a whoosh).", defaultValue: DEFAULTS.introSound },
@@ -171,6 +175,7 @@
     chevronDown: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
     chevronLeft: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
     chevronRight: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
+    nextEp: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M5 4.8v14.4a.8.8 0 0 0 1.25.66L16 13.3V19a1 1 0 0 0 2 0V5a1 1 0 0 0-2 0v5.7L6.25 4.14A.8.8 0 0 0 5 4.8z"/></svg>',
     sort: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M3.5 16.5L7 20l3.5-3.5M17 20V4M13.5 7.5L17 4l3.5 3.5"/></svg>',
     pause: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><rect x="5.5" y="4" width="4.5" height="16" rx="1"/><rect x="14" y="4" width="4.5" height="16" rx="1"/></svg>',
     plus: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
@@ -1114,6 +1119,26 @@
       if (row && !row.querySelector(":scope > .dx-seek-back")) {
         row.append(this.seekButton(-1), this.seekButton(1));
       }
+      // Next Episode (series only) — uses Stremio's own "play next" shortcut
+      const parts = (location.hash || "").split("/");
+      const isSeries = decodeURIComponent(parts[5] || "") === "series";
+      const next = row && row.querySelector(":scope > .dx-next");
+      if (row && isSeries && !next) {
+        const b = document.createElement("div");
+        b.className = "dx-seek dx-next";
+        b.title = "Next episode";
+        b.setAttribute("role", "button");
+        b.innerHTML = ICONS.nextEp;
+        b.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const opts = { key: "N", code: "KeyN", shiftKey: true, bubbles: true };
+          document.dispatchEvent(new KeyboardEvent("keydown", opts));
+          document.dispatchEvent(new KeyboardEvent("keyup", opts));
+        });
+        row.append(b);
+      } else if (next && !isSeries) {
+        next.remove();
+      }
 
       const source = root.querySelector('[class*="player-title"]:not([class*="container"])');
       const text = (source && source.textContent.trim()) || "";
@@ -1622,6 +1647,219 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Seek bar: Netflix-style hover preview (thumbnail + time), hover fill, time remaining
+  // ---------------------------------------------------------------------------
+
+  function formatClock(seconds) {
+    const s = Math.max(0, Math.floor(seconds));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = String(s % 60).padStart(2, "0");
+    return h ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
+  }
+
+  const scrub = {
+    slider: null,
+    ui: null,
+    preview: null,      // hidden <video> used only to grab frames
+    frames: new Map(),  // bucket (s) -> canvas
+    want: null,
+    busy: false,
+    timer: null,
+    hovering: false,
+    BUCKET: 4,          // seconds per cached frame
+    MAX_FRAMES: 90,
+
+    ensure() {
+      if (currentRoute() !== "player") { this.teardown(); return; }
+      const root = document.querySelector('[class*="player-container"]');
+      const seek = root && root.querySelector('[class*="seek-bar-container"]');
+      const slider = seek && seek.querySelector('[class*="slider-container"]');
+      if (!slider) return;
+      if (slider !== this.slider || !this.ui || !this.ui.isConnected) {
+        this.teardown();
+        this.attach(slider);
+      }
+      // Netflix counts down: switch Stremio's right-hand clock to "time remaining" once per playback
+      if (settings.remainingTime) {
+        const clock = seek.querySelector(':scope > [class*="button-container"]');
+        if (clock && !clock.dataset.dxRemaining) {
+          clock.dataset.dxRemaining = "1";
+          clock.click();
+        }
+      }
+    },
+
+    video() {
+      return document.querySelector('[class*="player-container"] video');
+    },
+
+    attach(slider) {
+      this.slider = slider;
+      const ui = document.createElement("div");
+      ui.className = "dx-scrub";
+      ui.innerHTML = `
+        <div class="dx-scrub-fill"></div>
+        <div class="dx-scrub-tip">
+          <div class="dx-scrub-frame"><canvas width="320" height="180"></canvas></div>
+          <div class="dx-scrub-time"></div>
+        </div>`;
+      slider.append(ui);
+      this.ui = ui;
+      this.canvas = ui.querySelector("canvas");
+      slider.addEventListener("pointerenter", this.onEnter);
+      slider.addEventListener("pointerleave", this.onLeave);
+      window.addEventListener("pointermove", this.onMove, { passive: true });
+    },
+
+    teardown() {
+      clearTimeout(this.timer);
+      if (this.slider) {
+        this.slider.removeEventListener("pointerenter", this.onEnter);
+        this.slider.removeEventListener("pointerleave", this.onLeave);
+      }
+      window.removeEventListener("pointermove", this.onMove);
+      if (this.ui) this.ui.remove();
+      if (this.preview) {
+        // stop any network activity from the frame grabber
+        this.preview.removeAttribute("src");
+        this.preview.load();
+        this.preview = null;
+      }
+      this.frames.clear();
+      this.slider = null;
+      this.ui = null;
+      this.want = null;
+      this.busy = false;
+      this.hovering = false;
+    },
+
+    onEnter: () => { scrub.hovering = true; },
+    onLeave: () => {
+      scrub.hovering = false;
+      if (!document.documentElement.className.includes("active-slider-within")) scrub.hide();
+    },
+
+    onMove: (e) => {
+      const self = scrub;
+      if (!self.slider || !self.ui) return;
+      const dragging = document.documentElement.className.includes("active-slider-within");
+      if (!self.hovering && !dragging) return;
+      // same maths Stremio uses to turn the cursor into a time, so everything lines up exactly
+      const r = self.slider.getBoundingClientRect();
+      const frac = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1);
+      self.show(frac, r);
+    },
+
+    hide() {
+      if (this.ui) this.ui.classList.remove("is-on");
+      clearTimeout(this.timer);
+    },
+
+    show(frac, rect) {
+      const v = this.video();
+      const duration = v && isFinite(v.duration) ? v.duration : null;
+      if (!duration) { this.hide(); return; }
+      const t = frac * duration;
+      const ui = this.ui;
+      ui.classList.add("is-on");
+
+      // lighter fill from the playhead to the cursor (like the buffered bar)
+      // only ahead of the playhead — behind it the red progress already says enough
+      const played = Math.min(1, (v.currentTime || 0) / duration);
+      const fill = ui.firstElementChild;
+      fill.style.left = (played * 100) + "%";
+      fill.style.width = (Math.max(0, frac - played) * 100) + "%";
+
+      // tooltip follows the cursor but never leaves the player
+      const tip = ui.querySelector(".dx-scrub-tip");
+      const playerRect = this.slider.closest('[class*="player-container"]').getBoundingClientRect();
+      const half = tip.offsetWidth / 2 || 130;
+      const x = rect.left + frac * rect.width;
+      const clamped = Math.min(Math.max(x, playerRect.left + half + 12), playerRect.right - half - 12);
+      tip.style.left = (clamped - rect.left) + "px";
+      ui.querySelector(".dx-scrub-time").textContent = formatClock(t);
+
+      if (settings.seekPreviews) this.requestFrame(t);
+      else ui.classList.remove("has-frame");
+    },
+
+    // ---- thumbnails ------------------------------------------------------------
+    source() {
+      const v = this.video();
+      const src = v && (v.currentSrc || v.src);
+      // Only direct files/streams can be opened twice; MSE/HLS blobs can't
+      return src && /^https?:/i.test(src) ? src : null;
+    },
+
+    requestFrame(t) {
+      const bucket = Math.round(t / this.BUCKET) * this.BUCKET;
+      const cached = this.frames.get(bucket);
+      if (cached) {
+        this.paint(cached);
+        return;
+      }
+      this.want = bucket;
+      clearTimeout(this.timer);
+      // wait for the cursor to settle a moment, so sweeping across the bar doesn't fire dozens of seeks
+      this.timer = setTimeout(() => this.fetchFrame(), 110);
+    },
+
+    fetchFrame() {
+      if (this.busy || this.want === null || !this.ui) return;
+      const src = this.source();
+      if (!src) { this.ui.classList.remove("has-frame"); return; }
+      if (!this.preview) {
+        const p = document.createElement("video");
+        p.muted = true;
+        p.preload = "metadata";
+        p.playsInline = true;
+        p.src = src;
+        p.addEventListener("seeked", () => this.onSeeked());
+        p.addEventListener("error", () => { this.preview = null; });
+        this.preview = p;
+      }
+      const target = this.want;
+      this.busy = true;
+      this.pendingBucket = target;
+      const go = () => { try { this.preview.currentTime = Math.max(0.1, target); } catch (_) { this.busy = false; } };
+      if (this.preview.readyState >= 1) go();
+      else this.preview.addEventListener("loadedmetadata", go, { once: true });
+      // never get stuck if a seek doesn't come back
+      clearTimeout(this.stuck);
+      this.stuck = setTimeout(() => { this.busy = false; }, 4000);
+    },
+
+    onSeeked() {
+      clearTimeout(this.stuck);
+      const p = this.preview;
+      if (!p || !this.ui) return;
+      const c = document.createElement("canvas");
+      const w = 320;
+      const h = Math.round(w * ((p.videoHeight || 9) / (p.videoWidth || 16)));
+      c.width = w;
+      c.height = h;
+      try { c.getContext("2d").drawImage(p, 0, 0, w, h); } catch (_) { /* frame not ready */ }
+      this.frames.set(this.pendingBucket, c);
+      if (this.frames.size > this.MAX_FRAMES) this.frames.delete(this.frames.keys().next().value);
+      if (this.want === this.pendingBucket) this.paint(c);
+      this.busy = false;
+      if (this.want !== null && this.want !== this.pendingBucket && !this.frames.has(this.want)) this.fetchFrame();
+    },
+
+    paint(frame) {
+      if (!this.ui) return;
+      const c = this.canvas;
+      if (c.width !== frame.width || c.height !== frame.height) {
+        c.width = frame.width;
+        c.height = frame.height;
+      }
+      c.getContext("2d").drawImage(frame, 0, 0);
+      this.ui.classList.add("has-frame");
+    },
+  };
+
+  // ---------------------------------------------------------------------------
   // UI sounds — synthesised once into buffers (no audio files), then played instantly
   // ---------------------------------------------------------------------------
 
@@ -1841,7 +2079,7 @@
   }
 
   function sync() {
-    const steps = [updateRoute, brandTitle, () => player.ensure()];
+    const steps = [updateRoute, brandTitle, () => player.ensure(), () => scrub.ensure()];
     if (currentRoute() === "detail") steps.push(() => streamTools.ensure());
     if (currentRoute() !== "player") {
       steps.push(() => hero.ensure(), () => carouselRows().forEach(enhanceRow), syncCards);
@@ -1855,7 +2093,7 @@
   const mo = new MutationObserver((records) => {
     for (const r of records) {
       // Ignore changes we made ourselves
-      if (r.target.closest && r.target.closest(".dx-hero, .dx-preview, .dx-row-pages, .dx-wide-art, .dx-player-title, .dx-player-flash, .dx-streambar, .dx-stream-empty")) continue;
+      if (r.target.closest && r.target.closest(".dx-hero, .dx-preview, .dx-row-pages, .dx-wide-art, .dx-player-title, .dx-player-flash, .dx-streambar, .dx-stream-empty, .dx-scrub")) continue;
       scheduleSync();
       return;
     }
@@ -1917,6 +2155,7 @@
       preview.close(true);
       preview.el?.remove();
       player.detach();
+      scrub.teardown();
       document.querySelectorAll(".dx-arrow, .dx-row-pages, .dx-badge, .dx-wide-art, .dx-splash, .dx-seek, .dx-player-title, .dx-player-flash, .dx-streambar, .dx-stream-empty").forEach((n) => n.remove());
       document.querySelectorAll(".dx-sortable").forEach((l) => streamTools.reset(l));
       document.querySelectorAll("[data-dx-key]").forEach((n) => { delete n.dataset.dxKey; });

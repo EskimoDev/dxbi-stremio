@@ -82,7 +82,7 @@ That's it. Updates are offered automatically inside the app.
 - **IMDb ratings** on posters, using data from your own addons
 - **Stream sorting & filters** — sort by quality, seeds or size; filter by quality, language, source, provider, ⚡ instant and HDR
 - **Wide Continue Watching** cards with title art and progress
-- **Redesigned player** — ±10 seconds, clean subtitle and speed menus
+- **Redesigned player** — seek-bar thumbnail previews, time remaining, ±10 seconds, Next Episode, clean subtitle and speed menus
 - **Subtle interface sounds** (adjustable or off)
 - **Everything restyled** — Discover, Library, Search, Calendar, Addons, Settings
 - **8 accent colours** and an on/off switch for every feature
@@ -109,7 +109,7 @@ That's it. Updates are offered automatically inside the app.
     <td><img src="screenshots/player-subs.jpg" alt="Subtitles menu"></td>
   </tr>
   <tr>
-    <td align="center"><sub>Player</sub></td>
+    <td align="center"><sub>Player with seek preview <i>(Big Buck Bunny © Blender Foundation, CC BY 3.0)</i></sub></td>
     <td align="center"><sub>Subtitles menu</sub></td>
   </tr>
 </table>
@@ -146,6 +146,8 @@ It reads what your addons already show, so it works with any stream addon. Your 
 - IMDb ratings on posters
 - Wide Continue Watching
 - Player extras
+- Seek bar previews
+- Time remaining
 - Stream sorting & filters
 - Intro animation and intro sound
 - Interface sounds and volume

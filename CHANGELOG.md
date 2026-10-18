@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.4.0
+- **Seek bar previews**: point at the progress bar to see a thumbnail of that moment and its time, Netflix-style; works while dragging too. Frames are cached and only fetched when the cursor rests, to keep bandwidth low.
+- Fixed the seek-bar knob sitting half its width to the right of the true position.
+- Lighter fill from the playhead to the cursor; Stremio's small time tooltip is replaced by the preview card.
+- **Time remaining**: the player clock counts down by default (click it to switch).
+- **Next Episode** button on series, next to the other controls.
+
 ## 2.3.0
 - **Stream sorting & filters** above every streams list: sort by addon order, best quality, most seeds, largest or smallest; filter by quality, language (from flags and release names), source, provider, ⚡ instant (cached debrid) and HDR/DV. Works with any stream addon, remembers your choices, and never moves Stremio's own elements (uses CSS order), so streams that arrive late slot in correctly.
 - README: clear note that DX.BI is a reskin, not a streaming service; linked list of compatible plugins with credits.
