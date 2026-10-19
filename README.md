@@ -87,6 +87,7 @@ That's it. Updates are offered automatically inside the app.
 - **Stream sorting & filters** — sort by quality, seeds or size; filter by quality, language, source, provider, ⚡ instant and HDR
 - **Wide Continue Watching** cards with title art and progress
 - **Redesigned player** — seek-bar thumbnail previews, time remaining, ±10 seconds, Next Episode, clean subtitle and speed menus
+- **Watch party** — watch in sync with friends: shared play, pause and seeking, chat and reactions, end-to-end encrypted
 - **Picture enhancement (upscaler)** — real-time GPU upscaling: **[Anime4K](https://github.com/bloc97/Anime4K)** restore + upscale networks for anime, contrast-adaptive sharpening for movies, HDR handled correctly
 - **Subtle interface sounds** (adjustable or off)
 - **Everything restyled** — Discover, Library, Search, Calendar, Addons, Settings
@@ -118,6 +119,28 @@ That's it. Updates are offered automatically inside the app.
     <td align="center"><sub>Subtitles menu</sub></td>
   </tr>
 </table>
+
+### Watch party
+
+<img src="screenshots/party.jpg" alt="Watch party" width="300" align="right">
+
+Watch together with friends, perfectly in sync:
+
+1. Click the **people button** (top right, or in the player) → enter your name → **Start a party**.
+2. **Copy** the code and send it to your friends. They paste it under **Join**.
+3. Play anything. Everyone's Stremio opens the same title on its own, picking **the same release from their own addons and debrid account**, and jumps to your spot.
+
+- **Anyone can pause, play or skip** and it happens for everyone.
+- **Waits for buffering**: if someone's stream is loading, everyone pauses until they catch up.
+- **Follows the host** to the next episode automatically.
+- **Chat and reactions** (😂 😮 😱 ❤️ 🔥 👏) in the player.
+- Small drift is smoothed out invisibly with tiny speed changes instead of jumps.
+
+**Private by design:** stream links are never shared (debrid links contain your API key). Friends only receive the title, the release's torrent hash and the playback position, end-to-end encrypted with the party code (AES-256-GCM) and passed through public relays that only ever see scrambled bytes. No account and no server to run.
+
+**What friends need:** [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced) with the dx.bi plugin (desktop: Windows, macOS or Linux), plus their own stream addon (any debrid works, or plain torrents). If their addons don't have the exact release, the closest match (same quality, cached first) is used.
+
+<br clear="right">
 
 ### Picture enhancement (upscaler)
 
@@ -163,6 +186,7 @@ It reads what your addons already show, so it works with any stream addon. Your 
 - Wide Continue Watching
 - Player extras
 - Picture enhancement — Off / Auto / Sharpen / Anime4K (quality or fast)
+- Watch party — on/off, follow the host, chat & activity in the player, sounds
 - Seek bar previews
 - Time remaining
 - Stream sorting & filters
@@ -221,7 +245,11 @@ Tested together with DX.BI — layouts adapt and nothing overlaps.
 
 **How do I remove it?** Switch the plugin off and apply the *Default* theme. Nothing else is changed.
 
-**Does it collect anything?** No. No tracking, accounts or keys. It only loads ratings/artwork from Cinemeta and MetaHub (which Stremio already uses) and fonts from Google Fonts.
+**Does it collect anything?** No. No tracking, accounts or keys. It only loads ratings/artwork from Cinemeta and MetaHub (which Stremio already uses) and fonts from Google Fonts. Watch parties only connect while you're in one, and everything they send is end-to-end encrypted.
+
+**Does it work on my phone or TV?** dx.bi runs inside [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced), which is a desktop app for Windows, macOS and Linux. The official Stremio apps for Android, iOS and TVs can't load plugins or themes, so dx.bi (and watch parties) are desktop-only.
+
+**A friend can't connect to a party.** Parties use several public relays, including one on the normal web port 443, so they work on most networks. Check that both of you typed the same code and are on dx.bi 2.6.0 or newer.
 
 **Something overlaps after a Stremio update?** Stremio changes its web UI now and then — [open an issue](https://github.com/notdxbi/dxbi-stremio/issues) with a screenshot.
 

@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
- * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews, IMDb ratings on posters, wide Continue Watching, stream sorting & filters, a Netflix-style player, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.5.2
+ * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews, IMDb ratings on posters, wide Continue Watching, stream sorting & filters, a Netflix-style player, watch parties with friends, a cinematic intro and interface sounds. Use with the dx.bi theme.
+ * @version 2.6.0
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -51,6 +51,10 @@
     introSound: true,
     uiSounds: true,
     soundVolume: "subtle",
+    watchParty: true,
+    partyFollow: true,
+    partyActivity: true,
+    partySounds: true,
   };
 
   const SCHEMA = [
@@ -117,6 +121,10 @@
     { key: "seekPreviews", type: "toggle", label: "Seek bar previews", description: "Netflix-style thumbnails when you point at the progress bar. Built quietly in the background from your stream (pauses while buffering).", defaultValue: DEFAULTS.seekPreviews },
     { key: "remainingTime", type: "toggle", label: "Show time remaining", description: "The player clock counts down, like Netflix (click it to switch back).", defaultValue: DEFAULTS.remainingTime },
     { key: "streamTools", type: "toggle", label: "Stream sorting & filters", description: "Sort streams by quality, seeds or size and filter by quality, language, source, provider, instant and HDR.", defaultValue: DEFAULTS.streamTools },
+    { key: "watchParty", type: "toggle", label: "Watch party", description: "Watch in sync with friends: start a party from the people button, send the code, and everyone opens the same title from their own addons and debrid account. Shared play, pause and seeking, waits for anyone buffering, chat and reactions. End-to-end encrypted, no account needed.", defaultValue: DEFAULTS.watchParty },
+    { key: "partyFollow", type: "toggle", label: "Watch party: follow the host", description: "Open whatever the host plays (including the next episode), picking the same release from your own addons.", defaultValue: DEFAULTS.partyFollow },
+    { key: "partyActivity", type: "toggle", label: "Watch party: chat & activity in the player", description: "Messages, reactions and who paused or skipped, shown briefly over the video.", defaultValue: DEFAULTS.partyActivity },
+    { key: "partySounds", type: "toggle", label: "Watch party: sounds", description: "Soft chimes when people join, leave or send a message.", defaultValue: DEFAULTS.partySounds },
     { key: "splash", type: "toggle", label: "Intro animation", description: "Plays once each time the app starts.", defaultValue: DEFAULTS.splash },
     { key: "introSound", type: "toggle", label: "Intro sound", description: "Play the intro's score (a 'ta-dum', a chord and a whoosh).", defaultValue: DEFAULTS.introSound },
     { key: "uiSounds", type: "toggle", label: "Interface sounds", description: "Soft sounds for tabs, opening titles, previews, My List, player controls and keyboard navigation.", defaultValue: DEFAULTS.uiSounds },
@@ -2337,7 +2345,10 @@
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, inputTex);
       gl.uniform1i(gl.getUniformLocation(prog, "src"), 0);
-      for (const [name, value] of Object.entries(uniforms || {})) {
+      // Uniforms persist per program between draws, so options a pass doesn't mention must be
+      // reset — otherwise the final pass's noFlip/alphaOne leak into the next frame's first
+      // pass and the picture turns upside down from the second frame on
+      for (const [name, value] of Object.entries({ noFlip: 0, alphaOne: 0, ...uniforms })) {
         const loc = gl.getUniformLocation(prog, name);
         if (Array.isArray(value)) gl.uniform2f(loc, value[0], value[1]);
         else gl.uniform1f(loc, value);
@@ -2931,6 +2942,1496 @@
   });
 
   // ---------------------------------------------------------------------------
+  // Watch party: watch in sync with friends. Everyone streams from their own addons and debrid
+  // account (stream URLs carry API keys and are never sent); only the title, the release's
+  // torrent hash/filename and the shared timeline travel, end-to-end encrypted with the party
+  // code over public MQTT relays.
+  // ---------------------------------------------------------------------------
+
+  const watchParty = (() => {
+    const store = {
+      get(key) { try { return localStorage.getItem(`dxParty.${key}`); } catch (_) { return null; } },
+      set(key, value) { try { localStorage.setItem(`dxParty.${key}`, value); } catch (_) { /* private mode */ } },
+    };
+
+    // ---------------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------------
+
+    const enc = new TextEncoder();
+    const dec = new TextDecoder();
+
+    function hex(bytes) {
+      return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    function randomId(n) {
+      return hex(crypto.getRandomValues(new Uint8Array(n)));
+    }
+
+    function clamp(v, lo, hi) {
+      return Math.min(hi, Math.max(lo, v));
+    }
+
+    const PARTY_ICONS = {
+      party: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.6 14.6c2.6.2 4.4 1.9 4.9 4.9"/></svg>',
+      copy: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8.5" y="8.5" width="11" height="11" rx="2.2"/><path d="M15.5 8.5V6.7a2.2 2.2 0 0 0-2.2-2.2H6.7a2.2 2.2 0 0 0-2.2 2.2v6.6a2.2 2.2 0 0 0 2.2 2.2h1.8"/></svg>',
+      close: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+      crown: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3.5 8l4.3 3.6L12 5l4.2 6.6L20.5 8l-1.8 10H5.3z"/></svg>',
+      send: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M3.4 20.4l17.4-7.5a1 1 0 0 0 0-1.8L3.4 3.6a.9.9 0 0 0-1.2 1.1L4.6 12l-2.4 7.3a.9.9 0 0 0 1.2 1.1z"/></svg>',
+      lock: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="10.5" width="14" height="10" rx="2.2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg>',
+    };
+
+    const REACTIONS = ["😂", "😮", "😱", "❤️", "🔥", "👏"];
+
+    // ---------------------------------------------------------------------------
+    // Room codes + end-to-end encryption. The code never leaves this device: it derives
+    // both the AES key and the relay topic, so relays only ever see random bytes.
+    // ---------------------------------------------------------------------------
+
+    const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    const CODE_LENGTH = 10;
+
+    function newCode() {
+      const out = [];
+      while (out.length < CODE_LENGTH) {
+        for (const b of crypto.getRandomValues(new Uint8Array(16))) {
+          if (b < 248 && out.length < CODE_LENGTH) out.push(CODE_ALPHABET[b % 31]);
+        }
+      }
+      return out.join("");
+    }
+
+    function normaliseCode(input) {
+      const code = String(input || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (code.length !== CODE_LENGTH || [...code].some((c) => !CODE_ALPHABET.includes(c))) return null;
+      return code;
+    }
+
+    function prettyCode(code) {
+      return `${code.slice(0, 5)}-${code.slice(5)}`;
+    }
+
+    async function deriveRoom(code) {
+      const base = await crypto.subtle.importKey("raw", enc.encode(code), "PBKDF2", false, ["deriveBits"]);
+      const bits = new Uint8Array(await crypto.subtle.deriveBits(
+        { name: "PBKDF2", salt: enc.encode("dxbi-party/v1"), iterations: 150000, hash: "SHA-256" }, base, 512
+      ));
+      const key = await crypto.subtle.importKey("raw", bits.slice(0, 32), "AES-GCM", false, ["encrypt", "decrypt"]);
+      return { key, topic: `dxbi-party/v1/${hex(bits.slice(32, 48))}` };
+    }
+
+    async function seal(key, obj) {
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc.encode(JSON.stringify(obj))));
+      const out = new Uint8Array(12 + ct.length);
+      out.set(iv);
+      out.set(ct, 12);
+      return out;
+    }
+
+    async function unseal(key, bytes) {
+      if (bytes.length < 29 || bytes.length > 8192) return null;
+      try {
+        const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: bytes.slice(0, 12) }, key, bytes.slice(12));
+        return JSON.parse(dec.decode(pt));
+      } catch (_) {
+        return null; // not ours, or tampered
+      }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Minimal MQTT 3.1.1 client over WebSocket (QoS 0 only). Public brokers relay the
+    // encrypted messages; we publish to all of them and drop duplicates on arrival.
+    // ---------------------------------------------------------------------------
+
+    // Port 443 one included so parties still connect on networks that only allow web traffic
+    const BROKERS = [
+      { url: "wss://broker.hivemq.com:8884/mqtt" },
+      { url: "wss://broker.emqx.io:8084/mqtt" },
+      { url: "wss://test.mosquitto.org:8081/mqtt" },
+      { url: "wss://public.cloud.shiftr.io:443", user: "public", pass: "public" },
+    ];
+
+    function mqttString(s) {
+      const b = enc.encode(s);
+      return [b.length >> 8, b.length & 255, ...b];
+    }
+
+    function mqttPacket(first, body) {
+      const len = [];
+      let n = body.length;
+      do {
+        let byte = n % 128;
+        n = Math.floor(n / 128);
+        if (n > 0) byte |= 128;
+        len.push(byte);
+      } while (n > 0);
+      const out = new Uint8Array(1 + len.length + body.length);
+      out[0] = first;
+      out.set(len, 1);
+      out.set(body, 1 + len.length);
+      return out;
+    }
+
+    class MqttLink {
+      constructor(broker, topic, onMessage, onChange) {
+        this.url = broker.url;
+        this.user = broker.user || null;
+        this.pass = broker.pass || null;
+        this.topic = topic;
+        this.onMessage = onMessage;
+        this.onChange = onChange;
+        this.ws = null;
+        this.up = false;
+        this.closed = false;
+        this.backoff = 1000;
+        this.buf = new Uint8Array(0);
+        this.pingTimer = null;
+        this.retryTimer = null;
+        this.connect();
+      }
+
+      connect() {
+        if (this.closed) return;
+        let ws;
+        try {
+          ws = new WebSocket(this.url, ["mqtt"]);
+        } catch (_) {
+          this.retry();
+          return;
+        }
+        ws.binaryType = "arraybuffer";
+        this.ws = ws;
+        ws.onopen = () => {
+          const id = `dxp${randomId(6)}`;
+          const body = [...mqttString("MQTT"), 4, this.user ? 0xc2 : 0x02, 0, 60, ...mqttString(id)];
+          if (this.user) body.push(...mqttString(this.user), ...mqttString(this.pass));
+          ws.send(mqttPacket(0x10, body));
+        };
+        ws.onmessage = (ev) => this.receive(new Uint8Array(ev.data));
+        ws.onclose = () => this.dropped();
+        ws.onerror = () => { try { ws.close(); } catch (_) { /* already closed */ } };
+      }
+
+      receive(chunk) {
+        const merged = new Uint8Array(this.buf.length + chunk.length);
+        merged.set(this.buf);
+        merged.set(chunk, this.buf.length);
+        this.buf = merged;
+        for (;;) {
+          if (this.buf.length < 2) return;
+          let len = 0;
+          let mult = 1;
+          let i = 1;
+          for (;;) {
+            if (i >= this.buf.length) return;
+            const b = this.buf[i++];
+            len += (b & 127) * mult;
+            mult *= 128;
+            if (!(b & 128)) break;
+            if (i > 4) { this.ws.close(); return; }
+          }
+          if (this.buf.length < i + len) return;
+          const type = this.buf[0] >> 4;
+          const flags = this.buf[0] & 15;
+          const body = this.buf.slice(i, i + len);
+          this.buf = this.buf.slice(i + len);
+          this.handle(type, flags, body);
+        }
+      }
+
+      handle(type, flags, body) {
+        if (type === 2) { // CONNACK
+          if (body[1] !== 0) { this.ws.close(); return; }
+          this.ws.send(mqttPacket(0x82, [0, 1, ...mqttString(this.topic), 0]));
+        } else if (type === 9) { // SUBACK
+          this.up = true;
+          this.backoff = 1000;
+          clearInterval(this.pingTimer);
+          this.pingTimer = setInterval(() => this.send(new Uint8Array([0xc0, 0])), 25000);
+          this.onChange();
+        } else if (type === 3) { // PUBLISH
+          const tlen = (body[0] << 8) | body[1];
+          const qos = (flags >> 1) & 3;
+          const start = 2 + tlen + (qos ? 2 : 0);
+          if (dec.decode(body.slice(2, 2 + tlen)) === this.topic) this.onMessage(body.slice(start));
+        }
+      }
+
+      send(bytes) {
+        if (this.ws && this.ws.readyState === 1) this.ws.send(bytes);
+      }
+
+      publish(payload) {
+        if (!this.up) return;
+        const t = mqttString(this.topic);
+        const body = new Uint8Array(t.length + payload.length);
+        body.set(t);
+        body.set(payload, t.length);
+        this.send(mqttPacket(0x30, body));
+      }
+
+      dropped() {
+        clearInterval(this.pingTimer);
+        const was = this.up;
+        this.up = false;
+        this.buf = new Uint8Array(0);
+        if (was) this.onChange();
+        this.retry();
+      }
+
+      retry() {
+        if (this.closed) return;
+        clearTimeout(this.retryTimer);
+        this.retryTimer = setTimeout(() => this.connect(), this.backoff);
+        this.backoff = Math.min(this.backoff * 2, 30000);
+      }
+
+      close() {
+        this.closed = true;
+        clearInterval(this.pingTimer);
+        clearTimeout(this.retryTimer);
+        if (this.ws) {
+          try { this.ws.send(new Uint8Array([0xe0, 0])); } catch (_) { /* not open */ }
+          try { this.ws.close(); } catch (_) { /* already closed */ }
+        }
+      }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Party sounds (synthesised, nothing to download)
+    // ---------------------------------------------------------------------------
+
+    const chime = {
+      ctx: null,
+      play(kind) {
+        if (!settings.partySounds) return;
+        try {
+          this.ctx = this.ctx || new AudioContext();
+          const ctx = this.ctx;
+          const notes = { join: [660, 880], leave: [700, 520], chat: [990], react: [1180] }[kind] || [880];
+          notes.forEach((freq, i) => {
+            const t = ctx.currentTime + i * 0.09;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.05, t + 0.012);
+            gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+            osc.connect(gain).connect(ctx.destination);
+            osc.start(t);
+            osc.stop(t + 0.25);
+          });
+        } catch (_) { /* audio unavailable */ }
+      },
+    };
+
+    // ---------------------------------------------------------------------------
+    // The local player: what's playing (from Stremio's core) and the <video> element
+    // ---------------------------------------------------------------------------
+
+    // What a friend needs to find the same release with THEIR addons. Stream URLs are never
+    // shared: debrid links carry the owner's API key.
+    function streamHints(stream) {
+      if (!stream || typeof stream !== "object") return {};
+      const url = typeof stream.url === "string" ? stream.url : "";
+      const hashInUrl = /(?:^|[/=:])([a-f0-9]{40})(?=[/?&.]|$)/i.exec(url);
+      const name = String(stream.name || "").replace(/\s+/g, " ").trim();
+      const text = `${stream.name || ""} ${stream.description || stream.title || ""}`;
+      const quality = /\b(2160p|4k|1440p|1080p|720p|576p|480p)\b/i.exec(text);
+      const bh = stream.behaviorHints || {};
+      return {
+        infoHash: (typeof stream.infoHash === "string" ? stream.infoHash : hashInUrl ? hashInUrl[1] : "").toLowerCase() || null,
+        fileIdx: Number.isInteger(stream.fileIdx) ? stream.fileIdx : null,
+        filename: typeof bh.filename === "string" ? bh.filename.slice(0, 200) : null,
+        bingeGroup: typeof bh.bingeGroup === "string" ? bh.bingeGroup.slice(0, 80) : null,
+        quality: quality ? quality[1].toLowerCase().replace("4k", "2160p") : null,
+        label: name.slice(0, 60),
+      };
+    }
+
+    const local = {
+      video: null,
+      media: null,
+      mediaHash: null,
+      loading: null,
+
+      inPlayer() {
+        return currentRoute() === "player";
+      },
+
+      findVideo() {
+        return this.inPlayer() ? document.querySelector('[class*="player-container"] video') : null;
+      },
+
+      // Re-read Stremio's player state whenever the player URL changes
+      async refreshMedia() {
+        if (!this.inPlayer()) {
+          this.media = null;
+          this.mediaHash = null;
+          return null;
+        }
+        if (this.mediaHash === location.hash) return this.media;
+        if (this.loading) return this.loading;
+        const hash = location.hash;
+        this.loading = (async () => {
+          try {
+            const s = await window.core.getState("player");
+            const sel = s && s.selected;
+            if (!sel || !sel.streamRequest || !sel.streamRequest.path) {
+              this.media = null;
+            } else {
+              const sp = sel.streamRequest.path;
+              const mp = (sel.metaRequest && sel.metaRequest.path) || sp;
+              const meta = s.metaItem && s.metaItem.type === "Ready" ? s.metaItem.content : null;
+              this.media = {
+                type: mp.type,
+                metaId: mp.id,
+                videoId: sp.id,
+                title: String(s.title || (meta && meta.name) || "").slice(0, 120),
+                poster: meta && typeof meta.poster === "string" && /^https:/.test(meta.poster) ? meta.poster.slice(0, 300) : null,
+                hints: streamHints(sel.stream),
+              };
+            }
+            if (location.hash === hash) this.mediaHash = hash;
+          } catch (_) {
+            this.media = null;
+          }
+          this.loading = null;
+          return this.media;
+        })();
+        return this.loading;
+      },
+
+      videoId() {
+        return this.inPlayer() && this.media ? this.media.videoId : null;
+      },
+    };
+
+    // ---------------------------------------------------------------------------
+    // Party: membership, shared timeline, sync engine
+    // ---------------------------------------------------------------------------
+    //
+    // The shared state is a timeline: { rev, by, at, playing, t, media }. Position "now" is
+    // t + (hostNow - at) while playing. Every action (play, pause, seek, new title) bumps rev;
+    // the highest (rev, by) wins. Each peer steers its own <video> onto the timeline: small
+    // drift is eased out with playbackRate, big jumps are seeked. The host (creator, or the
+    // longest-present member) keeps the clock, re-announces the timeline, and pauses everyone
+    // while someone buffers.
+
+    const party = {
+      code: null,
+      me: randomId(8),
+      name: "",
+      joinedAt: 0,
+      creator: false,
+      links: [],
+      key: null,
+      seq: 0,
+      seen: new Map(),
+      peers: new Map(),
+      state: null,
+      offset: 0,
+      clockSamples: [],
+      clockHost: null,
+      chat: [],
+      synced: false,
+      syncedVideo: null,
+      stalledSince: 0,
+      lastStatus: "",
+      lastPresence: 0,
+      lastHeartbeat: 0,
+      lastPing: 0,
+      lastAnchor: 0,
+      wasInMedia: null,
+      appliedRev: null,
+      appliedAt: 0,
+      ours: { play: 0, pause: 0, seek: null },
+      seekStarted: 0,
+      seekLag: 0,
+      lastSeek: 0,
+      waitPause: null,
+      waitToast: false,
+      lastHost: null,
+      following: null,
+      timer: null,
+      connecting: false,
+
+      get active() {
+        return !!this.code;
+      },
+
+      // --- membership ----------------------------------------------------------
+
+      async start(code, name, creator) {
+        if (this.active) await this.leave(true);
+        this.connecting = true;
+        ui.render();
+        const room = await deriveRoom(code);
+        this.code = code;
+        this.name = name;
+        this.creator = creator;
+        this.key = room.key;
+        this.joinedAt = Date.now();
+        this.peers.clear();
+        this.seen.clear();
+        this.state = null;
+        this.chat = [];
+        this.offset = 0;
+        this.clockSamples = [];
+        this.clockHost = null;
+        this.synced = false;
+        this.waitPause = null;
+        this.lastHost = null;
+        this.wasInMedia = null;
+        store.set("lastCode", code);
+        store.set("name", name);
+        this.links = BROKERS.map((broker) => new MqttLink(broker, room.topic, (bytes) => this.receive(bytes), () => this.linksChanged()));
+        clearInterval(this.timer);
+        this.timer = setInterval(() => this.tick(), 500);
+      },
+
+      linksChanged() {
+        const up = this.links.some((l) => l.up);
+        if (up && this.connecting) {
+          this.connecting = false;
+          this.send({ type: "hello", joinedAt: this.joinedAt, creator: this.creator });
+          this.sendPresence(true);
+          ui.toast(this.creator ? "Party started — send your friends the code" : "Joined the party", "join");
+        }
+        ui.render();
+      },
+
+      async leave(silent) {
+        if (!this.active) return;
+        this.send({ type: "bye" });
+        const links = this.links;
+        setTimeout(() => links.forEach((l) => l.close()), 300);
+        this.links = [];
+        clearInterval(this.timer);
+        this.timer = null;
+        this.code = null;
+        this.key = null;
+        this.state = null;
+        this.peers.clear();
+        this.connecting = false;
+        this.resetRate();
+        ui.hideJoining();
+        if (!silent) ui.toast("You left the party", "leave");
+        ui.render();
+      },
+
+      // --- wire ----------------------------------------------------------------
+
+      async send(msg) {
+        if (!this.key) return;
+        const key = this.key;
+        const bytes = await seal(key, { ...msg, from: this.me, name: this.name, joinedAt: this.joinedAt, creator: this.creator, n: ++this.seq });
+        if (this.key !== key) return;
+        for (const link of this.links) link.publish(bytes);
+      },
+
+      async receive(bytes) {
+        const key = this.key;
+        const msg = key && await unseal(key, bytes);
+        if (!msg || this.key !== key || typeof msg.from !== "string" || msg.from === this.me) return;
+        const id = `${msg.from}:${msg.n}`;
+        if (this.seen.has(id)) return;
+        this.seen.set(id, Date.now());
+        if (this.seen.size > 600) {
+          for (const k of [...this.seen.keys()].slice(0, 300)) this.seen.delete(k);
+        }
+        this.handle(msg);
+      },
+
+      peer(msg) {
+        let p = this.peers.get(msg.from);
+        const fresh = !p;
+        if (!p) {
+          p = { id: msg.from, name: "", joinedAt: Date.now(), creator: false, status: {}, lastSeen: 0 };
+          this.peers.set(msg.from, p);
+        }
+        p.name = String(msg.name || "Friend").slice(0, 24);
+        p.lastSeen = Date.now();
+        if (typeof msg.joinedAt === "number") p.joinedAt = msg.joinedAt;
+        if (typeof msg.creator === "boolean") p.creator = msg.creator;
+        return { p, fresh };
+      },
+
+      handle(msg) {
+        if (msg.type === "bye") {
+          const p = this.peers.get(msg.from);
+          if (p) {
+            this.peers.delete(msg.from);
+            ui.toast(`${p.name} left`, "leave");
+            ui.render();
+          }
+          return;
+        }
+        const { p, fresh } = this.peer(msg);
+        if (fresh && msg.type !== "hello") ui.render();
+
+        switch (msg.type) {
+          case "hello":
+            ui.toast(`${p.name} joined`, "join");
+            this.sendPresence(true);
+            if (this.isHost() && this.state) this.send({ type: "state", state: this.state });
+            ui.render();
+            break;
+          case "presence":
+            if (fresh) ui.toast(`${p.name} is here`, "join");
+            if (msg.status && typeof msg.status === "object") p.status = msg.status;
+            ui.render();
+            break;
+          case "state":
+            this.acceptState(msg.state, p);
+            break;
+          case "ping":
+            if (msg.to === this.me) this.send({ type: "pong", to: msg.from, id: msg.id, t0: msg.t0, th: this.hostNow() });
+            break;
+          case "pong":
+            if (msg.to === this.me) this.clockSample(msg);
+            break;
+          case "chat":
+            if (typeof msg.text === "string" && msg.text.trim()) this.addChat(p.name, msg.text.slice(0, 300), false);
+            break;
+          case "react":
+            if (REACTIONS.includes(msg.emoji)) {
+              ui.reaction(msg.emoji, p.name);
+              chime.play("react");
+            }
+            break;
+          default:
+            break;
+        }
+      },
+
+      sendPresence(force) {
+        const status = this.status();
+        const text = JSON.stringify(status);
+        if (!force && text === this.lastStatus && Date.now() - this.lastPresence < 6000) return;
+        this.lastStatus = text;
+        this.lastPresence = Date.now();
+        this.send({ type: "presence", joinedAt: this.joinedAt, creator: this.creator, status });
+      },
+
+      status() {
+        const v = local.video;
+        const inMedia = this.inMedia();
+        return {
+          where: local.inPlayer() ? "player" : "browsing",
+          videoId: local.videoId(),
+          ready: !!(v && v.readyState >= 3 && !v.seeking),
+          stalled: inMedia && this.synced && this.stalledSince > 0 && Date.now() - this.stalledSince > 1200,
+          synced: inMedia && this.synced,
+          title: local.media ? local.media.title : null,
+        };
+      },
+
+      // --- host + clock ---------------------------------------------------------
+
+      members() {
+        return [{ id: this.me, name: this.name, joinedAt: this.joinedAt, creator: this.creator, status: this.status(), self: true }, ...this.peers.values()];
+      },
+
+      hostId() {
+        const all = this.members();
+        const creator = all.find((m) => m.creator);
+        if (creator) return creator.id;
+        all.sort((a, b) => a.joinedAt - b.joinedAt || (a.id < b.id ? -1 : 1));
+        return all[0].id;
+      },
+
+      isHost() {
+        if (!this.creator && Date.now() - this.joinedAt < 4000 && !this.peers.size) return false;
+        return this.hostId() === this.me;
+      },
+
+      hostNow() {
+        return Date.now() + (this.isHost() ? 0 : this.offset);
+      },
+
+      clockSample(msg) {
+        const now = Date.now();
+        const rtt = now - msg.t0;
+        if (rtt < 0 || rtt > 10000 || msg.from !== this.hostId()) return;
+        this.clockSamples.push({ rtt, offset: msg.th + rtt / 2 - now });
+        if (this.clockSamples.length > 8) this.clockSamples.shift();
+        const best = this.clockSamples.reduce((a, b) => (b.rtt < a.rtt ? b : a));
+        this.offset = best.offset;
+      },
+
+      // The host changed (creator left): the new host restates the timeline on its own clock
+      handOver() {
+        if (!this.creator && Date.now() - this.joinedAt < 4000) return;
+        const host = this.hostId();
+        if (host === this.lastHost) return;
+        const previous = this.lastHost;
+        this.lastHost = host;
+        if (!previous) return;
+        const p = this.peers.get(host);
+        ui.toast(`${host === this.me ? "You are" : `${p ? p.name : "Someone"} is`} now the host`);
+        const s = this.state;
+        if (host === this.me && s) {
+          const t = s.playing ? s.t + Math.max(0, Date.now() + this.offset - s.at) / 1000 : s.t;
+          this.offset = 0;
+          this.publishState({ playing: s.playing, t }, "host");
+        }
+        ui.render();
+      },
+
+      pingHost() {
+        const host = this.hostId();
+        if (host === this.me) return;
+        if (host !== this.clockHost) {
+          this.clockHost = host;
+          this.clockSamples = [];
+        }
+        const interval = this.clockSamples.length < 5 ? 1500 : 15000;
+        if (Date.now() - this.lastPing < interval) return;
+        this.lastPing = Date.now();
+        this.send({ type: "ping", to: host, id: randomId(4), t0: Date.now() });
+      },
+
+      // --- timeline -------------------------------------------------------------
+
+      expected(state) {
+        const s = state || this.state;
+        if (!s) return 0;
+        return s.playing ? s.t + Math.max(0, this.hostNow() - s.at) / 1000 : s.t;
+      },
+
+      inMedia() {
+        return !!(this.state && this.state.media && local.videoId() && local.videoId() === this.state.media.videoId);
+      },
+
+      validState(s) {
+        return s && typeof s === "object" && Number.isFinite(s.rev) && typeof s.by === "string" && Number.isFinite(s.at) &&
+          Number.isFinite(s.t) && typeof s.playing === "boolean" && s.media && typeof s.media.videoId === "string";
+      },
+
+      // Highest (rev, by) wins; the same revision re-anchored later by the host also counts
+      newer(a, b) {
+        if (!b) return true;
+        if (a.rev !== b.rev) return a.rev > b.rev;
+        if (a.by !== b.by) return a.by < b.by;
+        return a.at > b.at && (a.t !== b.t || a.playing !== b.playing);
+      },
+
+      acceptState(s, from) {
+        if (!this.validState(s) || !this.newer(s, this.state)) return;
+        const prev = this.state;
+        this.state = s;
+        this.describe(s, prev, from);
+        const mediaChanged = !prev || !prev.media || prev.media.videoId !== s.media.videoId;
+        if (mediaChanged && settings.partyFollow && !this.isHost()) this.follow(s.media);
+        ui.render();
+      },
+
+      // Make a new timeline revision from a local action and share it
+      publishState(patch, cause) {
+        const base = this.state || { rev: 0 };
+        const s = {
+          rev: (base.rev || 0) + 1,
+          by: this.me,
+          at: this.hostNow(),
+          playing: patch.playing,
+          t: patch.t,
+          media: patch.media || base.media,
+          cause,
+          byName: this.name,
+          waitFor: patch.waitFor || null,
+        };
+        if (!s.media) return;
+        this.state = s;
+        this.send({ type: "state", state: s });
+        ui.render();
+      },
+
+      describe(s, prev, from) {
+        if (s.by === this.me) return;
+        const who = from ? from.name : s.byName || "Someone";
+        if (s.cause === "media") ui.toast(`${who} is playing ${s.media.title || "something"}`, "join");
+        else if (s.cause === "pause") ui.toast(`${who} paused`);
+        else if (s.cause === "play") ui.toast(`${who} pressed play`);
+        else if (s.cause === "seek") ui.toast(`${who} jumped to ${formatClock(s.t)}`);
+        else if (s.cause === "wait") {
+          // Everyone loads for a moment after a jump; only mention waits that aren't that
+          this.waitToast = !(prev && prev.cause === "seek" && s.at - prev.at < 6000) && !!(s.waitFor && s.waitFor.length);
+          if (this.waitToast) ui.toast(`Waiting for ${s.waitFor.join(", ")}…`);
+        } else if (s.cause === "resume" && this.waitToast) ui.toast("Everyone's ready");
+        else if (s.cause === "giveup") ui.toast(`Continuing — ${(s.waitFor || []).join(", ") || "someone"} is still loading`);
+        else if (s.cause === "left") ui.toast(`${who} left the player`);
+      },
+
+      // --- the loop ---------------------------------------------------------------
+
+      async tick() {
+        if (!this.active) return;
+        const now = Date.now();
+        await local.refreshMedia();
+        this.bindVideo(local.findVideo());
+
+        // Peers that went quiet are gone
+        for (const [id, p] of this.peers) {
+          if (now - p.lastSeen > 20000) {
+            this.peers.delete(id);
+            ui.toast(`${p.name} disconnected`, "leave");
+            ui.render();
+          }
+        }
+
+        this.handOver();
+        this.pingHost();
+        const v = local.video;
+        if (v && this.inMedia() && this.synced && (v.readyState < 3 || v.seeking)) {
+          if (!this.stalledSince) this.stalledSince = now;
+        } else {
+          this.stalledSince = 0;
+        }
+        this.sendPresence(false);
+
+        if (this.inMedia()) this.wasInMedia = this.state.media.videoId;
+        if (this.isHost() && (this.creator || now - this.joinedAt > 4000)) this.hostDuties(now);
+        this.steer(now);
+      },
+
+      hostDuties(now) {
+        const media = local.media;
+        // Host started something new (or the next episode began)
+        if (media && local.inPlayer() && local.video && (!this.state || !this.state.media || this.state.media.videoId !== media.videoId)) {
+          const v = local.video;
+          if (v.readyState >= 1) {
+            this.synced = true;
+            this.syncedVideo = v;
+            this.publishState({ playing: !v.paused, t: v.currentTime, media }, "media");
+          }
+          return;
+        }
+        // Host walked out of the player: pause everyone where they are
+        if (this.state && this.state.playing && !local.inPlayer() && this.wasInMedia === this.state.media.videoId) {
+          this.wasInMedia = null;
+          this.publishState({ playing: false, t: this.expected() }, "left");
+          return;
+        }
+        if (!this.state) return;
+
+        // Wait for anyone who's buffering, then carry on together (only once friends are watching)
+        const videoId = this.state.media.videoId;
+        const watching = [...this.peers.values()].some((p) => p.status && p.status.videoId === videoId);
+        const stalled = watching ? this.members().filter((m) => m.status && m.status.stalled && m.status.videoId === videoId) : [];
+        if (stalled.length && this.state.playing) {
+          this.waitPause = { since: now, names: stalled.map((m) => m.name) };
+          this.publishState({ playing: false, t: this.expected(), waitFor: this.waitPause.names }, "wait");
+        } else if (this.waitPause && !this.state.playing && this.state.cause === "wait") {
+          const everyoneReady = this.members().every((m) => !m.status || m.status.videoId !== this.state.media.videoId || m.status.ready);
+          if (everyoneReady || now - this.waitPause.since > 25000) {
+            const names = this.waitPause.names;
+            this.waitPause = null;
+            this.publishState({ playing: true, t: this.state.t, waitFor: everyoneReady ? null : names }, everyoneReady ? "resume" : "giveup");
+          }
+        } else if (this.state.cause !== "wait") {
+          this.waitPause = null;
+        }
+
+        // The host is the clock: if its own playback slipped (a stall, a slow seek), move the
+        // timeline to it rather than speeding the host up
+        const v = local.video;
+        if (this.state.playing && this.inMedia() && v && !v.paused && !v.seeking && v.readyState >= 3 &&
+            this.appliedRev === this.state.rev && now - this.appliedAt > 3000 &&
+            Math.abs(v.currentTime - this.expected()) > 0.25 && now - this.lastSeek > 3000 && now - this.lastAnchor > 2000) {
+          this.lastAnchor = now;
+          this.state = { ...this.state, t: v.currentTime, at: this.hostNow() };
+          this.lastHeartbeat = 0;
+        }
+
+        if (now - this.lastHeartbeat > 4000) {
+          this.lastHeartbeat = now;
+          this.send({ type: "state", state: this.state });
+        }
+      },
+
+      // Keep the local <video> on the shared timeline
+      steer(now) {
+        const v = local.video;
+        if (!v || !this.inMedia()) {
+          this.resetRate();
+          return;
+        }
+        if (v.readyState < 1 || !Number.isFinite(v.duration) || v.seeking) return;
+        const s = this.state;
+        let target = this.expected();
+        if (Number.isFinite(v.duration) && v.duration > 0) target = Math.min(target, v.duration - 0.5);
+        const diff = v.currentTime - target;
+
+        if (s.playing && v.paused && v.readyState >= 2) {
+          this.ours.play = now + 1500;
+          v.play().catch(() => { /* autoplay blocked: user will press play */ });
+        } else if (!s.playing && !v.paused) {
+          this.ours.pause = now + 1500;
+          v.pause();
+        }
+
+        // The host only jumps when the timeline itself changed (a friend skipped); its own
+        // slips are handled by re-anchoring in hostDuties
+        const host = this.isHost();
+        const fresh = s.rev !== this.appliedRev;
+        if (fresh) {
+          this.appliedRev = s.rev;
+          this.appliedAt = now;
+        }
+        const limit = s.playing ? (host ? 1 : 2) : 0.4;
+        if (Math.abs(diff) > limit && (host ? fresh && s.by !== this.me : now - this.lastSeek > 3000)) {
+          const to = target + (s.playing ? this.seekLag : 0);
+          this.ours.seek = { t: to, until: now + 4000 };
+          this.lastSeek = now;
+          this.seekStarted = now;
+          v.currentTime = to;
+          this.resetRate();
+          return;
+        }
+
+        if (s.playing && v.readyState >= 3 && !this.isHost()) {
+          if (Math.abs(diff) > 0.15) this.setRate(1 - clamp(diff, -1.25, 1.25) * 0.08);
+          else this.resetRate();
+        } else {
+          this.resetRate();
+        }
+
+        if (!this.synced && Math.abs(diff) < 2 && v.paused === !s.playing && v.readyState >= 3) {
+          this.synced = true;
+          this.syncedVideo = v;
+          ui.hideJoining();
+          ui.render();
+        }
+      },
+
+      setRate(rate) {
+        const v = local.video;
+        if (v && Math.abs(v.playbackRate - rate) > 0.004) v.playbackRate = rate;
+      },
+
+      resetRate() {
+        const v = local.video;
+        if (v && v.playbackRate !== 1 && v.playbackRate > 0.9 && v.playbackRate < 1.1) v.playbackRate = 1;
+      },
+
+      // --- local user actions -----------------------------------------------------
+
+      bindVideo(v) {
+        if (v === local.video) return;
+        if (local.video) {
+          local.video.removeEventListener("play", this.onPlay);
+          local.video.removeEventListener("pause", this.onPause);
+          local.video.removeEventListener("seeking", this.onSeeking);
+          local.video.removeEventListener("seeked", this.onSeeked);
+        }
+        local.video = v;
+        if (this.syncedVideo !== v) this.synced = false;
+        if (v) {
+          v.addEventListener("play", this.onPlay);
+          v.addEventListener("pause", this.onPause);
+          v.addEventListener("seeking", this.onSeeking);
+          v.addEventListener("seeked", this.onSeeked);
+        }
+      },
+
+      canAct() {
+        return this.active && this.synced && this.inMedia();
+      },
+
+      onPlay: () => {
+        const self = party;
+        if (Date.now() < self.ours.play) { self.ours.play = 0; return; }
+        if (!self.canAct() || self.state.playing) return;
+        self.publishState({ playing: true, t: local.video.currentTime }, "play");
+      },
+
+      onPause: () => {
+        const self = party;
+        const v = local.video;
+        if (Date.now() < self.ours.pause) { self.ours.pause = 0; return; }
+        if (!self.canAct() || !self.state.playing || !v || v.ended) return;
+        self.publishState({ playing: false, t: v.currentTime }, "pause");
+      },
+
+      onSeeking: () => {
+        const self = party;
+        const v = local.video;
+        const ours = self.ours.seek;
+        if (ours && Date.now() < ours.until && Math.abs(v.currentTime - ours.t) < 1.5) return;
+        if (!self.canAct()) return;
+        self.seekStarted = 0;
+        if (Math.abs(v.currentTime - self.expected()) < 1.5) return;
+        self.publishState({ playing: self.state.playing, t: v.currentTime }, "seek");
+      },
+
+      onSeeked: () => {
+        const self = party;
+        if (self.seekStarted) {
+          // How long seeks take here (Stremio's converter can need a couple of seconds)
+          const took = (Date.now() - self.seekStarted) / 1000;
+          self.seekLag = clamp(self.seekLag ? self.seekLag * 0.6 + took * 0.4 : took, 0, 4);
+          self.seekStarted = 0;
+        }
+        self.ours.seek = null;
+      },
+
+      // --- following the host -------------------------------------------------------
+
+      rejoin() {
+        if (this.state && this.state.media) this.follow(this.state.media);
+      },
+
+      async follow(media) {
+        if (!media || this.following === media.videoId) return;
+        if (local.videoId() === media.videoId) return;
+        const token = media.videoId;
+        this.following = token;
+        this.synced = false;
+        ui.showJoining(media);
+        try {
+          const stream = await findStream(media, () => this.following === token && this.active);
+          if (this.following !== token || !this.active) return;
+          if (!stream) {
+            ui.hideJoining();
+            ui.toast(`Couldn't find a stream for ${media.title || "this title"} — pick one to join`, "leave");
+            return;
+          }
+          if (stream.fallback) ui.toast(`Using a different release${stream.quality ? ` (${stream.quality})` : ""} — timing might be slightly off`);
+          location.hash = stream.link.replace(/^#/, "");
+          // Joining overlay goes away once the video is in sync (or after a while regardless)
+          setTimeout(() => ui.hideJoining(), 20000);
+        } catch (e) {
+          log("party: follow failed", e);
+          ui.hideJoining();
+        } finally {
+          if (this.following === token) this.following = null;
+        }
+      },
+
+      // --- chat ------------------------------------------------------------------------
+
+      addChat(name, text, mine) {
+        this.chat.push({ name, text, mine, at: Date.now() });
+        if (this.chat.length > 80) this.chat.shift();
+        ui.renderChat();
+        if (!mine) {
+          chime.play("chat");
+          if (!ui.panelOpen()) ui.toast(`<b>${esc(name)}</b> ${esc(text)}`, "chat", true);
+        }
+      },
+
+      say(text) {
+        const t = String(text || "").trim().slice(0, 300);
+        if (!t || !this.active) return;
+        this.send({ type: "chat", text: t });
+        this.addChat(this.name, t, true);
+      },
+
+      react(emoji) {
+        if (!this.active || !REACTIONS.includes(emoji)) return;
+        this.send({ type: "react", emoji });
+        ui.reaction(emoji, "You");
+      },
+    };
+
+    // Open the title on the detail page, wait for this user's own addons to answer, and pick
+    // the same release: torrent hash → filename → binge group → quality → best cached.
+    async function findStream(media, stillWanted) {
+      const detail = `/detail/${encodeURIComponent(media.type)}/${encodeURIComponent(media.metaId)}/${encodeURIComponent(media.videoId)}`;
+      location.hash = detail;
+      const h = media.hints || {};
+      const started = Date.now();
+      while (Date.now() - started < 25000) {
+        await new Promise((r) => setTimeout(r, 400));
+        if (!stillWanted()) return null;
+        let s;
+        try { s = await window.core.getState("meta_details"); } catch (_) { continue; }
+        const sel = s && s.selected && s.selected.streamPath;
+        if (!sel || sel.id !== media.videoId) continue;
+        const groups = Array.isArray(s.streams) ? s.streams : [];
+        const ready = [];
+        let pending = 0;
+        for (const g of groups) {
+          const type = g && g.content && g.content.type;
+          if (type === "Loading") pending++;
+          if (type === "Ready" && Array.isArray(g.content.content)) {
+            for (const st of g.content.content) if (st && st.deepLinks && st.deepLinks.player) ready.push(st);
+          }
+        }
+        const withHints = ready.map((st) => ({ st, hint: streamHints(st) }));
+        const exact = withHints.find((x) => h.infoHash && x.hint.infoHash === h.infoHash) ||
+          withHints.find((x) => h.filename && x.hint.filename === h.filename);
+        if (exact) return { link: exact.st.deepLinks.player, fallback: false };
+        const settled = groups.length > 0 && pending === 0;
+        if (!settled && Date.now() - started < 12000) continue;
+        if (!ready.length) {
+          if (settled) return null;
+          continue;
+        }
+        const cached = (x) => /\+\]|⚡|\[(RD|AD|PM|TB|DL|ED|OC)\s*\+/i.test(x.st.name || "");
+        const pick =
+          withHints.find((x) => h.bingeGroup && x.hint.bingeGroup === h.bingeGroup) ||
+          withHints.find((x) => h.quality && x.hint.quality === h.quality && cached(x)) ||
+          withHints.find((x) => h.quality && x.hint.quality === h.quality) ||
+          withHints.find(cached) ||
+          withHints[0];
+        return { link: pick.st.deepLinks.player, fallback: true, quality: pick.hint.quality };
+      }
+      return null;
+    }
+
+    // ---------------------------------------------------------------------------
+    // UI
+    // ---------------------------------------------------------------------------
+
+    const CSS = `
+    .dxp-nav-btn { display: flex; align-items: center; justify-content: center; position: relative; width: 3rem; height: 3rem; margin-right: .25rem; border-radius: 50%; color: rgba(255,255,255,.75); cursor: pointer; transition: color .15s, background-color .15s; }
+    .dxp-nav-btn:hover { color: #fff; background: rgba(255,255,255,.08); }
+    .dxp-nav-btn svg, .dxp-player-btn svg { width: 1.45rem; height: 1.45rem; }
+    .dxp-nav-btn.is-on, .dxp-player-btn.is-on { color: var(--dx-accent, #e50914); }
+    .dxp-badge { position: absolute; top: .2rem; right: .1rem; min-width: 1.05rem; height: 1.05rem; padding: 0 .25rem; border-radius: .6rem; background: var(--dx-accent, #e50914); color: #fff; font: 700 .68rem/1.05rem Inter, system-ui, sans-serif !important; text-align: center; pointer-events: none; }
+    .dxp-player-btn { display: flex; align-items: center; justify-content: center; position: relative; flex: none; width: 3rem; height: 3rem; color: #fff; cursor: pointer; opacity: .85; transition: opacity .15s, transform .15s; }
+    .dxp-player-btn:hover { opacity: 1; transform: scale(1.08); }
+
+    .dxp-panel { position: fixed; z-index: 100000; top: 4.6rem; right: 1.2rem; width: 22.5rem; max-width: calc(100vw - 2rem); max-height: calc(100vh - 6rem); display: flex; flex-direction: column; border-radius: 1rem; background: rgba(20,20,22,.94); backdrop-filter: blur(24px) saturate(1.4); border: 1px solid rgba(255,255,255,.09); box-shadow: 0 24px 60px rgba(0,0,0,.55); color: #fff; font-family: Inter, system-ui, sans-serif; opacity: 0; transform: translateY(-8px) scale(.98); transform-origin: top right; pointer-events: none; transition: opacity .18s ease, transform .18s ease; }
+    .dxp-panel.is-open { opacity: 1; transform: none; pointer-events: auto; }
+    .dxp-panel * { box-sizing: border-box; }
+    .dxp-head { display: flex; align-items: center; gap: .6rem; padding: 1rem 1rem .6rem 1.1rem; }
+    .dxp-title { flex: 1; font: 800 1.05rem/1.2 Inter, system-ui, sans-serif !important; letter-spacing: -.01em; }
+    .dxp-title small { display: block; margin-top: .15rem; color: rgba(255,255,255,.5); font: 500 .74rem/1.3 Inter, system-ui, sans-serif !important; }
+    .dxp-x { width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: rgba(255,255,255,.6); cursor: pointer; }
+    .dxp-x:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .dxp-x svg { width: 1.1rem; height: 1.1rem; }
+    .dxp-body { padding: .2rem 1.1rem 1.1rem; overflow-y: auto; display: flex; flex-direction: column; gap: .9rem; }
+    .dxp-label { color: rgba(255,255,255,.5); font: 700 .68rem/1 Inter, system-ui, sans-serif !important; letter-spacing: .08em; text-transform: uppercase; margin-bottom: .45rem; }
+    .dxp-input { width: 100%; height: 2.6rem; padding: 0 .85rem; border-radius: .6rem; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); color: #fff; font: 500 .92rem Inter, system-ui, sans-serif !important; outline: none; transition: border-color .15s, background-color .15s; }
+    .dxp-input:focus { border-color: var(--dx-accent, #e50914); background: rgba(255,255,255,.09); }
+    .dxp-input.is-code { text-transform: uppercase; letter-spacing: .14em; font: 700 .95rem ui-monospace, "JetBrains Mono", monospace !important; }
+    .dxp-row { display: flex; gap: .5rem; }
+    .dxp-btn { flex: none; height: 2.6rem; padding: 0 1.1rem; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; border-radius: .6rem; border: 0; background: rgba(255,255,255,.1); color: #fff; font: 700 .88rem Inter, system-ui, sans-serif !important; cursor: pointer; transition: background-color .15s, transform .1s; white-space: nowrap; }
+    .dxp-btn:hover { background: rgba(255,255,255,.16); }
+    .dxp-btn:active { transform: scale(.97); }
+    .dxp-btn.is-primary { background: var(--dx-accent, #e50914); }
+    .dxp-btn.is-primary:hover { filter: brightness(1.12); }
+    .dxp-btn.is-wide { width: 100%; }
+    .dxp-btn.is-ghost { background: transparent; color: rgba(255,255,255,.6); }
+    .dxp-btn.is-ghost:hover { color: #fff; background: rgba(255,255,255,.06); }
+    .dxp-btn svg { width: 1rem; height: 1rem; }
+    .dxp-or { display: flex; align-items: center; gap: .7rem; color: rgba(255,255,255,.35); font: 600 .72rem Inter, system-ui, sans-serif !important; }
+    .dxp-or::before, .dxp-or::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,.1); }
+    .dxp-note { display: flex; gap: .5rem; align-items: flex-start; color: rgba(255,255,255,.45); font: 500 .74rem/1.45 Inter, system-ui, sans-serif !important; }
+    .dxp-note svg { flex: none; width: .95rem; height: .95rem; margin-top: .1rem; }
+    .dxp-code { display: flex; align-items: center; gap: .5rem; padding: .7rem .8rem .7rem 1rem; border-radius: .75rem; background: rgba(255,255,255,.06); border: 1px dashed rgba(255,255,255,.18); }
+    .dxp-code b { flex: 1; font: 800 1.35rem/1 ui-monospace, "JetBrains Mono", monospace !important; letter-spacing: .12em; }
+    .dxp-status { display: inline-flex; align-items: center; gap: .4rem; color: rgba(255,255,255,.55); font: 600 .74rem Inter, system-ui, sans-serif !important; }
+    .dxp-dot { width: .5rem; height: .5rem; border-radius: 50%; background: #1db954; box-shadow: 0 0 0 3px rgba(29,185,84,.18); }
+    .dxp-dot.is-off { background: #f5a524; box-shadow: 0 0 0 3px rgba(245,165,36,.18); }
+    .dxp-now { display: flex; gap: .75rem; align-items: center; padding: .6rem; border-radius: .75rem; background: rgba(255,255,255,.05); }
+    .dxp-now img { width: 2.6rem; height: 3.9rem; object-fit: cover; border-radius: .35rem; flex: none; background: rgba(255,255,255,.06); }
+    .dxp-now-text { flex: 1; min-width: 0; }
+    .dxp-now-text b { display: block; font: 700 .88rem/1.3 Inter, system-ui, sans-serif !important; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .dxp-now-text span { display: block; margin-top: .2rem; color: rgba(255,255,255,.5); font: 500 .74rem Inter, system-ui, sans-serif !important; }
+    .dxp-members { display: flex; flex-direction: column; gap: .15rem; }
+    .dxp-member { display: flex; align-items: center; gap: .65rem; padding: .35rem 0; }
+    .dxp-avatar { width: 2rem; height: 2rem; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font: 800 .8rem Inter, system-ui, sans-serif !important; }
+    .dxp-member-name { flex: 1; min-width: 0; font: 600 .86rem/1.25 Inter, system-ui, sans-serif !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dxp-member-name svg { width: .85rem; height: .85rem; margin-left: .3rem; vertical-align: -.08rem; color: #f5c518; }
+    .dxp-member-name span { display: block; color: rgba(255,255,255,.45); font: 500 .72rem/1.3 Inter, system-ui, sans-serif !important; }
+    .dxp-chat { display: flex; flex-direction: column; gap: .45rem; max-height: 13rem; min-height: 2rem; overflow-y: auto; padding-right: .2rem; }
+    .dxp-chat:empty::before { content: "No messages yet"; color: rgba(255,255,255,.3); font: 500 .78rem Inter, system-ui, sans-serif !important; }
+    .dxp-msg { font: 500 .84rem/1.4 Inter, system-ui, sans-serif !important; color: rgba(255,255,255,.88); word-wrap: break-word; }
+    .dxp-msg b { font: 700 .84rem/1.4 Inter, system-ui, sans-serif !important; margin-right: .35rem; }
+    .dxp-msg.is-mine b { color: var(--dx-accent, #e50914); }
+    .dxp-reacts { display: flex; gap: .25rem; }
+    .dxp-react { flex: 1; height: 2.2rem; display: flex; align-items: center; justify-content: center; border-radius: .5rem; cursor: pointer; font-size: 1.15rem !important; transition: background-color .15s, transform .12s; }
+    .dxp-react:hover { background: rgba(255,255,255,.08); transform: scale(1.15); }
+    .dxp-send { width: 2.6rem; padding: 0; }
+
+    .dxp-toasts { position: fixed; z-index: 100001; left: 1.4rem; bottom: 1.4rem; display: flex; flex-direction: column-reverse; gap: .45rem; pointer-events: none; max-width: min(26rem, calc(100vw - 2.8rem)); transition: bottom .25s ease; }
+    body[data-dxp-route="player"] .dxp-toasts { bottom: 10rem; }
+    .dxp-toast { padding: .6rem .95rem; border-radius: .7rem; background: rgba(18,18,20,.88); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,.08); color: #fff; font: 600 .86rem/1.35 Inter, system-ui, sans-serif !important; box-shadow: 0 10px 30px rgba(0,0,0,.4); opacity: 0; transform: translateY(8px); transition: opacity .2s ease, transform .2s ease; }
+    .dxp-toast b { font: 800 .86rem/1.35 Inter, system-ui, sans-serif !important; color: var(--dx-accent, #e50914); margin-right: .3rem; }
+    .dxp-toast.is-in { opacity: 1; transform: none; }
+    .dxp-toast.is-out { opacity: 0; transform: translateY(-4px); }
+
+    .dxp-float { position: fixed; z-index: 100001; bottom: 6rem; font-size: 2.6rem !important; pointer-events: none; animation: dxp-float 2.6s cubic-bezier(.2,.7,.3,1) forwards; text-shadow: 0 4px 16px rgba(0,0,0,.45); }
+    .dxp-float span { display: block; margin-top: .1rem; font: 700 .7rem Inter, system-ui, sans-serif !important; color: rgba(255,255,255,.85); text-align: center; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+    @keyframes dxp-float { 0% { opacity: 0; transform: translateY(0) scale(.6); } 12% { opacity: 1; transform: translateY(-20px) scale(1.1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-260px) scale(1); } }
+
+    .dxp-joining { position: fixed; inset: 0; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.1rem; background: rgba(8,8,10,.82); backdrop-filter: blur(10px); color: #fff; font-family: Inter, system-ui, sans-serif; opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+    .dxp-joining.is-on { opacity: 1; pointer-events: auto; }
+    .dxp-spinner { width: 2.8rem; height: 2.8rem; border-radius: 50%; border: 3px solid rgba(255,255,255,.15); border-top-color: var(--dx-accent, #e50914); animation: dxp-spin .8s linear infinite; }
+    .dxp-joining:not(.is-on) .dxp-spinner { animation: none; }
+    @keyframes dxp-spin { to { transform: rotate(360deg); } }
+    .dxp-joining b { font: 800 1.3rem/1.3 Inter, system-ui, sans-serif !important; text-align: center; max-width: 80vw; }
+    .dxp-joining span { color: rgba(255,255,255,.55); font: 500 .9rem Inter, system-ui, sans-serif !important; }
+    `;
+
+    const AVATAR_COLOURS = ["#e50914", "#2f80ff", "#8b5cf6", "#1db954", "#f5a524", "#ec4899", "#14b8a6", "#f97316"];
+
+    function avatarColour(id) {
+      let h = 0;
+      for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+      return AVATAR_COLOURS[h % AVATAR_COLOURS.length];
+    }
+
+    // Keys typed into our inputs must not reach Stremio's shortcuts (space = pause, etc.)
+    function shieldKeys(el) {
+      for (const type of ["keydown", "keyup", "keypress"]) el.addEventListener(type, (e) => e.stopPropagation());
+    }
+
+    const ui = {
+      style: null,
+      panel: null,
+      toasts: null,
+      joining: null,
+      open: false,
+
+      mount() {
+        this.style = document.createElement("style");
+        this.style.id = "dx-party-style";
+        this.style.textContent = CSS;
+        document.head.append(this.style);
+
+        this.panel = document.createElement("div");
+        this.panel.className = "dxp-panel";
+        shieldKeys(this.panel);
+        this.panel.addEventListener("click", (e) => this.onPanelClick(e));
+        this.panel.addEventListener("keydown", (e) => this.onPanelKey(e));
+        document.body.append(this.panel);
+
+        this.toasts = document.createElement("div");
+        this.toasts.className = "dxp-toasts";
+        document.body.append(this.toasts);
+
+        this.joining = document.createElement("div");
+        this.joining.className = "dxp-joining";
+        this.joining.innerHTML = '<div class="dxp-spinner"></div><b></b><span>Finding the same release in your addons…</span><button class="dxp-btn is-ghost">Cancel</button>';
+        this.joining.querySelector("button").addEventListener("click", () => {
+          party.following = null;
+          this.hideJoining();
+        });
+        document.body.append(this.joining);
+        this.render();
+      },
+
+      unmount() {
+        for (const el of [this.style, this.panel, this.toasts, this.joining]) el && el.remove();
+        document.querySelectorAll(".dxp-nav-btn, .dxp-player-btn, .dxp-float").forEach((el) => el.remove());
+      },
+
+      panelOpen() {
+        return this.open;
+      },
+
+      toggle(force) {
+        this.open = typeof force === "boolean" ? force : !this.open;
+        this.panel.classList.toggle("is-open", this.open);
+        if (this.open) {
+          this.render();
+          setTimeout(() => {
+            const input = this.panel.querySelector(party.active ? ".dxp-say" : ".dxp-name");
+            if (input && !(party.active && local.inPlayer())) input.focus();
+          }, 60);
+        }
+      },
+
+      // Header button (browse pages) + control bar button (player)
+      ensureButtons() {
+        document.body.dataset.dxpRoute = currentRoute();
+        const count = party.active ? party.peers.size + 1 : 0;
+        const header = !local.inPlayer() && document.querySelector('[class*="horizontal-nav-bar"] [class*="buttons-container"]');
+        if (header && !header.querySelector(".dxp-nav-btn")) {
+          const b = document.createElement("div");
+          b.className = "dxp-nav-btn";
+          b.title = "Watch party";
+          b.innerHTML = PARTY_ICONS.party;
+          b.addEventListener("click", (e) => { e.stopPropagation(); this.toggle(); });
+          header.prepend(b);
+        }
+        const bar = local.inPlayer() && document.querySelector('[class*="player-container"] [class*="control-bar-buttons-container"]');
+        if (bar && !bar.querySelector(".dxp-player-btn")) {
+          const b = document.createElement("div");
+          b.className = "dxp-player-btn";
+          b.title = "Watch party";
+          b.setAttribute("role", "button");
+          b.innerHTML = PARTY_ICONS.party;
+          b.addEventListener("click", (e) => { e.stopPropagation(); this.toggle(); });
+          const anchor = [...bar.children].find((c) => /control-bar-button-/.test(c.className) && /subtitles|audio|info|cast|picture|enhance/i.test(c.title + c.className));
+          if (anchor) bar.insertBefore(b, anchor);
+          else bar.append(b);
+        }
+        for (const b of document.querySelectorAll(".dxp-nav-btn, .dxp-player-btn")) {
+          b.classList.toggle("is-on", party.active);
+          let badge = b.querySelector(".dxp-badge");
+          if (count > 1) {
+            if (!badge) {
+              badge = document.createElement("span");
+              badge.className = "dxp-badge";
+              b.append(badge);
+            }
+            if (badge.textContent !== String(count)) badge.textContent = String(count);
+          } else if (badge) {
+            badge.remove();
+          }
+        }
+      },
+
+      render() {
+        if (!this.panel) return;
+        this.ensureButtons();
+        if (!this.open) return;
+        const active = document.activeElement;
+        const focused = active && this.panel.contains(active) && active.classList.length ? active.classList[active.classList.length - 1] : null;
+        const draft = this.panel.querySelector(".dxp-say")?.value || "";
+        const codeDraft = this.panel.querySelector(".dxp-join-code")?.value || "";
+        const nameDraft = this.panel.querySelector(".dxp-name")?.value;
+        this.panel.innerHTML = party.active ? this.partyHtml() : this.lobbyHtml();
+        const say = this.panel.querySelector(".dxp-say");
+        if (say) say.value = draft;
+        const code = this.panel.querySelector(".dxp-join-code");
+        if (code) code.value = codeDraft;
+        const name = this.panel.querySelector(".dxp-name");
+        if (name && nameDraft !== undefined) name.value = nameDraft;
+        if (focused) {
+          const el = this.panel.querySelector(`.${focused}`);
+          if (el) { el.focus(); if (el.value !== undefined) el.selectionStart = el.selectionEnd = el.value.length; }
+        }
+        this.renderChat();
+      },
+
+      lobbyHtml() {
+        const name = store.get("name") || "";
+        const last = store.get("lastCode");
+        return `
+          <div class="dxp-head">
+            <div class="dxp-title">Watch party<small>Watch in sync with friends</small></div>
+            <div class="dxp-x" data-act="close">${PARTY_ICONS.close}</div>
+          </div>
+          <div class="dxp-body">
+            <div>
+              <div class="dxp-label">Your name</div>
+              <input class="dxp-input dxp-name" maxlength="24" placeholder="What should friends see?" value="${esc(name)}">
+            </div>
+            <button class="dxp-btn is-primary is-wide" data-act="create">${PARTY_ICONS.party}Start a party</button>
+            <div class="dxp-or">or join one</div>
+            <div class="dxp-row">
+              <input class="dxp-input is-code dxp-join-code" maxlength="11" placeholder="XXXXX-XXXXX" spellcheck="false">
+              <button class="dxp-btn" data-act="join">Join</button>
+            </div>
+            ${last ? `<button class="dxp-btn is-ghost is-wide" data-act="rejoin-last">Rejoin last party · ${esc(prettyCode(last))}</button>` : ""}
+            <div class="dxp-note">${PARTY_ICONS.lock}<span>End-to-end encrypted with the party code. Everyone streams from their own addons and debrid account — your links and API keys are never shared.</span></div>
+          </div>`;
+      },
+
+      partyHtml() {
+        const host = party.hostId();
+        const up = party.links.filter((l) => l.up).length;
+        const s = party.state;
+        const media = s && s.media;
+        const members = party.members().sort((a, b) => (a.id === host ? -1 : b.id === host ? 1 : a.joinedAt - b.joinedAt));
+        const isHost = host === party.me;
+        let nowHtml = "";
+        if (media) {
+          const here = local.videoId() === media.videoId;
+          const when = `${s.playing ? "Playing" : "Paused"} · ${formatClock(party.expected())}`;
+          nowHtml = `
+            <div>
+              <div class="dxp-label">Now watching</div>
+              <div class="dxp-now">
+                ${media.poster ? `<img src="${esc(media.poster)}" alt="">` : ""}
+                <div class="dxp-now-text"><b>${esc(media.title || "Untitled")}</b><span>${esc(when)}</span></div>
+                ${!here && !isHost ? '<button class="dxp-btn is-primary" data-act="rejoin">Join</button>' : ""}
+              </div>
+            </div>`;
+        } else {
+          nowHtml = `<div class="dxp-note"><span>${isHost ? "Play anything — everyone in the party will open it with you." : "Waiting for the host to play something…"}</span></div>`;
+        }
+        const memberHtml = members.map((m) => {
+          const st = m.status || {};
+          let line = "Browsing";
+          if (st.where === "player") {
+            if (media && st.videoId === media.videoId) line = st.stalled ? "Buffering…" : st.synced ? "Watching · in sync" : "Joining…";
+            else line = st.title ? `Watching ${st.title}` : "Watching something else";
+          }
+          const initial = esc((m.name || "?").trim().charAt(0).toUpperCase() || "?");
+          return `<div class="dxp-member">
+            <div class="dxp-avatar" style="background:${avatarColour(m.id)}">${initial}</div>
+            <div class="dxp-member-name">${esc(m.name || "Friend")}${m.self ? " (you)" : ""}${m.id === host ? PARTY_ICONS.crown : ""}<span>${esc(line)}</span></div>
+          </div>`;
+        }).join("");
+        return `
+          <div class="dxp-head">
+            <div class="dxp-title">Watch party<small><span class="dxp-status"><i class="dxp-dot${up ? "" : " is-off"}"></i>${party.connecting ? "Connecting…" : up ? `Connected · ${members.length} watching` : "Reconnecting…"}</span></small></div>
+            <div class="dxp-x" data-act="close">${PARTY_ICONS.close}</div>
+          </div>
+          <div class="dxp-body">
+            <div>
+              <div class="dxp-label">Party code — send it to friends</div>
+              <div class="dxp-code"><b>${esc(prettyCode(party.code))}</b><button class="dxp-btn" data-act="copy">${PARTY_ICONS.copy}Copy</button></div>
+            </div>
+            ${nowHtml}
+            <div>
+              <div class="dxp-label">People</div>
+              <div class="dxp-members">${memberHtml}</div>
+            </div>
+            <div>
+              <div class="dxp-label">Chat</div>
+              <div class="dxp-chat"></div>
+            </div>
+            <div class="dxp-reacts">${REACTIONS.map((r) => `<div class="dxp-react" data-react="${r}">${r}</div>`).join("")}</div>
+            <div class="dxp-row">
+              <input class="dxp-input dxp-say" maxlength="300" placeholder="Say something…">
+              <button class="dxp-btn dxp-send" data-act="say" title="Send">${PARTY_ICONS.send}</button>
+            </div>
+            <button class="dxp-btn is-ghost is-wide" data-act="leave">Leave party</button>
+          </div>`;
+      },
+
+      renderChat() {
+        const box = this.panel && this.panel.querySelector(".dxp-chat");
+        if (!box) return;
+        box.innerHTML = party.chat.map((m) => `<div class="dxp-msg${m.mine ? " is-mine" : ""}"><b>${esc(m.name)}</b>${esc(m.text)}</div>`).join("");
+        box.scrollTop = box.scrollHeight;
+      },
+
+      myName() {
+        const input = this.panel.querySelector(".dxp-name");
+        const name = (input ? input.value : store.get("name") || "").trim().slice(0, 24);
+        if (!name) {
+          if (input) { input.focus(); input.style.borderColor = "#f5a524"; }
+          return null;
+        }
+        return name;
+      },
+
+      onPanelClick(e) {
+        e.stopPropagation();
+        const react = e.target.closest("[data-react]");
+        if (react) { party.react(react.dataset.react); return; }
+        const act = e.target.closest("[data-act]")?.dataset.act;
+        if (!act) return;
+        if (act === "close") this.toggle(false);
+        else if (act === "create") {
+          const name = this.myName();
+          if (name) party.start(newCode(), name, true);
+        } else if (act === "join" || act === "rejoin-last") {
+          const name = this.myName();
+          if (!name) return;
+          const raw = act === "join" ? this.panel.querySelector(".dxp-join-code").value : store.get("lastCode");
+          const code = normaliseCode(raw);
+          if (!code) {
+            const input = this.panel.querySelector(".dxp-join-code");
+            input.style.borderColor = "#f5a524";
+            input.focus();
+            return;
+          }
+          party.start(code, name, false);
+        } else if (act === "copy") {
+          navigator.clipboard.writeText(prettyCode(party.code)).then(
+            () => this.toast("Code copied — paste it to your friends"),
+            () => this.toast("Couldn't copy — read it out instead")
+          );
+        } else if (act === "rejoin") party.rejoin();
+        else if (act === "leave") party.leave(false);
+        else if (act === "say") this.sendDraft();
+      },
+
+      onPanelKey(e) {
+        if (e.key === "Escape") { this.toggle(false); return; }
+        if (e.key !== "Enter") return;
+        if (e.target.classList.contains("dxp-say")) this.sendDraft();
+        else if (e.target.classList.contains("dxp-join-code")) this.panel.querySelector('[data-act="join"]').click();
+        else if (e.target.classList.contains("dxp-name")) this.panel.querySelector('[data-act="create"]').click();
+      },
+
+      sendDraft() {
+        const input = this.panel.querySelector(".dxp-say");
+        if (!input) return;
+        party.say(input.value);
+        input.value = "";
+        input.focus();
+      },
+
+      toast(text, sound, html) {
+        if (!this.toasts) return;
+        if (local.inPlayer() && !settings.partyActivity && sound !== "join" && sound !== "leave") return;
+        if (sound === "join" || sound === "leave") chime.play(sound);
+        const el = document.createElement("div");
+        el.className = "dxp-toast";
+        if (html) el.innerHTML = text;
+        else el.textContent = text;
+        this.toasts.prepend(el);
+        while (this.toasts.children.length > 4) this.toasts.lastElementChild.remove();
+        requestAnimationFrame(() => el.classList.add("is-in"));
+        setTimeout(() => {
+          el.classList.add("is-out");
+          setTimeout(() => el.remove(), 250);
+        }, sound === "chat" ? 7000 : 3800);
+      },
+
+      reaction(emoji, who) {
+        if (local.inPlayer() && !settings.partyActivity) return;
+        const el = document.createElement("div");
+        el.className = "dxp-float";
+        el.style.right = `${3 + Math.random() * 10}rem`;
+        el.innerHTML = `${esc(emoji)}<span>${esc(who)}</span>`;
+        document.body.append(el);
+        setTimeout(() => el.remove(), 2700);
+      },
+
+      showJoining(media) {
+        this.joining.querySelector("b").textContent = `Joining ${media.title || "the party"}`;
+        this.joining.classList.add("is-on");
+      },
+
+      hideJoining() {
+        if (this.joining) this.joining.classList.remove("is-on");
+      },
+    };
+
+    function onDocClick(e) {
+      if (ui.open && !ui.panel.contains(e.target) && !e.target.closest(".dxp-nav-btn, .dxp-player-btn")) ui.toggle(false);
+    }
+
+    function onUnload() {
+      if (party.active) party.send({ type: "bye" });
+    }
+
+    let mounted = false;
+
+    return {
+      party,
+      // Called from the main sync loop
+      ensure() {
+        if (!settings.watchParty) {
+          if (mounted) this.stop();
+          return;
+        }
+        if (!mounted) {
+          mounted = true;
+          ui.mount();
+          document.addEventListener("pointerdown", onDocClick, true);
+          window.addEventListener("beforeunload", onUnload);
+        }
+        ui.ensureButtons();
+      },
+      stop() {
+        if (!mounted) return;
+        mounted = false;
+        party.leave(true);
+        document.removeEventListener("pointerdown", onDocClick, true);
+        window.removeEventListener("beforeunload", onUnload);
+        ui.unmount();
+      },
+    };
+  })();
+
+  // ---------------------------------------------------------------------------
   // Main loop
   // ---------------------------------------------------------------------------
 
@@ -2945,7 +4446,7 @@
   }
 
   function sync() {
-    const steps = [updateRoute, brandTitle, () => player.ensure(), () => scrub.ensure(), () => enhance.ensure()];
+    const steps = [updateRoute, brandTitle, () => player.ensure(), () => scrub.ensure(), () => enhance.ensure(), () => watchParty.ensure()];
     if (currentRoute() === "detail") steps.push(() => streamTools.ensure());
     if (currentRoute() !== "player") {
       steps.push(() => hero.ensure(), () => carouselRows().forEach(enhanceRow), syncCards);
@@ -2959,7 +4460,7 @@
   const mo = new MutationObserver((records) => {
     for (const r of records) {
       // Ignore changes we made ourselves
-      if (r.target.closest && r.target.closest(".dx-hero, .dx-preview, .dx-row-pages, .dx-wide-art, .dx-player-title, .dx-player-flash, .dx-streambar, .dx-stream-empty, .dx-scrub, .dx-enhance-subs, .dx-player-toast")) continue;
+      if (r.target.closest && r.target.closest(".dx-hero, .dx-preview, .dx-row-pages, .dx-wide-art, .dx-player-title, .dx-player-flash, .dx-streambar, .dx-stream-empty, .dx-scrub, .dx-enhance-subs, .dx-player-toast, .dxp-nav-btn, .dxp-player-btn")) continue;
       scheduleSync();
       return;
     }
@@ -3029,6 +4530,7 @@
       player.detach();
       scrub.teardown();
       enhance.stop();
+      watchParty.stop();
       document.querySelectorAll(".dx-arrow, .dx-row-pages, .dx-badge, .dx-wide-art, .dx-splash, .dx-seek, .dx-player-title, .dx-player-flash, .dx-streambar, .dx-stream-empty").forEach((n) => n.remove());
       document.querySelectorAll(".dx-sortable").forEach((l) => streamTools.reset(l));
       document.querySelectorAll("[data-dx-key]").forEach((n) => { delete n.dataset.dxKey; });
