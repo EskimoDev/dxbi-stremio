@@ -1,8 +1,9 @@
 /**
  * @name dx.bi
  * @description Cinematic, Netflix-inspired interface for dx.bi. Pair it with the dx.bi plugin for the billboard, carousels, previews, ratings and player extras.
- * @version 2.5.0
+ * @version 2.7.0
  * @author dx.bi
+ * @requirements ["dxbi.plugin.js"]
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.theme.css
  */
 
@@ -1134,6 +1135,12 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     background: #f5c518;
     color: #000;
     line-height: 1;
+}
+
+/* Anime scores (Kitsu / AniList) get their own colour so they never read as IMDb */
+.dx-badge.is-anime i {
+    background: #3db4f2;
+    color: #fff;
 }
 
 /* Continue Watching as wide cards */
@@ -3882,8 +3889,15 @@ body:has(.dx-player-title) #app .custom-episode-title {
     order: 3;
 }
 
-#app [class*="player-container"] [class*="control-bar-buttons-container"] > .dx-next {
+#app [class*="player-container"] [class*="control-bar-buttons-container"] > .dx-next,
+#app [class*="player-container"] [class*="control-bar-buttons-container"] > .dx-external {
     order: 4;
+}
+
+/* Open in mpv / VLC: a lighter line icon, so it sits quietly next to the menus */
+.dx-external svg {
+    width: 1.85rem !important;
+    height: 1.85rem !important;
 }
 
 #app [class*="player-container"] [class*="control-bar-buttons-container"] > [class*="control-bar-buttons-menu-container"],

@@ -83,10 +83,10 @@ That's it. Updates are offered automatically inside the app.
 - **Rotating billboard** on Home with title art, rating, synopsis, **Play** and **More Info**
 - **Netflix-style rows** — scroll sideways with arrows
 - **Hover previews** — rest on a title for a card with **Play**, **My List**, rating and genres
-- **IMDb ratings** on posters, using data from your own addons
+- **Ratings on posters** — IMDb from your own addons; anime from Kitsu or MyAnimeList catalogs gets its Kitsu or AniList score
 - **Stream sorting & filters** — sort by quality, seeds or size; filter by quality, language, source, provider, ⚡ instant and HDR
 - **Wide Continue Watching** cards with title art and progress
-- **Redesigned player** — seek-bar thumbnail previews, time remaining, ±10 seconds, Next Episode, clean subtitle and speed menus
+- **Redesigned player** — seek-bar thumbnail previews, time remaining, ±10 seconds, Next Episode, **Open in mpv / VLC**, clean subtitle and speed menus
 - **Watch party** — watch in sync with friends: shared play, pause and seeking, chat and reactions, end-to-end encrypted
 - **Picture enhancement (upscaler)** — real-time GPU upscaling: **[Anime4K](https://github.com/bloc97/Anime4K)** restore + upscale networks for anime, contrast-adaptive sharpening for movies, HDR handled correctly
 - **Subtle interface sounds** (adjustable or off)
@@ -182,13 +182,14 @@ It reads what your addons already show, so it works with any stream addon. Your 
 - Accent colour
 - Billboard on/off, content and speed
 - Hover previews
-- IMDb ratings on posters
+- Ratings on posters (IMDb, Kitsu, AniList)
 - Wide Continue Watching
 - Player extras
 - Picture enhancement — Off / Auto / Sharpen / Anime4K (quality or fast)
 - Watch party — on/off, follow the host, chat & activity in the player, sounds
 - Seek bar previews
 - Time remaining
+- Open in mpv / VLC button
 - Stream sorting & filters
 - Intro animation and intro sound
 - Interface sounds and volume

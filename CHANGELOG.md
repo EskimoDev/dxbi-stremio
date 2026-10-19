@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.7.0
+- **One-click setup**: on first start with the default look, dx.bi offers to switch on the dx.bi theme (once; it never replaces a theme you picked). The theme now declares the plugin as a requirement, so Stremio Enhanced won't apply it on its own and leave you with half a redesign.
+- **Fixed themes only appearing after a restart on Linux and macOS.** Stremio Enhanced's Apply button points the stylesheet at a bare file path, which the app resolves as a web address. dx.bi now corrects the link, so any theme applies instantly.
+- **Anime scores on posters and previews.** The Kitsu anime addon passes its own score in the IMDb field, so those badges used to say "IMDb" with a Kitsu number. They're now labelled **Kitsu** (in blue), and anime without any score gets one from Kitsu (kitsu: ids) or AniList (mal: ids), fetched in batches and cached for 3 days.
+- **Open in mpv / VLC** button in the player (shown only when one is installed). It pauses Stremio, so your place is kept, and hands the stream to the external player. Handy for files that stutter or won't play in the app. New setting to hide it.
+- Steadier access to Stremio's internal state: dx.bi keeps a working handle even on screens where Stremio Web drops `window.core`, so My List, watch party and previews don't silently stop.
+
 ## 2.6.0
 - **Watch party**: watch in sync with friends. Start a party from the people button, send the code, and everyone's Stremio opens the same title, picking the same release from their own addons and debrid account (matched by torrent hash, then filename, then quality). Shared play, pause and seeking; everyone waits while someone buffers; follows the host to the next episode; chat and reactions. Stream links and API keys are never shared, and everything is end-to-end encrypted with the party code (AES-256-GCM) over public relays, including one on port 443 for strict networks. New settings: watch party on/off, follow the host, chat & activity in the player, sounds.
 - **Fixed Anime4K and Sharpen turning the picture upside down** after the first frame. Shader settings carried over from the last step of one frame into the first step of the next, which flipped the picture and also weakened the Sharpen filter after Anime4K had run. Every step now starts from clean settings.

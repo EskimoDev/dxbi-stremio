@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews, IMDb ratings on posters, wide Continue Watching, stream sorting & filters, a Netflix-style player, watch parties with friends, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.6.0
+ * @version 2.7.0
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -18,6 +18,22 @@
   const SCRIPT_ID = (document.currentScript && document.currentScript.id) || "dxbi.plugin.js";
   const PLUGIN_KEY = SCRIPT_ID.replace(/\.plugin\.js$/, "");
   const log = (...args) => console.log("[dx.bi]", ...args);
+
+  // Stremio Web can drop window.core on some routes (Stremio Enhanced works around the same thing),
+  // so keep the first working getState/dispatch we see and fall back to Enhanced's own copy.
+  const keptCore = { getState: null, dispatch: null };
+  function core() {
+    const live = window.core || (window.services && window.services.core);
+    if (live) {
+      if (!keptCore.getState && typeof live.getState === "function") keptCore.getState = live.getState.bind(live);
+      if (!keptCore.dispatch && typeof live.dispatch === "function") keptCore.dispatch = live.dispatch.bind(live);
+    }
+    const perm = window.__permanentCore || {};
+    return {
+      getState: keptCore.getState || perm.getState || null,
+      dispatch: keptCore.dispatch || perm.dispatch || null,
+    };
+  }
 
   // ---------------------------------------------------------------------------
   // Settings
@@ -45,6 +61,7 @@
     playerExtras: true,
     seekPreviews: true,
     remainingTime: true,
+    externalPlayer: true,
     enhance: "off",
     streamTools: true,
     splash: true,
@@ -101,7 +118,7 @@
       ],
     },
     { key: "previews", type: "toggle", label: "Hover previews", description: "Show a details card when you rest the mouse on a title.", defaultValue: DEFAULTS.previews },
-    { key: "ratings", type: "toggle", label: "IMDb ratings on posters", description: "Small IMDb badge on posters, from your addons' data (Cinemeta fills any gaps).", defaultValue: DEFAULTS.ratings },
+    { key: "ratings", type: "toggle", label: "Ratings on posters", description: "Small IMDb badge on posters, from your addons' data (Cinemeta fills any gaps). Anime from Kitsu or MyAnimeList catalogs gets its Kitsu or AniList score.", defaultValue: DEFAULTS.ratings },
     { key: "wideContinue", type: "toggle", label: "Wide Continue Watching", description: "Show Continue Watching as landscape cards with title art.", defaultValue: DEFAULTS.wideContinue },
     { key: "playerExtras", type: "toggle", label: "Netflix-style player extras", description: "Back/forward 10 seconds buttons, title in the control bar and play/pause feedback.", defaultValue: DEFAULTS.playerExtras },
     {
@@ -119,6 +136,7 @@
       ],
     },
     { key: "seekPreviews", type: "toggle", label: "Seek bar previews", description: "Netflix-style thumbnails when you point at the progress bar. Built quietly in the background from your stream (pauses while buffering).", defaultValue: DEFAULTS.seekPreviews },
+    { key: "externalPlayer", type: "toggle", label: "Open in mpv / VLC button", description: "Adds a button to the player that hands the stream to mpv or VLC (only shown when one is installed). Handy when a file stutters or won't play here: they handle more formats and are lighter on slower PCs.", defaultValue: DEFAULTS.externalPlayer },
     { key: "remainingTime", type: "toggle", label: "Show time remaining", description: "The player clock counts down, like Netflix (click it to switch back).", defaultValue: DEFAULTS.remainingTime },
     { key: "streamTools", type: "toggle", label: "Stream sorting & filters", description: "Sort streams by quality, seeds or size and filter by quality, language, source, provider, instant and HDR.", defaultValue: DEFAULTS.streamTools },
     { key: "watchParty", type: "toggle", label: "Watch party", description: "Watch in sync with friends: start a party from the people button, send the code, and everyone opens the same title from their own addons and debrid account. Shared play, pause and seeking, waits for anyone buffering, chat and reactions. End-to-end encrypted, no account needed.", defaultValue: DEFAULTS.watchParty },
@@ -206,6 +224,7 @@
     check: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
     rewind10: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M6.7 2.8v3.9h3.9"/><text x="12" y="14.7" text-anchor="middle" fill="currentColor" stroke="none" style="font: 800 6.4px Inter, sans-serif; letter-spacing: -0.3px">10</text></svg>',
     forward10: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M17.3 2.8v3.9h-3.9"/><text x="12" y="14.7" text-anchor="middle" fill="currentColor" stroke="none" style="font: 800 6.4px Inter, sans-serif; letter-spacing: -0.3px">10</text></svg>',
+    external: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-8.5 8.5"/><path d="M18 14v4.5A1.5 1.5 0 0 1 16.5 20h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10"/></svg>',
     playSmall: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M8 5.2v13.6a.8.8 0 0 0 1.22.68l10.8-6.8a.8.8 0 0 0 0-1.36L9.22 4.52A.8.8 0 0 0 8 5.2z"/></svg>',
   };
 
@@ -364,6 +383,80 @@
         });
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Anime scores for kitsu:/mal: titles, which have no IMDb rating. Ids seen within a short window
+  // are fetched together (one Kitsu or AniList request per batch) and cached like Cinemeta data.
+  // ---------------------------------------------------------------------------
+
+  const animeScore = {
+    waiting: { kitsu: new Map(), mal: new Map() },
+    timer: null,
+
+    parse(id) {
+      const m = /^(kitsu|mal):(\d+)$/.exec(id || "");
+      return m ? { source: m[1], num: m[2] } : null;
+    },
+
+    get(id) {
+      const p = this.parse(id);
+      if (!p) return Promise.resolve(null);
+      const key = `anime:${p.source}:${p.num}`;
+      const cached = readCached(key);
+      if (cached !== undefined) return Promise.resolve(cached);
+      const bucket = this.waiting[p.source];
+      if (!bucket.has(p.num)) {
+        let resolve;
+        const promise = new Promise((r) => { resolve = r; });
+        bucket.set(p.num, { promise, resolve });
+      }
+      clearTimeout(this.timer);
+      this.timer = setTimeout(() => this.flush(), 120);
+      return bucket.get(p.num).promise;
+    },
+
+    flush() {
+      for (const source of ["kitsu", "mal"]) {
+        const bucket = this.waiting[source];
+        while (bucket.size) {
+          const batch = [...bucket.entries()].slice(0, 20);
+          batch.forEach(([num]) => bucket.delete(num));
+          this.fetchBatch(source, batch);
+        }
+      }
+    },
+
+    async fetchBatch(source, batch) {
+      const scores = new Map();
+      try {
+        if (source === "kitsu") {
+          const ids = batch.map(([num]) => num).join(",");
+          const r = await fetch(`https://kitsu.app/api/edge/anime?filter[id]=${ids}&fields[anime]=averageRating&page[limit]=20`, { signal: AbortSignal.timeout(10000) });
+          const j = r.ok ? await r.json() : null;
+          for (const item of (j && j.data) || []) scores.set(String(item.id), parseFloat(item.attributes && item.attributes.averageRating) / 10);
+        } else {
+          const query = "{" + batch.map(([num]) => `m${num}:Media(idMal:${num},type:ANIME){averageScore}`).join(" ") + "}";
+          const r = await fetch("https://graphql.anilist.co", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ query }),
+            signal: AbortSignal.timeout(10000),
+          });
+          const j = r.ok || r.status === 404 ? await r.json() : null;
+          for (const [alias, media] of Object.entries((j && j.data) || {})) {
+            if (media && media.averageScore) scores.set(alias.slice(1), media.averageScore / 10);
+          }
+        }
+      } catch (_) { /* offline or rate limited: try again next time */ }
+      const label = source === "kitsu" ? "Kitsu" : "AniList";
+      for (const [num, job] of batch) {
+        const value = scores.get(num);
+        const result = value ? { label, value } : null;
+        if (scores.size || value) writeCached(`anime:${source}:${num}`, result);
+        job.resolve(result);
+      }
+    },
+  };
 
   // ---------------------------------------------------------------------------
   // Route + header state
@@ -677,12 +770,13 @@
     MODELS: ["board", "discover", "search", "library", "continue_watching_preview"],
 
     refresh(force) {
-      if (!window.core || typeof window.core.getState !== "function") return Promise.resolve();
+      const { getState } = core();
+      if (!getState) return Promise.resolve();
       if (!force && Date.now() - this.at < 4000) return this.loading || Promise.resolve();
       this.at = Date.now();
       this.loading = (async () => {
         for (const model of this.MODELS) {
-          try { this.collect(await window.core.getState(model), 0); } catch (_) { /* model not loaded yet */ }
+          try { this.collect(await getState(model), 0); } catch (_) { /* model not loaded yet */ }
         }
       })();
       return this.loading;
@@ -709,7 +803,10 @@
       const links = Array.isArray(item.links) ? item.links : [];
       const imdbLink = links.find((l) => l && l.category === "imdb");
       const imdbFromUrl = imdbLink && /tt\d+/.exec(imdbLink.url || "");
-      const rating = imdbLink && parseFloat(imdbLink.name);
+      // The Kitsu addon puts its own score in the "imdb" link (pointing at kitsu.io): label it as Kitsu
+      const kitsuScored = imdbLink && /kitsu\./i.test(imdbLink.url || "");
+      const rating = imdbLink && !kitsuScored && parseFloat(imdbLink.name);
+      const kitsu = kitsuScored && parseFloat(imdbLink.name);
       const genres = links.filter((l) => l && l.category === "Genres").map((l) => l.name).slice(0, 4);
       const key = `${item.type}:${id}`;
       const prev = this.map.get(key) || {};
@@ -720,6 +817,7 @@
         runtime: item.runtime || prev.runtime || "",
         genres: genres.length ? genres : prev.genres || [],
         imdbRating: rating || prev.imdbRating || null,
+        score: kitsu ? { label: "Kitsu", value: kitsu } : prev.score || null,
         imdbId: isImdb(id) ? id : (imdbFromUrl ? imdbFromUrl[0] : prev.imdbId || null),
         background: item.background || prev.background || null,
         logo: item.logo || prev.logo || null,
@@ -753,7 +851,16 @@
       }
     }
     info.imdbId = imdbId || null;
+    if (!info.imdbRating && !info.score && animeScore.parse(id)) info.score = await animeScore.get(id);
     return info;
+  }
+
+  // The rating to show for a title: IMDb when known, otherwise an anime score
+  function scoreOf(info) {
+    if (!info) return null;
+    const imdb = parseFloat(info.imdbRating);
+    if (imdb) return { label: "IMDb", value: imdb };
+    return info.score && info.score.value ? info.score : null;
   }
 
   // Artwork for a title: addon-provided first, then MetaHub via its IMDb id
@@ -841,19 +948,18 @@
     }
     if (badge && badge.dataset.key === key) return;
     if (badge) badge.remove();
-    const place = (value) => {
-      const rating = parseFloat(value);
+    const place = (score) => {
       const current = cardInfo(card);
-      if (!rating || !current || `${current.type}:${current.id}` !== key) return;
+      if (!score || !current || `${current.type}:${current.id}` !== key) return;
       if (poster.querySelector(":scope > .dx-badge")) return;
       const b = document.createElement("div");
-      b.className = "dx-badge";
+      b.className = score.label === "IMDb" ? "dx-badge" : "dx-badge is-anime";
       b.dataset.key = key;
-      b.innerHTML = `<i>IMDb</i>${rating.toFixed(1)}`;
+      b.innerHTML = `<i>${esc(score.label)}</i>${score.value.toFixed(1)}`;
       poster.append(b);
     };
-    if (known && known.imdbRating) place(known.imdbRating);
-    else getInfo(info.type, info.id).then((meta) => meta && meta.imdbRating && place(meta.imdbRating));
+    if (scoreOf(known)) place(scoreOf(known));
+    else getInfo(info.type, info.id).then((meta) => place(scoreOf(meta)));
   }
 
   function syncCards() {
@@ -940,20 +1046,22 @@
     },
 
     async refreshLibrary() {
-      if (Date.now() - this.library.at < 15000 || !window.core || !window.core.getState) return;
+      const { getState } = core();
+      if (Date.now() - this.library.at < 15000 || !getState) return;
       this.library.at = Date.now();
       try {
-        const state = await window.core.getState("library");
+        const state = await getState("library");
         this.library.ids = new Set((state.catalog || []).map((i) => i._id || i.id));
       } catch (_) { /* library not available — the button still works */ }
     },
 
     toggleList(button) {
-      if (!window.core || !window.core.dispatch) return;
+      const { dispatch } = core();
+      if (!dispatch) return;
       const { id, type, name, poster } = button.dataset;
       const inList = this.library.ids.has(id);
       try {
-        window.core.dispatch({
+        dispatch({
           action: "Ctx",
           args: inList
             ? { action: "RemoveFromLibrary", args: id }
@@ -986,12 +1094,12 @@
       const bg = artFor(meta, info.id, "background");
       const logoUrl = artFor(meta, info.id, "logo");
       const media = [bg && `url('${bg}')`, info.poster && `url('${info.poster}')`].filter(Boolean).join(", ") || "none";
-      const rating = parseFloat(meta.imdbRating);
+      const score = scoreOf(meta);
       const length = info.type === "series"
         ? (meta.seasons ? `${meta.seasons} Season${meta.seasons > 1 ? "s" : ""}` : "")
         : formatRuntime(meta.runtime);
       const facts = [
-        rating ? `<span class="dx-match">${rating.toFixed(1)} IMDb</span>` : "",
+        score ? `<span class="dx-match">${score.value.toFixed(1)} ${esc(score.label)}</span>` : "",
         meta.releaseInfo ? `<span>${esc(String(meta.releaseInfo).replace(/–$/, "–now"))}</span>` : "",
         length ? `<span>${esc(length)}</span>` : "",
         `<span class="dx-hd">HD</span>`,
@@ -1033,7 +1141,7 @@
 
       el.innerHTML = this.render(info, meta);
       this.wire(el);
-      if (!meta.imdbRating || !meta.genres || !meta.genres.length) {
+      if (!scoreOf(meta) || !meta.genres || !meta.genres.length) {
         metaPromise.then((late) => {
           if (late && token === this.token && this.el.classList.contains("is-open")) {
             el.innerHTML = this.render(info, late);
@@ -1172,6 +1280,8 @@
         next.remove();
       }
 
+      this.ensureExternal(row);
+
       const source = root.querySelector('[class*="player-title"]:not([class*="container"])');
       const text = (source && source.textContent.trim()) || "";
       if (row && text) {
@@ -1205,6 +1315,58 @@
           video.addEventListener("pause", this.onPause);
         }
       }
+    },
+
+    // Hand the stream to mpv/VLC through Stremio Enhanced's launcher (it finds the player itself)
+    externalPaths: null,
+
+    ensureExternal(row) {
+      const existing = row && row.querySelector(":scope > .dx-external");
+      const launcher = window.StremioEnhancedAPI;
+      if (!row || !settings.externalPlayer || !launcher || typeof launcher.launchExternalPlayer !== "function") {
+        if (existing) existing.remove();
+        return;
+      }
+      if (existing) return;
+      if (!this.externalPaths) {
+        this.externalPaths = Promise.resolve(launcher.getExternalPlayerPaths?.()).catch(() => null);
+        this.externalPaths.then(() => scheduleSync());
+        return;
+      }
+      this.externalPaths.then((paths) => {
+        const which = paths && (paths.mpv ? "mpv" : paths.vlc ? "vlc" : null);
+        if (!which || row.querySelector(":scope > .dx-external") || !row.isConnected) return;
+        const b = document.createElement("div");
+        b.className = "dx-seek dx-external";
+        b.title = `Open in ${which === "mpv" ? "mpv" : "VLC"}`;
+        b.setAttribute("role", "button");
+        b.innerHTML = ICONS.external;
+        b.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.openExternal(which);
+        });
+        const title = row.querySelector(":scope > .dx-player-title");
+        row.insertBefore(b, title || null);
+      });
+    },
+
+    async openExternal(which) {
+      let url = null;
+      try {
+        const s = await core().getState("player");
+        const stream = s && s.stream;
+        url = stream && stream.type === "Ready" && stream.content && stream.content.url;
+        if (!url && s && s.selected && s.selected.stream) url = s.selected.stream.url;
+      } catch (_) { /* player state not available */ }
+      if (!url || !/^https?:\/\//.test(url)) {
+        playerToast("Couldn't get this stream's address");
+        return;
+      }
+      // Pause here first so Stremio keeps your place, then let the other player take over
+      this.root()?.querySelector("video")?.pause();
+      const name = which === "mpv" ? "mpv" : "VLC";
+      const result = await window.StremioEnhancedAPI.launchExternalPlayer(which, url).catch((err) => ({ success: false, error: String(err) }));
+      playerToast(result && result.success ? `Opening in ${name}…` : `Couldn't open ${name}`);
     },
 
     seekButton(dir) {
@@ -3278,7 +3440,7 @@
         const hash = location.hash;
         this.loading = (async () => {
           try {
-            const s = await window.core.getState("player");
+            const s = await core().getState("player");
             const sel = s && s.selected;
             if (!sel || !sel.streamRequest || !sel.streamRequest.path) {
               this.media = null;
@@ -3949,7 +4111,7 @@
         await new Promise((r) => setTimeout(r, 400));
         if (!stillWanted()) return null;
         let s;
-        try { s = await window.core.getState("meta_details"); } catch (_) { continue; }
+        try { s = await core().getState("meta_details"); } catch (_) { continue; }
         const sel = s && s.selected && s.selected.streamPath;
         if (!sel || sel.id !== media.videoId) continue;
         const groups = Array.isArray(s.streams) ? s.streams : [];
@@ -4475,6 +4637,55 @@
   const onHash = () => { updateRoute(); scheduleSync(); };
   const onTitle = new MutationObserver(brandTitle);
 
+  // ---------------------------------------------------------------------------
+  // Theme: offer the dx.bi theme once, and fix theme links on Linux/macOS
+  // ---------------------------------------------------------------------------
+
+  const THEME_FILE = "dxbi.theme.css";
+
+  // Stremio Enhanced's Apply button sets the stylesheet href to a bare path ("/home/…/x.theme.css"),
+  // which resolves against web.stremio.com, so a newly applied theme only showed after a restart.
+  // Point it at the file instead.
+  function fixThemeLink() {
+    const link = document.getElementById("activeTheme");
+    const raw = link && link.getAttribute("href");
+    if (raw && raw.startsWith("/")) link.setAttribute("href", "file://" + encodeURI(raw));
+  }
+  const themeLinkWatch = new MutationObserver(fixThemeLink);
+
+  function themeLoaded(link) {
+    return new Promise((resolve) => {
+      if (!link) return resolve(false);
+      if (link.sheet) return resolve(true);
+      link.addEventListener("load", () => resolve(true), { once: true });
+      link.addEventListener("error", () => resolve(false), { once: true });
+      setTimeout(() => resolve(!!link.sheet), 4000);
+    });
+  }
+
+  async function offerTheme() {
+    const launcher = window.StremioEnhancedAPI;
+    if (!launcher || typeof launcher.applyTheme !== "function" || typeof launcher.showAlert !== "function") return;
+    let current = null;
+    try {
+      if (localStorage.getItem("dxbi.themeOffered")) return;
+      current = localStorage.getItem("currentTheme");
+    } catch (_) { return; }
+    if (current === THEME_FILE) return;
+    // Only when no other theme is in use: never replace a theme someone picked
+    if (current && current !== "Default") return;
+    try { localStorage.setItem("dxbi.themeOffered", "1"); } catch (_) { /* ignore */ }
+    const choice = await launcher.showAlert("question", "dx.bi", "Use the dx.bi theme? It completes the look (you can change it any time in Settings → Enhanced → Themes).", ["Use dx.bi theme", "Not now"]);
+    if (choice !== 0) return;
+    await launcher.applyTheme(THEME_FILE);
+    fixThemeLink();
+    if (!(await themeLoaded(document.getElementById("activeTheme")))) {
+      // The theme file isn't installed: go back to the default look and say where to get it
+      await launcher.applyTheme("Default");
+      launcher.showAlert("info", "dx.bi", "The dx.bi theme isn't installed yet. Get it from Settings → Enhanced → Browse plugins/themes, or github.com/notdxbi/dxbi-stremio.", ["OK"]);
+    }
+  }
+
   function start() {
     // loadSettings applies the cached settings synchronously, so the intro sees the right accent/sound
     const loading = loadSettings();
@@ -4496,6 +4707,10 @@
     for (const type of ["pointerdown", "mousedown", "touchstart"]) window.addEventListener(type, onPortalPress, { capture: true, passive: false });
     window.addEventListener("click", onPortalClick, true);
     portalSizer.observe(document.body, { childList: true });
+    themeLinkWatch.observe(document.head, { childList: true });
+    fixThemeLink();
+    // Ask about the theme after the intro, never on top of it
+    setTimeout(() => offerTheme().catch(() => { /* Enhanced API unavailable */ }), 6000);
     // Prepare the sounds after the intro so they never compete with it
     setTimeout(() => { if (settings.uiSounds) sfx.ensure(); }, 4500);
     sync();
@@ -4509,6 +4724,7 @@
     destroy() {
       mo.disconnect();
       io.disconnect();
+      themeLinkWatch.disconnect();
       onTitle.disconnect();
       document.removeEventListener("scroll", onScroll, { capture: true });
       document.removeEventListener("mouseover", onOver);
