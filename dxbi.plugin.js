@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews, IMDb ratings on posters, wide Continue Watching, stream sorting & filters, a Netflix-style player, watch parties with friends, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.7.0
+ * @version 2.8.0
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -62,6 +62,12 @@
     seekPreviews: true,
     remainingTime: true,
     externalPlayer: true,
+    skipButtons: true,
+    autoSkip: "off",
+    pip: true,
+    subtitleStyle: "stremio",
+    subtitleFont: "default",
+    addonTools: true,
     enhance: "off",
     streamTools: true,
     splash: true,
@@ -136,6 +142,49 @@
       ],
     },
     { key: "seekPreviews", type: "toggle", label: "Seek bar previews", description: "Netflix-style thumbnails when you point at the progress bar. Built quietly in the background from your stream (pauses while buffering).", defaultValue: DEFAULTS.seekPreviews },
+    { key: "skipButtons", type: "toggle", label: "Skip intro, recap & credits", description: "Netflix-style Skip Intro / Next Episode buttons. Times come from TheIntroDB (movies & series) and AniSkip (anime), both community databases.", defaultValue: DEFAULTS.skipButtons },
+    {
+      key: "autoSkip",
+      type: "select",
+      label: "Skip automatically",
+      defaultValue: DEFAULTS.autoSkip,
+      options: [
+        { label: "Never (show the button)", value: "off" },
+        { label: "Intros and recaps", value: "intro" },
+        { label: "Intros, recaps and credits", value: "all" },
+      ],
+    },
+    {
+      key: "subtitleStyle",
+      type: "select",
+      label: "Subtitle style",
+      description: "Size and position stay on Stremio's own subtitle settings.",
+      defaultValue: DEFAULTS.subtitleStyle,
+      options: [
+        { label: "Stremio default", value: "stremio" },
+        { label: "Netflix (white, soft shadow)", value: "netflix" },
+        { label: "Bold outline", value: "outline" },
+        { label: "Boxed (dark background)", value: "boxed" },
+        { label: "Classic yellow", value: "yellow" },
+        { label: "Soft", value: "soft" },
+      ],
+    },
+    {
+      key: "subtitleFont",
+      type: "select",
+      label: "Subtitle font",
+      defaultValue: DEFAULTS.subtitleFont,
+      options: [
+        { label: "Stremio default", value: "default" },
+        { label: "Inter", value: "inter" },
+        { label: "Arial", value: "arial" },
+        { label: "Verdana", value: "verdana" },
+        { label: "Georgia (serif)", value: "georgia" },
+        { label: "Monospace", value: "mono" },
+      ],
+    },
+    { key: "pip", type: "toggle", label: "Picture-in-picture button", description: "Keep watching in a small floating window while you use other apps.", defaultValue: DEFAULTS.pip },
+    { key: "addonTools", type: "toggle", label: "Addon order & backup", description: "Adds a button to the Addons page to reorder your addons (the order streams and catalogs appear in) and to back them up or restore them.", defaultValue: DEFAULTS.addonTools },
     { key: "externalPlayer", type: "toggle", label: "Open in mpv / VLC button", description: "Adds a button to the player that hands the stream to mpv or VLC (only shown when one is installed). Handy when a file stutters or won't play here: they handle more formats and are lighter on slower PCs.", defaultValue: DEFAULTS.externalPlayer },
     { key: "remainingTime", type: "toggle", label: "Show time remaining", description: "The player clock counts down, like Netflix (click it to switch back).", defaultValue: DEFAULTS.remainingTime },
     { key: "streamTools", type: "toggle", label: "Stream sorting & filters", description: "Sort streams by quality, seeds or size and filter by quality, language, source, provider, instant and HDR.", defaultValue: DEFAULTS.streamTools },
@@ -176,6 +225,7 @@
     // Cached copy first so the UI is right on the very first frame
     try { Object.assign(settings, normalise(JSON.parse(localStorage.getItem("dxbi.settings") || "null"))); } catch (_) { /* ignore */ }
     applyAccent();
+    applySubtitleStyle();
     if (!API) return;
 
     // Drop a schema left over from an older version (kept in memory until the app restarts)
@@ -192,6 +242,7 @@
       Object.assign(settings, normalise(all));
       persistSettings();
       applyAccent();
+      applySubtitleStyle();
       hero.reset();
       scheduleSync();
     });
@@ -214,6 +265,8 @@
     play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.53.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>',
     info: '<svg viewBox="0 0 24 24" aria-hidden="true" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.25"/><path d="M12 11v6M12 7.5v.01"/></svg>',
     chevronDown: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+    chevronUp: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>',
+    pip: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11.5" width="6.5" height="5" rx="1" fill="currentColor"/></svg>',
     chevronLeft: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
     chevronRight: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
     enhance: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M9.5 3l1.6 4.4L15.5 9l-4.4 1.6L9.5 15l-1.6-4.4L3.5 9l4.4-1.6zM17.5 12.5l.9 2.4 2.4.9-2.4.9-.9 2.4-.9-2.4-2.4-.9 2.4-.9zM17 3l.6 1.4L19 5l-1.4.6L17 7l-.6-1.4L15 5l1.4-.6z"/></svg>',
@@ -1281,6 +1334,7 @@
       }
 
       this.ensureExternal(row);
+      this.ensurePip(row);
 
       const source = root.querySelector('[class*="player-title"]:not([class*="container"])');
       const text = (source && source.textContent.trim()) || "";
@@ -1315,6 +1369,25 @@
           video.addEventListener("pause", this.onPause);
         }
       }
+    },
+
+    ensurePip(row) {
+      const existing = row && row.querySelector(":scope > .dx-pip");
+      if (!row || !settings.pip || !document.pictureInPictureEnabled) {
+        if (existing) existing.remove();
+        return;
+      }
+      if (existing) return;
+      const b = document.createElement("div");
+      b.className = "dx-seek dx-pip";
+      b.title = "Picture-in-picture";
+      b.setAttribute("role", "button");
+      b.innerHTML = ICONS.pip;
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        togglePip();
+      });
+      row.insertBefore(b, row.querySelector(":scope > .dx-external") || row.querySelector(":scope > .dx-player-title") || null);
     },
 
     // Hand the stream to mpv/VLC through Stremio Enhanced's launcher (it finds the player itself)
@@ -4608,7 +4681,7 @@
   }
 
   function sync() {
-    const steps = [updateRoute, brandTitle, () => player.ensure(), () => scrub.ensure(), () => enhance.ensure(), () => watchParty.ensure()];
+    const steps = [updateRoute, brandTitle, () => player.ensure(), () => scrub.ensure(), () => enhance.ensure(), () => watchParty.ensure(), () => skip.ensure(), () => addonTools.ensure()];
     if (currentRoute() === "detail") steps.push(() => streamTools.ensure());
     if (currentRoute() !== "player") {
       steps.push(() => hero.ensure(), () => carouselRows().forEach(enhanceRow), syncCards);
@@ -4636,6 +4709,524 @@
   const onOut = (e) => preview.onOut(e);
   const onHash = () => { updateRoute(); scheduleSync(); };
   const onTitle = new MutationObserver(brandTitle);
+
+  // ---------------------------------------------------------------------------
+  // Built-in extras: subtitle styles, skip intro/credits, picture-in-picture, addon order & backup.
+  // Their styles live here (not in the theme) so they also work with other themes.
+  // ---------------------------------------------------------------------------
+
+  const EXTRAS_CSS = `
+  .dxe-skip { position: absolute; z-index: 7; right: 3.2rem; bottom: 9.5rem; display: inline-flex; align-items: center; gap: .6rem; height: 3.1rem; padding: 0 1.3rem 0 1.5rem; border: 1px solid rgba(255,255,255,.55); border-radius: .4rem; background: rgba(24,24,24,.72); backdrop-filter: blur(10px); color: #fff; font: 700 1.05rem Inter, system-ui, sans-serif !important; cursor: pointer; opacity: 0; transform: translateY(6px); pointer-events: none; transition: opacity .25s ease, transform .25s ease, background-color .15s, border-color .15s; }
+  .dxe-skip.is-on { opacity: 1; transform: none; pointer-events: auto; }
+  .dxe-skip:hover { background: #fff; color: #000; border-color: #fff; }
+  .dxe-skip svg { width: 1.3rem; height: 1.3rem; fill: currentColor; }
+  .dxe-addon-btn { display: inline-flex; align-items: center; gap: .5rem; height: 2.9rem; padding: 0 1.2rem; margin-left: .8rem; border-radius: .5rem; background: rgba(255,255,255,.1); color: #fff; font: 700 .92rem Inter, system-ui, sans-serif !important; cursor: pointer; white-space: nowrap; transition: background-color .15s; }
+  .dxe-addon-btn:hover { background: rgba(255,255,255,.18); }
+  .dxe-addon-btn svg { width: 1.15rem; height: 1.15rem; }
+  .dxe-modal { position: fixed; inset: 0; z-index: 100002; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.6); backdrop-filter: blur(4px); font-family: Inter, system-ui, sans-serif; }
+  .dxe-sheet { width: 34rem; max-width: calc(100vw - 2rem); max-height: calc(100vh - 4rem); display: flex; flex-direction: column; border-radius: 1rem; background: rgba(20,20,22,.97); border: 1px solid rgba(255,255,255,.09); box-shadow: 0 30px 80px rgba(0,0,0,.6); color: #fff; }
+  .dxe-sheet * { box-sizing: border-box; }
+  .dxe-head { display: flex; align-items: flex-start; gap: 1rem; padding: 1.3rem 1.4rem .8rem; }
+  .dxe-head b { flex: 1; font: 800 1.2rem/1.25 Inter, system-ui, sans-serif !important; }
+  .dxe-head small { display: block; margin-top: .3rem; color: rgba(255,255,255,.5); font: 500 .8rem/1.4 Inter, system-ui, sans-serif !important; }
+  .dxe-list { flex: 1; overflow-y: auto; padding: .2rem .8rem; display: flex; flex-direction: column; gap: .3rem; }
+  .dxe-row { display: flex; align-items: center; gap: .8rem; padding: .55rem .6rem; border-radius: .6rem; background: rgba(255,255,255,.04); cursor: grab; user-select: none; }
+  .dxe-row.is-dragging { opacity: .4; }
+  .dxe-row.is-over { box-shadow: inset 0 2px 0 var(--dx-accent, #e50914); }
+  .dxe-num { width: 1.4rem; color: rgba(255,255,255,.35); font: 700 .8rem Inter, system-ui, sans-serif !important; text-align: right; }
+  .dxe-logo { width: 2.2rem; height: 2.2rem; flex: none; border-radius: .4rem; object-fit: contain; background: rgba(255,255,255,.06); }
+  .dxe-name { flex: 1; min-width: 0; font: 700 .9rem/1.3 Inter, system-ui, sans-serif !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dxe-name span { display: block; color: rgba(255,255,255,.45); font: 500 .74rem/1.3 Inter, system-ui, sans-serif !important; overflow: hidden; text-overflow: ellipsis; }
+  .dxe-move { width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center; border-radius: .4rem; color: rgba(255,255,255,.6); cursor: pointer; }
+  .dxe-move:hover { background: rgba(255,255,255,.1); color: #fff; }
+  .dxe-move svg { width: 1rem; height: 1rem; }
+  .dxe-foot { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: 1rem 1.4rem 1.3rem; }
+  .dxe-foot .dxe-spacer { flex: 1; }
+  .dxe-btn { height: 2.5rem; padding: 0 1rem; display: inline-flex; align-items: center; gap: .4rem; border: 0; border-radius: .5rem; background: rgba(255,255,255,.1); color: #fff; font: 700 .86rem Inter, system-ui, sans-serif !important; cursor: pointer; }
+  .dxe-btn:hover { background: rgba(255,255,255,.17); }
+  .dxe-btn.is-primary { background: var(--dx-accent, #e50914); }
+  .dxe-btn:disabled { opacity: .4; cursor: default; }
+  .dxe-msg { width: 100%; color: rgba(255,255,255,.55); font: 500 .8rem/1.45 Inter, system-ui, sans-serif !important; }
+  .dxe-msg.is-bad { color: #ff6b6b; }
+  .dxe-msg.is-good { color: #4ade80; }
+  `;
+
+  function ensureExtrasStyle() {
+    if (document.getElementById("dx-extras-style")) return;
+    const style = document.createElement("style");
+    style.id = "dx-extras-style";
+    style.textContent = EXTRAS_CSS;
+    document.head.append(style);
+  }
+
+  function isSeriesRoute() {
+    return decodeURIComponent((location.hash || "").split("/")[5] || "") === "series";
+  }
+
+  function pressNextEpisode() {
+    // Stremio's own "play next" shortcut
+    const opts = { key: "N", code: "KeyN", shiftKey: true, bubbles: true };
+    document.dispatchEvent(new KeyboardEvent("keydown", opts));
+    document.dispatchEvent(new KeyboardEvent("keyup", opts));
+  }
+
+  // ---- Subtitle styles: Stremio shows subtitles as the video's own cues, so ::cue restyles them
+  // (and the upscaler's subtitle layer copies whatever ::cue ends up as).
+
+  const SUB_PRESETS = {
+    netflix: "color: #fff; background: transparent; font-weight: 600; text-shadow: 0 0 3px #000, 0 0 3px #000, 0 2px 6px rgba(0,0,0,.85);",
+    outline: "color: #fff; background: transparent; font-weight: 700; text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0 0 6px #000;",
+    boxed: "color: #fff; background: rgba(0,0,0,.78); font-weight: 500; text-shadow: none;",
+    yellow: "color: #ffd84d; background: transparent; font-weight: 700; text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000;",
+    soft: "color: rgba(255,255,255,.92); background: transparent; font-weight: 400; text-shadow: 0 1px 3px rgba(0,0,0,.9);",
+  };
+  const SUB_FONTS = {
+    inter: "Inter, system-ui, sans-serif",
+    arial: "Arial, Helvetica, sans-serif",
+    verdana: "Verdana, Geneva, sans-serif",
+    georgia: "Georgia, 'Times New Roman', serif",
+    mono: "'JetBrains Mono', ui-monospace, monospace",
+  };
+
+  function applySubtitleStyle() {
+    let el = document.getElementById("dx-sub-style");
+    const decl = (SUB_PRESETS[settings.subtitleStyle] || "") + (SUB_FONTS[settings.subtitleFont] ? ` font-family: ${SUB_FONTS[settings.subtitleFont]};` : "");
+    if (!decl) {
+      if (el) el.remove();
+      return;
+    }
+    if (!el) {
+      el = document.createElement("style");
+      el.id = "dx-sub-style";
+      document.head.append(el);
+    }
+    el.textContent = `#app [class*="player-container"] video::cue { ${decl.replace(/;/g, " !important;")} }`;
+  }
+
+  // ---- Skip intro / recap / credits
+
+  const SKIP_LABEL = { intro: "Skip Intro", recap: "Skip Recap", preview: "Skip Preview", credits: "Skip Credits" };
+
+  const skip = {
+    key: null,
+    segments: [],
+    video: null,
+    btn: null,
+    current: null,
+    autoDone: new Set(),
+    cache: new Map(),
+
+    ensure() {
+      if (!settings.skipButtons || currentRoute() !== "player") {
+        this.reset();
+        return;
+      }
+      const video = document.querySelector('[class*="player-container"] video');
+      if (video !== this.video) {
+        this.detach();
+        this.video = video;
+        // seeked as well, so the button shows the moment you jump into an intro (not after buffering)
+        if (video) for (const type of ["timeupdate", "seeked"]) video.addEventListener(type, this.onTime);
+      }
+      if (this.key !== location.hash) this.load(location.hash);
+    },
+
+    detach() {
+      if (this.video) for (const type of ["timeupdate", "seeked"]) this.video.removeEventListener(type, this.onTime);
+    },
+
+    reset() {
+      this.detach();
+      this.video = null;
+      this.key = null;
+      this.segments = [];
+      this.hide();
+    },
+
+    async load(hash) {
+      this.key = hash;
+      this.segments = [];
+      this.autoDone.clear();
+      this.hide();
+      let media = null;
+      // The player state fills in a moment after the route changes
+      for (let i = 0; i < 20 && !media; i++) {
+        media = await this.media();
+        if (this.key !== hash) return;
+        if (!media) await new Promise((r) => setTimeout(r, 500));
+      }
+      if (!media) return;
+      let segs = this.cache.get(media.videoId);
+      if (!segs) {
+        segs = await this.fetchSegments(media).catch(() => []);
+        this.cache.set(media.videoId, segs);
+      }
+      if (this.key === hash) {
+        this.segments = segs;
+        if (segs.length) log("skip segments", segs);
+      }
+    },
+
+    async media() {
+      const { getState } = core();
+      if (!getState) return null;
+      try {
+        const s = await getState("player");
+        const sel = s && s.selected;
+        const sp = sel && sel.streamRequest && sel.streamRequest.path;
+        const mp = (sel && sel.metaRequest && sel.metaRequest.path) || sp;
+        return sp && mp ? { type: mp.type, metaId: mp.id, videoId: String(sp.id) } : null;
+      } catch (_) {
+        return null;
+      }
+    },
+
+    async fetchSegments(media) {
+      const id = media.metaId;
+      const parts = media.videoId.split(":");
+      if (/^kitsu:\d+$/.test(id)) {
+        const mal = await this.malId(id.slice(6));
+        return mal ? this.aniskip(mal, parseInt(parts[2] || "1", 10) || 1) : [];
+      }
+      let query;
+      if (/^tt\d+$/.test(id)) query = `imdb_id=${id}`;
+      else if (/^tmdb:\d+$/.test(id)) query = `tmdb_id=${id.slice(5)}`;
+      else return [];
+      if (media.type === "series") {
+        // series video ids end in :season:episode (tt0903747:1:2, tmdb:1396:1:2)
+        const [season, episode] = parts.slice(-2).map((n) => parseInt(n, 10));
+        if (!Number.isInteger(season) || !Number.isInteger(episode)) return [];
+        query += `&season=${season}&episode=${episode}`;
+      }
+      const r = await fetch(`https://api.theintrodb.org/v3/media?${query}`, { signal: AbortSignal.timeout(10000) });
+      if (r.status !== 200) return [];
+      const j = await r.json();
+      const out = [];
+      for (const type of ["intro", "recap", "credits", "preview"]) {
+        for (const seg of j[type] || []) {
+          const start = (seg.start_ms || 0) / 1000;
+          const end = seg.end_ms == null ? null : seg.end_ms / 1000;
+          if (end === null || end > start + 1) out.push({ type, start, end });
+        }
+      }
+      return out;
+    },
+
+    async malId(kitsuId) {
+      const key = `malmap:${kitsuId}`;
+      const cached = readCached(key);
+      if (cached !== undefined) return cached;
+      const r = await fetch(`https://kitsu.app/api/edge/anime/${kitsuId}/mappings?filter[externalSite]=myanimelist/anime`, { signal: AbortSignal.timeout(10000) });
+      const j = r.ok ? await r.json() : null;
+      const ext = j && j.data && j.data[0] && j.data[0].attributes && j.data[0].attributes.externalId;
+      const mal = ext ? parseInt(ext, 10) || null : null;
+      if (j) writeCached(key, mal);
+      return mal;
+    },
+
+    async aniskip(mal, episode) {
+      const types = ["op", "ed", "recap", "mixed-op", "mixed-ed"].map((t) => `types[]=${t}`).join("&");
+      const r = await fetch(`https://api.aniskip.com/v2/skip-times/${mal}/${episode}?${types}&episodeLength=0`, { signal: AbortSignal.timeout(10000) });
+      if (!r.ok) return []; // 404: nobody has submitted times for this episode yet
+      const j = await r.json();
+      const kind = { op: "intro", "mixed-op": "intro", ed: "credits", "mixed-ed": "credits", recap: "recap" };
+      return (j.results || [])
+        .map((x) => ({ type: kind[x.skipType], start: x.interval.startTime, end: x.interval.endTime }))
+        .filter((s) => s.type && s.end > s.start + 1);
+    },
+
+    onTime: () => skip.tick(),
+
+    tick() {
+      const v = this.video;
+      if (!v || !this.segments.length) {
+        this.hide();
+        return;
+      }
+      const t = v.currentTime;
+      const dur = isFinite(v.duration) ? v.duration : Infinity;
+      const seg = this.segments.find((s) => t >= s.start && t < (s.end === null ? dur : s.end) - 1);
+      if (!seg) {
+        this.hide();
+        return;
+      }
+      const id = `${seg.type}@${seg.start}`;
+      const auto = settings.autoSkip === "all"
+        ? seg.type !== "credits" || isSeriesRoute()
+        : settings.autoSkip === "intro" && (seg.type === "intro" || seg.type === "recap");
+      if (auto && !this.autoDone.has(id)) {
+        // only once per segment, so seeking back into an intro on purpose lets you watch it
+        this.autoDone.add(id);
+        this.go(seg);
+        playerToast(seg.type === "credits" ? "Skipped the credits" : `Skipped the ${seg.type}`);
+        return;
+      }
+      this.show(seg);
+    },
+
+    show(seg) {
+      const root = document.querySelector('[class*="player-container"]');
+      if (!root) return;
+      ensureExtrasStyle();
+      if (!this.btn || !this.btn.isConnected) {
+        this.btn = document.createElement("button");
+        this.btn.className = "dxe-skip";
+        this.btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          if (this.current) this.go(this.current);
+        });
+        for (const type of ["pointerdown", "mousedown", "dblclick"]) this.btn.addEventListener(type, (e) => e.stopPropagation());
+        root.append(this.btn);
+      }
+      this.current = seg;
+      const label = seg.type === "credits" && isSeriesRoute() ? "Next Episode" : SKIP_LABEL[seg.type];
+      if (this.btn.dataset.label !== label) {
+        this.btn.dataset.label = label;
+        this.btn.innerHTML = `<span>${label}</span>${ICONS.nextEp}`;
+      }
+      this.btn.classList.add("is-on");
+    },
+
+    hide() {
+      this.current = null;
+      if (this.btn) this.btn.classList.remove("is-on");
+    },
+
+    go(seg) {
+      const v = this.video;
+      if (!v) return;
+      if (seg.type === "credits" && isSeriesRoute()) {
+        pressNextEpisode();
+      } else {
+        const dur = isFinite(v.duration) ? v.duration : null;
+        const to = seg.end !== null ? seg.end : dur && dur - 0.5;
+        if (to) v.currentTime = dur ? Math.min(to, dur - 0.25) : to;
+      }
+      this.hide();
+    },
+  };
+
+  // ---- Picture-in-picture (button lives in the player's control bar, see player.ensure)
+
+  async function togglePip() {
+    const video = document.querySelector('[class*="player-container"] video');
+    try {
+      if (document.pictureInPictureElement) await document.exitPictureInPicture();
+      else if (video) await video.requestPictureInPicture();
+    } catch (_) {
+      playerToast("Picture-in-picture isn't available for this video");
+    }
+  }
+
+  // ---- Addon order & backup (Addons page)
+
+  const addonTools = {
+    ensure() {
+      const want = settings.addonTools && currentRoute() === "addons";
+      const existing = document.querySelector(".dxe-addon-btn");
+      if (!want) {
+        if (existing) existing.remove();
+        return;
+      }
+      if (existing && existing.isConnected) return;
+      // Sits next to Stremio's own "Add addon" button
+      const anchor = document.querySelector('[class*="addons-container"] [class*="add-button-container"]');
+      if (!anchor || !anchor.parentElement) return;
+      ensureExtrasStyle();
+      const b = document.createElement("div");
+      b.className = "dxe-addon-btn";
+      b.setAttribute("role", "button");
+      b.innerHTML = `${ICONS.sort}<span>Order & backup</span>`;
+      b.addEventListener("click", () => this.open());
+      anchor.insertAdjacentElement("afterend", b);
+    },
+
+    async profile() {
+      const { getState } = core();
+      const ctx = getState ? await getState("ctx") : null;
+      return (ctx && ctx.profile) || null;
+    },
+
+    async open() {
+      const profile = await this.profile().catch(() => null);
+      if (!profile || !Array.isArray(profile.addons)) return;
+      this.original = profile.addons.slice();
+      this.list = profile.addons.slice();
+      this.signedIn = !!(profile.auth && profile.auth.key);
+      const modal = document.createElement("div");
+      modal.className = "dxe-modal";
+      modal.innerHTML = `
+        <div class="dxe-sheet" role="dialog" aria-label="Addon order and backup">
+          <div class="dxe-head"><b>Addon order & backup<small>Drag addons (or use the arrows) to set the order Stremio asks them for streams and shows their catalogs.</small></b></div>
+          <div class="dxe-list"></div>
+          <div class="dxe-foot">
+            <button class="dxe-btn" data-act="export">Back up</button>
+            <button class="dxe-btn" data-act="import">Restore…</button>
+            ${this.lastBackup() ? '<button class="dxe-btn" data-act="undo">Undo last change</button>' : ""}
+            <span class="dxe-spacer"></span>
+            <button class="dxe-btn" data-act="close">Close</button>
+            <button class="dxe-btn is-primary" data-act="save" disabled>Save order</button>
+            <div class="dxe-msg">${this.signedIn ? "Backups include your addon links, which can contain debrid keys: keep the file private." : "Sign in to Stremio to change the order: it's saved to your account."}</div>
+          </div>
+        </div>`;
+      for (const type of ["keydown", "keyup", "keypress"]) modal.addEventListener(type, (e) => e.stopPropagation());
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) return this.close();
+        const act = e.target.closest("[data-act]");
+        if (act) this.action(act.dataset.act, act);
+      });
+      document.body.append(modal);
+      this.modal = modal;
+      this.render();
+    },
+
+    close() {
+      if (this.modal) this.modal.remove();
+      this.modal = null;
+    },
+
+    render() {
+      const list = this.modal && this.modal.querySelector(".dxe-list");
+      if (!list) return;
+      list.innerHTML = this.list.map((a, i) => {
+        const m = a.manifest || {};
+        let host = "";
+        try { host = new URL(a.transportUrl).host; } catch (_) { /* odd URL */ }
+        const logo = m.logo && /^https:/.test(m.logo) ? `<img class="dxe-logo" src="${esc(m.logo)}" alt="">` : '<div class="dxe-logo"></div>';
+        return `<div class="dxe-row" draggable="true" data-i="${i}">
+          <span class="dxe-num">${i + 1}</span>${logo}
+          <div class="dxe-name">${esc(m.name || host || "Addon")}<span>${esc(host)}</span></div>
+          <div class="dxe-move" data-act="up" title="Move up">${ICONS.chevronUp}</div>
+          <div class="dxe-move" data-act="down" title="Move down">${ICONS.chevronDown}</div>
+        </div>`;
+      }).join("");
+      list.querySelectorAll("img.dxe-logo").forEach((img) => img.addEventListener("error", () => {
+        const blank = document.createElement("div");
+        blank.className = "dxe-logo";
+        img.replaceWith(blank);
+      }, { once: true }));
+      this.wireDrag(list);
+      const changed = this.list.some((a, i) => a !== this.original[i]);
+      this.modal.querySelector('[data-act="save"]').disabled = !changed || !this.signedIn;
+    },
+
+    wireDrag(list) {
+      let from = null;
+      list.querySelectorAll(".dxe-row").forEach((row) => {
+        row.addEventListener("dragstart", (e) => {
+          from = parseInt(row.dataset.i, 10);
+          row.classList.add("is-dragging");
+          e.dataTransfer.effectAllowed = "move";
+        });
+        row.addEventListener("dragend", () => row.classList.remove("is-dragging"));
+        row.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          row.classList.add("is-over");
+        });
+        row.addEventListener("dragleave", () => row.classList.remove("is-over"));
+        row.addEventListener("drop", (e) => {
+          e.preventDefault();
+          const to = parseInt(row.dataset.i, 10);
+          if (from !== null && from !== to) this.move(from, to);
+          from = null;
+        });
+      });
+    },
+
+    move(from, to) {
+      if (to < 0 || to >= this.list.length) return;
+      const [item] = this.list.splice(from, 1);
+      this.list.splice(to, 0, item);
+      this.render();
+    },
+
+    say(text, kind) {
+      const msg = this.modal && this.modal.querySelector(".dxe-msg");
+      if (!msg) return;
+      msg.textContent = text;
+      msg.className = "dxe-msg" + (kind ? ` is-${kind}` : "");
+    },
+
+    lastBackup() {
+      try { return JSON.parse(localStorage.getItem("dxbi.addonBackup") || "null"); } catch (_) { return null; }
+    },
+
+    async action(act, el) {
+      const row = el.closest(".dxe-row");
+      if (act === "up" || act === "down") {
+        const i = parseInt(row.dataset.i, 10);
+        this.move(i, act === "up" ? i - 1 : i + 1);
+      } else if (act === "close") {
+        this.close();
+      } else if (act === "save") {
+        await this.apply(this.list, "Order saved.");
+      } else if (act === "export") {
+        this.exportFile();
+      } else if (act === "import") {
+        this.importFile();
+      } else if (act === "undo") {
+        const backup = this.lastBackup();
+        if (backup && Array.isArray(backup.addons)) await this.apply(backup.addons, "Restored the addons from before your last change.", true);
+      }
+    },
+
+    // Replace the account's addon collection, keeping the previous one so it can be undone
+    async apply(addons, done, isUndo) {
+      const valid = addons.every((a) => a && typeof a.transportUrl === "string" && a.manifest && typeof a.manifest.id === "string");
+      if (!valid || !addons.length) return this.say("That list doesn't look like Stremio addons, so nothing was changed.", "bad");
+      const profile = await this.profile().catch(() => null);
+      const authKey = profile && profile.auth && profile.auth.key;
+      if (!authKey) return this.say("Sign in to Stremio first: addons are saved to your account.", "bad");
+      this.say("Saving…");
+      try {
+        if (!isUndo) localStorage.setItem("dxbi.addonBackup", JSON.stringify({ t: Date.now(), addons: profile.addons }));
+        const r = await fetch("https://api.strem.io/api/addonCollectionSet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "addonCollectionSet", authKey, addons }),
+          signal: AbortSignal.timeout(15000),
+        });
+        const j = await r.json().catch(() => null);
+        if (!j || !j.result) throw new Error((j && j.error && (j.error.message || j.error)) || `HTTP ${r.status}`);
+        const { dispatch } = core();
+        if (dispatch) dispatch({ action: "Ctx", args: { action: "PullAddonsFromAPI" } });
+        this.original = addons.slice();
+        this.list = addons.slice();
+        this.render();
+        this.say(done, "good");
+      } catch (err) {
+        this.say(`Stremio didn't accept the change (${err.message}). Nothing was changed.`, "bad");
+      }
+    },
+
+    exportFile() {
+      const data = { app: "dx.bi", type: "stremio-addons", exported: new Date().toISOString(), addons: this.original };
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      const a = Object.assign(document.createElement("a"), { href: url, download: `stremio-addons-${new Date().toISOString().slice(0, 10)}.json` });
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      this.say("Backup saved to your downloads. It includes your addon links (and any keys in them): keep it private.", "good");
+    },
+
+    importFile() {
+      const input = Object.assign(document.createElement("input"), { type: "file", accept: ".json,application/json" });
+      input.addEventListener("change", async () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        let addons = null;
+        try {
+          const parsed = JSON.parse(await file.text());
+          addons = Array.isArray(parsed) ? parsed : parsed.addons;
+        } catch (_) { /* handled below */ }
+        if (!Array.isArray(addons)) return this.say("That file isn't an addon backup.", "bad");
+        const ok = await (window.StremioEnhancedAPI?.showAlert?.("question", "Restore addons", `Replace your ${this.original.length} addons with the ${addons.length} in this backup? You can undo it afterwards.`, ["Restore", "Cancel"]) ?? Promise.resolve(0));
+        if (ok === 0) await this.apply(addons, `Restored ${addons.length} addons from the backup.`);
+      });
+      input.click();
+    },
+  };
 
   // ---------------------------------------------------------------------------
   // Theme: offer the dx.bi theme once, and fix theme links on Linux/macOS
@@ -4725,6 +5316,10 @@
       mo.disconnect();
       io.disconnect();
       themeLinkWatch.disconnect();
+      skip.reset();
+      addonTools.close();
+      for (const id of ["dx-extras-style", "dx-sub-style"]) document.getElementById(id)?.remove();
+      document.querySelectorAll(".dxe-skip, .dxe-addon-btn, .dx-pip").forEach((el) => el.remove());
       onTitle.disconnect();
       document.removeEventListener("scroll", onScroll, { capture: true });
       document.removeEventListener("mouseover", onOver);

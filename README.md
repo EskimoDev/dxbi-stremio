@@ -87,6 +87,8 @@ That's it. Updates are offered automatically inside the app.
 - **Stream sorting & filters** — sort by quality, seeds or size; filter by quality, language, source, provider, ⚡ instant and HDR
 - **Wide Continue Watching** cards with title art and progress
 - **Redesigned player** — seek-bar thumbnail previews, time remaining, ±10 seconds, Next Episode, **Open in mpv / VLC**, clean subtitle and speed menus
+- **Skip Intro & Next Episode** — Netflix-style buttons from community skip databases (movies, series and anime)
+- **Addon order & backup** — reorder, back up and restore your addons
 - **Watch party** — watch in sync with friends: shared play, pause and seeking, chat and reactions, end-to-end encrypted
 - **Picture enhancement (upscaler)** — real-time GPU upscaling: **[Anime4K](https://github.com/bloc97/Anime4K)** restore + upscale networks for anime, contrast-adaptive sharpening for movies, HDR handled correctly
 - **Subtle interface sounds** (adjustable or off)
@@ -186,6 +188,10 @@ It reads what your addons already show, so it works with any stream addon. Your 
 - Wide Continue Watching
 - Player extras
 - Picture enhancement — Off / Auto / Sharpen / Anime4K (quality or fast)
+- Skip intro/recap/credits buttons and auto-skip
+- Subtitle style and font
+- Picture-in-picture button
+- Addon order & backup
 - Watch party — on/off, follow the host, chat & activity in the player, sounds
 - Seek bar previews
 - Time remaining
@@ -200,39 +206,22 @@ Changes apply instantly.
 
 ---
 
-## My setup
+## Built in — no extra plugins needed
 
-What I run alongside DX.BI — all optional, all made by other people:
+DX.BI is one plugin. Everything below used to need a separate plugin and is now part of DX.BI, written from scratch so nothing clashes:
 
-| Plugin | What it does | By |
-|---|---|---|
-| [TheIntroDB](https://github.com/TheIntroDB/stremio-enhanced-plugin) | Skip intros, recaps and credits | TheIntroDB |
-| [Stremio Addon Manager](https://github.com/Sul-404/Stremio-Addon-Manager) | Reorder, edit and back up addons | Sul-404 |
-| [Enhanced Video Player](https://github.com/Fxy6969/Stremio-Glass-Theme) | Subtitle style presets | Fxy |
-| [Picture in Picture](https://github.com/Fxy6969/Stremio-Glass-Theme) | Pop the player out | Fxy |
-| [Context Menu Fix](https://github.com/Fxy6969/Stremio-Glass-Theme) | Keeps menus above everything | MrBlu03 (in Fxy's repo) |
-
-## Works with
-
-Tested together with DX.BI — layouts adapt and nothing overlaps.
-
-| Plugin | By |
+| Feature | Where |
 |---|---|
-| [TheIntroDB](https://github.com/TheIntroDB/stremio-enhanced-plugin) · [IntroDB](https://github.com/Akar1881/stremio-enhanced-plugin) · [Stremio Intro Skip](https://github.com/shugi12345/stremio-skip-button) · [AniSkip](https://github.com/REVENGE977/stremio-aniskip) | TheIntroDB · Akar1881 · shugi12345 · REVENGE977 |
-| [Stream Quality Picker](https://github.com/JZOnTheGit/stream-quality-picker) | JZOnTheGit |
-| [Stream Keyword Filter](https://github.com/M-1u/stremio-stream-keyword-filter) | M-1u |
-| [Stream Finder](https://github.com/echodzns04/echo-stremio-plugins) · [Addon Organizer](https://github.com/echodzns04/echo-stremio-plugins) | Echo |
-| [FilterStreams](https://github.com/0xA18/stremio-enhanced-plugins) | 0xA18 |
-| [ExpandStreamTitles](https://github.com/Enkvaros/stremio-enhanced-stream-titles-fixed) | Enkvaros |
-| [Enhanced Video Player](https://github.com/Fxy6969/Stremio-Glass-Theme) · [Picture in Picture](https://github.com/Fxy6969/Stremio-Glass-Theme) · [Context Menu Fix](https://github.com/Fxy6969/Stremio-Glass-Theme) | Fxy · MrBlu03 |
-| [Stremio Addon Manager](https://github.com/Sul-404/Stremio-Addon-Manager) · [Stremio Addon Manager (Zcc09)](https://github.com/Zcc09/stremio-addon-manager-plugin) | Sul-404 · Zcc09 |
-| [Collapsible Filters](https://github.com/M-1u/stremio-collapsible-filters) · [Poster Size](https://github.com/M-1u/stremio-poster-size) · [Close Preview Panel](https://github.com/M-1u/stremio-close-preview-panel) · [Discover Watched Filter](https://github.com/M-1u/stremio-discover-watched-filter) · [Random Pick](https://github.com/M-1u/stremio-random-pick) · [Library Stats](https://github.com/M-1u/stremio-library-stats) · [Library Folders](https://github.com/M-1u/stremio-library-folders) | M-1u |
-| [Slash to Search](https://github.com/REVENGE977/SlashToSearch) | REVENGE977 |
+| **Skip Intro / Recap / Credits** and **Next Episode** buttons, optional auto-skip | Player — times from [TheIntroDB](https://theintrodb.org) (movies & series) and [AniSkip](https://aniskip.com) (anime) |
+| **Addon order & backup** — drag to reorder, back up, restore, undo | Addons page → *Order & backup* |
+| **Subtitle styles** — Netflix, bold outline, boxed, classic yellow, soft; 5 fonts | Settings |
+| **Picture-in-picture** | Player |
+| **Open in mpv / VLC** | Player |
+| **Stream sorting & filters** | Every streams list |
 
-> [!TIP]
-> DX.BI has its own stream sorting & filters, so you don't *need* a stream-filter plugin — but they work side by side if you like one.
+**Turn these off** — DX.BI does the same job and they'd show twice or clash: TheIntroDB, IntroDB, Stremio Intro Skip, AniSkip, Stremio Addon Manager, Addon Organizer, Enhanced Video Player, Picture in Picture, Context Menu Fix, Dynamic Hero, Horizontal Navigation, EnhancedCovers and Enhanced Title Bar, and [Lumen](https://github.com/echodzns04/echo-stremio-plugins).
 
-**Turn these off** — they do the same job as DX.BI and clash with it: Dynamic Hero, Horizontal Navigation, EnhancedCovers and Enhanced Title Bar (from [Modern Glass](https://github.com/Fxy6969/Stremio-Glass-Theme)), and [Lumen](https://github.com/echodzns04/echo-stremio-plugins).
+Plugins that do something DX.BI doesn't (for example library folders or random pick) work alongside it.
 
 **Addons:** any — DX.BI uses whatever your addons provide (Cinemeta, TMDB, anime catalogs, streaming catalogs…).
 
@@ -246,7 +235,7 @@ Tested together with DX.BI — layouts adapt and nothing overlaps.
 
 **How do I remove it?** Switch the plugin off and apply the *Default* theme. Nothing else is changed.
 
-**Does it collect anything?** No. No tracking, accounts or keys. It only loads ratings/artwork from Cinemeta and MetaHub (which Stremio already uses) and fonts from Google Fonts. Watch parties only connect while you're in one, and everything they send is end-to-end encrypted.
+**Does it collect anything?** No. No tracking or accounts. It loads ratings and artwork from Cinemeta, MetaHub, Kitsu and AniList, skip times from TheIntroDB and AniSkip, and fonts from Google Fonts — it only asks *about the title you're looking at*, nothing about you. *Order & backup* talks to Stremio's own servers, only when you press Save or Restore. Watch parties only connect while you're in one, and everything they send is end-to-end encrypted.
 
 **Does it work on my phone or TV?** dx.bi runs inside [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced), which is a desktop app for Windows, macOS and Linux. The official Stremio apps for Android, iOS and TVs can't load plugins or themes, so dx.bi (and watch parties) are desktop-only.
 
@@ -260,10 +249,10 @@ Tested together with DX.BI — layouts adapt and nothing overlaps.
 
 - **[Stremio](https://www.stremio.com/)** ([stremio-web](https://github.com/Stremio/stremio-web)) — the app underneath everything.
 - **[Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced)** by REVENGE977 — makes themes and plugins possible.
-- **[Modern Glass](https://github.com/Fxy6969/Stremio-Glass-Theme)** by Fxy (with MrBlu03) — the theme I started from before building DX.BI, and the home of several plugins listed above.
-- Every plugin author linked above — thank you for making Stremio better.
+- **[Modern Glass](https://github.com/Fxy6969/Stremio-Glass-Theme)** by Fxy (with MrBlu03) — the theme I started from before building DX.BI, and and the home of plugins whose ideas (subtitle presets, picture-in-picture, menu fixes) DX.BI now covers with its own code.
+- The plugin authors whose work showed what Stremio users want — TheIntroDB, Sul-404 (Addon Manager), Fxy and MrBlu03.
 - **[Anime4K](https://github.com/bloc97/Anime4K)** by bloc97 — the restore/upscale shaders used by Picture enhancement, included unmodified under the MIT licence ([LICENSE-ANIME4K](LICENSE-ANIME4K)).
-- **Cinemeta** and **MetaHub** for metadata and artwork.
+- **Cinemeta** and **MetaHub** for metadata and artwork; **[Kitsu](https://kitsu.app)** and **[AniList](https://anilist.co)** for anime scores; **[TheIntroDB](https://theintrodb.org)** and **[AniSkip](https://aniskip.com)** for skip times.
 - Fonts: [Bebas Neue](https://github.com/dharmatype/Bebas-Neue) and [Inter](https://rsms.me/inter/) (SIL Open Font License).
 - Built with the help of [Claude Code](https://www.anthropic.com/claude-code).
 

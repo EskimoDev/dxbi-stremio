@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.8.0
+- **Everything in one plugin.** Features that used to need separate plugins are now built into dx.bi, written from scratch so nothing clashes:
+  - **Skip Intro, Skip Recap, Skip Credits and Next Episode** buttons (Netflix-style, bottom right), with optional auto-skip for intros and recaps, or credits too. Times come from TheIntroDB for movies and series and AniSkip for anime (Kitsu titles are matched to MyAnimeList automatically). No API key and no analytics.
+  - **Addon order & backup** on the Addons page: drag (or use the arrows) to reorder your addons, back them up to a file, restore from a backup, and undo the last change. Saved to your Stremio account; dx.bi keeps the previous list so a change can always be undone.
+  - **Subtitle styles**: Netflix, bold outline, boxed, classic yellow or soft, plus five fonts. Stremio's own size and position settings still apply, and the styles carry over to the picture-enhancement subtitle layer.
+  - **Picture-in-picture** button in the player.
+- dx.bi's menus and dropdowns sit above everything on their own, so **Context Menu Fix is no longer needed**.
+- If you use TheIntroDB, IntroDB, AniSkip, Stremio Addon Manager, Addon Organizer, Enhanced Video Player, Picture in Picture or Context Menu Fix, turn them off: dx.bi now does the same and you'd get duplicate buttons.
+
 ## 2.7.0
 - **One-click setup**: on first start with the default look, dx.bi offers to switch on the dx.bi theme (once; it never replaces a theme you picked). The theme now declares the plugin as a requirement, so Stremio Enhanced won't apply it on its own and leave you with half a redesign.
 - **Fixed themes only appearing after a restart on Linux and macOS.** Stremio Enhanced's Apply button points the stylesheet at a bare file path, which the app resolves as a web address. dx.bi now corrects the link, so any theme applies instantly.
