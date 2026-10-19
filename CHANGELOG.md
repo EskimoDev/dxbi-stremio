@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.8.1
+- **Fixed needing to press back twice** after opening a title from a hover card or the billboard. dx.bi now opens titles the same way Stremio's own links do, so the back arrow returns to where you were in one press (Home, Search and Library all checked).
+- **Fixed the mouse wheel doing nothing while a hover card was open.** Scrolling over the card now scrolls the page (or the row, when you scroll sideways) and closes the card, like Netflix.
+
 ## 2.8.0
 - **Everything in one plugin.** Features that used to need separate plugins are now built into dx.bi, written from scratch so nothing clashes:
   - **Skip Intro, Skip Recap, Skip Credits and Next Episode** buttons (Netflix-style, bottom right), with optional auto-skip for intros and recaps, or credits too. Times come from TheIntroDB for movies and series and AniSkip for anime (Kitsu titles are matched to MyAnimeList automatically). No API key and no analytics.

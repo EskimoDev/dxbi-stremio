@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews, IMDb ratings on posters, wide Continue Watching, stream sorting & filters, a Netflix-style player, watch parties with friends, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.8.0
+ * @version 2.8.1
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -304,6 +304,16 @@
     const title = card.querySelector('[class*="title-label"]')?.textContent?.trim() || link.getAttribute("title") || "";
     const poster = card.querySelector('img[class*="poster-image"]')?.getAttribute("src") || "";
     return { ...parsed, href, title, poster, link };
+  }
+
+  // Navigate the way Stremio's own links do (pushState, then popstate so its router renders).
+  // Setting location.hash directly skips Stremio's history tracking, and its back arrow then
+  // stops at a parent page first, so you had to press it twice.
+  function navigate(path) {
+    const hash = "#" + String(path).replace(/^#/, "");
+    if (location.hash === hash) return;
+    history.pushState(history.state, "", hash);
+    window.dispatchEvent(new PopStateEvent("popstate", { state: history.state }));
   }
 
   function isImdb(id) {
@@ -635,7 +645,7 @@
         const dot = e.target.closest(".dx-hero-dot");
         if (dot) { this.show(parseInt(dot.dataset.i, 10)); return; }
         const go = e.target.closest("[data-href]");
-        if (go) location.hash = go.dataset.href;
+        if (go) navigate(go.dataset.href);
       });
 
       el.querySelectorAll(".dx-hero-logo").forEach((img) => {
@@ -1081,6 +1091,9 @@
       el.className = "dx-preview";
       el.addEventListener("mouseleave", () => this.scheduleClose());
       el.addEventListener("mouseenter", () => clearTimeout(this.closeTimer));
+      // The card floats above the page, so the wheel would scroll nothing: pass it on to what's
+      // underneath (the row for sideways scrolling, the page otherwise) and get out of the way
+      el.addEventListener("wheel", (e) => this.passWheel(e), { passive: false });
       el.addEventListener("click", (e) => {
         const list = e.target.closest("[data-list]");
         if (list) {
@@ -1090,12 +1103,36 @@
         const go = e.target.closest("[data-href]");
         if (go) {
           this.close(true);
-          location.hash = go.dataset.href;
+          navigate(go.dataset.href);
         }
       });
       document.body.append(el);
       this.el = el;
       return el;
+    },
+
+    passWheel(e) {
+      const card = this.card;
+      e.preventDefault();
+      this.close(true);
+      if (!card || !card.isConnected) return;
+      const sideways = Math.abs(e.deltaX) > Math.abs(e.deltaY) || (e.shiftKey && !e.deltaX);
+      const scale = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? window.innerHeight : 1;
+      let node = card.parentElement;
+      while (node && node !== document.body) {
+        const cs = getComputedStyle(node);
+        const canX = node.scrollWidth > node.clientWidth + 2 && /(auto|scroll)/.test(cs.overflowX);
+        const canY = node.scrollHeight > node.clientHeight + 2 && /(auto|scroll)/.test(cs.overflowY);
+        if (sideways && canX) {
+          node.scrollBy({ left: (e.deltaX || e.deltaY) * scale });
+          return;
+        }
+        if (!sideways && canY) {
+          node.scrollBy({ top: e.deltaY * scale });
+          return;
+        }
+        node = node.parentElement;
+      }
     },
 
     async refreshLibrary() {
@@ -4136,7 +4173,7 @@
             return;
           }
           if (stream.fallback) ui.toast(`Using a different release${stream.quality ? ` (${stream.quality})` : ""} — timing might be slightly off`);
-          location.hash = stream.link.replace(/^#/, "");
+          navigate(stream.link);
           // Joining overlay goes away once the video is in sync (or after a while regardless)
           setTimeout(() => ui.hideJoining(), 20000);
         } catch (e) {
@@ -4177,7 +4214,7 @@
     // the same release: torrent hash → filename → binge group → quality → best cached.
     async function findStream(media, stillWanted) {
       const detail = `/detail/${encodeURIComponent(media.type)}/${encodeURIComponent(media.metaId)}/${encodeURIComponent(media.videoId)}`;
-      location.hash = detail;
+      navigate(detail);
       const h = media.hints || {};
       const started = Date.now();
       while (Date.now() - started < 25000) {
