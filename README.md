@@ -87,14 +87,16 @@ That's it. Updates are offered automatically inside the app.
 - **Stream sorting & filters** — sort by quality, seeds or size; filter by quality, language, source, provider, ⚡ instant and HDR
 - **Wide Continue Watching** cards with title art and progress
 - **Redesigned player** — seek-bar thumbnail previews, time remaining, ±10 seconds, Next Episode, **Open in mpv / VLC**, clean subtitle and speed menus
+- **Picture & sound panel** in the player — **remove black bars** baked into the video (great on ultrawide screens) or zoom 110–133%, **Dialogue boost** and **Night mode** for quiet speech and loud explosions, **click-the-line subtitle sync**, and a **second subtitle language** on top for learning a language
 - **Skip Intro & Next Episode** — Netflix-style buttons from community skip databases (movies, series and anime)
-- **Up next countdown** — when the credits roll, a card counts down to the next episode
+- **Up next countdown** — when the credits roll, a card counts down to the next episode, and the next episode is **loaded in advance** so it starts sooner
 - **Anime filler guide** — filler and mixed episodes marked in long anime, with optional *skip filler*
 - **New episode badges** and an **Airing this week** row for shows in your library
 - **Who's watching?** — viewers with their own watch stats, volume and party name
 - **Your stats** — hours watched, streaks, top titles and genres, in your profile menu
 - **Remembers volume & speed**, and **0–9** jump through a video (press **?** for every shortcut)
 - **Addon order & backup** — reorder, back up and restore your addons
+- **Library sorting** by newest, oldest or top rated, and a genre filter; optionally **dim or hide watched titles** in Discover, Search and Home
 - **Watch party** — watch in sync with friends: shared play, pause and seeking, chat and reactions, end-to-end encrypted
 - **Picture enhancement (upscaler)** — real-time GPU upscaling: **[Anime4K](https://github.com/bloc97/Anime4K)** restore + upscale networks for anime, contrast-adaptive sharpening for movies, HDR handled correctly
 - **Subtle interface sounds** (adjustable or off)
@@ -229,7 +231,8 @@ DX.BI is one plugin. Everything below used to need a separate plugin and is now 
 |---|---|
 | **Skip Intro / Recap / Credits** and **Next Episode** buttons, optional auto-skip | Player — times from [TheIntroDB](https://theintrodb.org) (movies & series) and [AniSkip](https://aniskip.com) (anime) |
 | **Addon order & backup** — drag to reorder, back up, restore, undo | Addons page → *Order & backup* |
-| **Subtitle styles** — Netflix, bold outline, boxed, classic yellow, soft; 5 fonts | Settings |
+| **Subtitle styles** — Netflix, bold outline, boxed, classic yellow, soft; 5 fonts; optional dimmed subtitles on HDR videos | Settings |
+| **Picture & sound** — black-bar removal and zoom, Dialogue boost, Night mode, subtitle sync, second subtitles | Player → sliders button |
 | **Picture-in-picture** | Player |
 | **Open in mpv / VLC** | Player |
 | **Stream sorting & filters** | Every streams list |
