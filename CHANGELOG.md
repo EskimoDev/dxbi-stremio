@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.5
+- **Copy details** on the error screen when a converted video won't play: a short report of the streaming server's version and conversion settings, the file's formats and what the converter returned (no links, keys or titles), to paste into a GitHub issue.
+- More reliable check of whether the converter worked: if the player's download records hide the result, dx.bi asks the server again itself.
+
 ## 2.9.4
 - **Fixed conversion being skipped when you reopen the same release** (a common way to retry). Each visit to the player now checks again.
 - **When a converted video still fails, dx.bi says why.** If Stremio's streaming server is set to convert with hardware acceleration (*Settings → Streaming → Transcode profile*), which often fails on a PC's graphics card or driver, there's a one-click **Convert without hardware acceleration**. If the server's converter produced nothing, it says so (restart Stremio Enhanced, or reinstall Stremio Service on Windows). Otherwise it's the file itself.

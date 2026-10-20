@@ -1,5 +1,5 @@
 // Copies dxbi.theme.css into dxbi.plugin.js (bundledThemeCss), so the plugin carries the whole look
-// on its own. Run after every theme change: node tools/bundle-theme.mjs
+// on its own, and syncs PLUGIN_VERSION with @version. Run before every release: node tools/bundle-theme.mjs
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -9,5 +9,9 @@ const file = root + "dxbi.plugin.js";
 const js = readFileSync(file, "utf8");
 const re = /\/\*@bundled-theme\*\/"(?:[^"\\]|\\.)*"/;
 if (!re.test(js)) throw new Error("bundledThemeCss marker not found");
-writeFileSync(file, js.replace(re, () => "/*@bundled-theme*/" + JSON.stringify(css)));
+const version = /@version\s+([\d.]+)/.exec(js)[1];
+const out = js
+  .replace(re, () => "/*@bundled-theme*/" + JSON.stringify(css))
+  .replace(/const PLUGIN_VERSION = "[^"]*";/, `const PLUGIN_VERSION = "${version}";`);
+writeFileSync(file, out);
 console.log(`bundled ${css.length} bytes of theme`);

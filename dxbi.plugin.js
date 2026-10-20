@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews with trailers, ratings on posters, skip intro and up next, anime filler guide, new episode badges, watch stats and viewers, stream sorting & filters, a Netflix-style player, watch parties with friends, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.9.4
+ * @version 2.9.5
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -17,6 +17,7 @@
   // Stremio Enhanced loads each plugin as <script id="<file name>">, which tells us our settings key
   const SCRIPT_ID = (document.currentScript && document.currentScript.id) || "dxbi.plugin.js";
   const PLUGIN_KEY = SCRIPT_ID.replace(/\.plugin\.js$/, "");
+  const PLUGIN_VERSION = "2.9.5"; // kept in step with @version by tools/bundle-theme.mjs
   const log = (...args) => console.log("[dx.bi]", ...args);
 
   // Stremio Web can drop window.core on some routes (Stremio Enhanced works around the same thing),
@@ -5389,6 +5390,7 @@
         if (act === "back") history.back();
         else if (act === "mpv" || act === "vlc") player.openExternal(act);
         else if (act === "nohw") this.disableHardwareConversion();
+        else if (act === "report") this.copyReport(e.target.closest("[data-act]"));
       });
       label.after(el);
       this.el = el;
@@ -5414,17 +5416,80 @@
     },
 
     async diagnoseConversion(serverSettings) {
-      const profile = serverSettings && serverSettings.values && serverSettings.values.transcodeProfile;
-      if (profile) return { kind: "hardware", profile };
-      // What the player actually got from the converter: any converted segment that arrived means
-      // conversion works, and the problem is the file itself
+      const values = (serverSettings && serverSettings.values) || {};
+      const report = (this.report = { profile: values.transcodeProfile || null, hwAccel: values.transcodeHardwareAccel, server: serverSettings && (serverSettings.serverVersion || values.serverVersion) });
+      // What the player got from the converter. Download records can hide the status (0) when the
+      // server doesn't allow timing info, so fetch the newest segment again ourselves in that case.
       const entries = performance.getEntriesByType("resource").filter((e) => /\/hlsv2\//.test(e.name) && /forceTranscoding/.test(e.name));
       const segments = entries.filter((e) => /segment\d+/.test(e.name));
-      const ok = (e) => e.responseStatus >= 200 && e.responseStatus < 300;
-      if (segments.some(ok)) return { kind: "file" };
-      if (entries.length) return { kind: "converter" };
+      report.playlists = entries.filter((e) => /\.m3u8/.test(e.name)).length;
+      report.segments = segments.map((e) => e.responseStatus).slice(-6);
+      await this.probe(entries, report);
+      if (report.profile) return { kind: "hardware", profile: report.profile };
+      const ok = (status) => status >= 200 && status < 300;
+      if (segments.some((e) => ok(e.responseStatus))) return { kind: "file" };
+      const last = segments[segments.length - 1] || entries.find((e) => /video\d*\.m3u8/.test(e.name)) || entries[0];
+      if (last) {
+        const r = await fetch(last.name, { signal: AbortSignal.timeout(25000) }).catch((err) => ({ ok: false, status: 0, error: String(err && err.name) }));
+        report.refetch = r.status || r.error || 0;
+        if (!r.ok && typeof r.text === "function") report.serverSaid = (await r.text().catch(() => "")).slice(0, 300);
+        if (r.ok && segments.length) return { kind: "file" };
+        return { kind: "converter" };
+      }
       return { kind: "file" };
     },
+
+    // What the streaming server says the file contains (codecs only, nothing that identifies it)
+    async probe(entries, report) {
+      try {
+        const any = entries[0] && new URL(entries[0].name);
+        const media = any && any.searchParams.get("mediaURL");
+        if (!media) return;
+        const r = await fetch(`${any.origin}/hlsv2/probe?${new URLSearchParams([["mediaURL", media]])}`, { signal: AbortSignal.timeout(15000) });
+        if (!r.ok) {
+          report.probe = `HTTP ${r.status}`;
+          return;
+        }
+        const j = await r.json();
+        report.format = j.format && j.format.name;
+        report.streams = (j.streams || []).map((x) => [x.track, x.codec, x.channels ? `${x.channels}ch` : ""].filter(Boolean).join(" ")).slice(0, 8);
+      } catch (err) {
+        report.probe = String(err && err.name);
+      }
+    },
+
+    // Plain-text summary for support: no stream links, keys or titles
+    reportText() {
+      const r = this.report || {};
+      const ua = navigator.userAgent;
+      const os = /Windows NT 10\.0/.test(ua) ? "Windows 10/11" : /Windows/.test(ua) ? "Windows" : /Mac OS X/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "unknown";
+      const chrome = (/Chrome\/([\d.]+)/.exec(ua) || [])[1];
+      const hevc = convert.hevc === null ? "not checked" : convert.hevc ? "yes" : "no";
+      return [
+        "dx.bi playback report",
+        `dx.bi ${PLUGIN_VERSION} · ${os} · Chromium ${chrome || "?"}`,
+        `Streaming server ${r.server || "?"} · transcode profile: ${r.profile || "Disabled"} · hw accel: ${r.hwAccel}`,
+        `Converted: ${convert.active()} · 10-bit HEVC decoding: ${hevc}`,
+        `File: ${r.format || "?"} · ${(r.streams || []).join(", ") || r.probe || "?"}`,
+        `Playlists: ${r.playlists ?? "?"} · segment statuses: ${(r.segments || []).join(" ") || "none"} · refetch: ${r.refetch ?? "-"}`,
+        r.serverSaid ? `Server said: ${r.serverSaid.replace(/\s+/g, " ")}` : "",
+        `Error: ${document.querySelector('[class*="error-layer"] [class*="error-label"]')?.textContent || "?"}`,
+      ].filter(Boolean).join("\n");
+    },
+
+    copyReport(button) {
+      const text = this.reportText();
+      const done = () => { button.textContent = "Copied"; setTimeout(() => { button.textContent = "Copy details"; }, 2000); };
+      navigator.clipboard.writeText(text).then(done, () => {
+        const ta = Object.assign(document.createElement("textarea"), { value: text });
+        document.body.append(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+        done();
+      });
+    },
+
 
     async explain(message, el) {
       const base = streamingServerUrl();
@@ -5456,6 +5521,7 @@
       if (!el.isConnected) return;
       el.querySelector("p").innerHTML = text;
       if (fixHardware) el.querySelector(".dxe-playhelp-btns").insertAdjacentHTML("afterbegin", '<button class="dxe-btn is-primary" data-act="nohw">Convert without hardware acceleration</button>');
+      if (convert.active()) el.querySelector(".dxe-playhelp-btns").insertAdjacentHTML("beforeend", '<button class="dxe-btn" data-act="report">Copy details</button>');
       if (ext && serverUp) el.querySelector(".dxe-playhelp-btns").insertAdjacentHTML("beforeend", `<button class="dxe-btn" data-act="${ext}">Open in ${ext === "mpv" ? "mpv" : "VLC"}</button>`);
     },
   };
