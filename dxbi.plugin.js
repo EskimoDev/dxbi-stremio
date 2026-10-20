@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews with trailers, ratings on posters, skip intro and up next, anime filler guide, new episode badges, watch stats and viewers, stream sorting & filters, a Netflix-style player, watch parties with friends, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.9.1
+ * @version 2.9.2
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -70,6 +70,7 @@
     subtitleStyle: "stremio",
     subtitleFont: "default",
     subtitlesStart: "off",
+    convertVideo: "auto",
     addonTools: true,
     trailers: true,
     upNext: "10",
@@ -196,6 +197,18 @@
         { label: "Verdana", value: "verdana" },
         { label: "Georgia (serif)", value: "georgia" },
         { label: "Monospace", value: "mono" },
+      ],
+    },
+    {
+      key: "convertVideo",
+      type: "select",
+      label: "Convert videos this PC can't play",
+      description: "Many releases are HEVC/x265, 10-bit or Dolby Vision, which a lot of PCs (especially Windows 10 without HEVC support) can't decode, so Stremio says \"Video is not supported\". Auto has Stremio's streaming server convert those, and retries any video that fails.",
+      defaultValue: DEFAULTS.convertVideo,
+      options: [
+        { label: "Auto", value: "auto" },
+        { label: "Always convert", value: "always" },
+        { label: "Never (Stremio's default)", value: "off" },
       ],
     },
     {
@@ -4885,7 +4898,7 @@
   }
 
   function sync() {
-    const steps = [updateRoute, brandTitle, () => player.ensure(), () => playbackHelp.ensure(), () => scrub.ensure(), () => enhance.ensure(), () => watchParty.ensure(), () => skip.ensure(), () => addonTools.ensure(), communitySync];
+    const steps = [updateRoute, brandTitle, () => player.ensure(), () => { convert.ensure().catch(() => { /* player state not ready */ }); }, () => placeholder.ensure(), () => playbackHelp.ensure(), () => scrub.ensure(), () => enhance.ensure(), () => watchParty.ensure(), () => skip.ensure(), () => addonTools.ensure(), communitySync];
     if (currentRoute() === "detail") steps.push(() => streamTools.ensure());
     if (currentRoute() !== "player") {
       steps.push(() => hero.ensure(), filterRows, updateAllArrows, syncCards);
@@ -4899,7 +4912,7 @@
   const mo = new MutationObserver((records) => {
     for (const r of records) {
       // Ignore changes we made ourselves
-      if (r.target.closest && r.target.closest(".dx-hero, .dx-preview, .dx-row-pages, .dxe-airing, .dxe-upnext, .dxe-playhelp, .dxe-skip, .dxe-trailer, .dx-wide-art, .dx-player-title, .dx-player-flash, .dx-streambar, .dx-stream-empty, .dx-scrub, .dx-enhance-subs, .dx-player-toast, .dxp-nav-btn, .dxp-player-btn")) continue;
+      if (r.target.closest && r.target.closest(".dx-hero, .dx-preview, .dx-row-pages, .dxe-airing, .dxe-upnext, .dxe-playhelp, .dxe-placeholder, .dxe-skip, .dxe-trailer, .dx-wide-art, .dx-player-title, .dx-player-flash, .dx-streambar, .dx-stream-empty, .dx-scrub, .dx-enhance-subs, .dx-player-toast, .dxp-nav-btn, .dxp-player-btn")) continue;
       scheduleSync();
       return;
     }
@@ -4951,6 +4964,8 @@
   .dxe-btn.is-primary { background: var(--dx-accent, #e50914); }
   .dxe-btn:disabled { opacity: .4; cursor: default; }
   .dx-row-off { display: none !important; }
+  .dxe-placeholder { position: absolute; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; background: rgba(8,8,10,.92); backdrop-filter: blur(6px); }
+  .dxe-placeholder .dxe-playhelp { margin: 0 auto; }
   .dxe-playhelp { max-width: 36rem; margin: 1.2rem auto 0; padding: 0 1.5rem; text-align: center; color: rgba(255,255,255,.75); pointer-events: auto; }
   .dxe-playhelp p { margin: 0; font: 500 .95rem/1.55 Inter, system-ui, sans-serif !important; }
   .dxe-playhelp p b, .dxe-playhelp p i { font: inherit !important; }
@@ -5180,6 +5195,151 @@
     return "http://127.0.0.1:11470";
   }
 
+  // Stremio asks Chromium once whether it plays HEVC, testing only the basic 8-bit profile. When the
+  // answer is yes, the streaming server passes HEVC through untouched, and 10-bit / Dolby Vision
+  // releases then fail on PCs that can't decode them ("Video is not supported", common on Windows 10).
+  // Stremio's player has a built-in fallback, ?forceTranscoding, which makes the server convert to
+  // H.264; Stremio only uses it for Chromecast. dx.bi uses it for those releases, and retries with it
+  // whenever a video fails.
+  const HEVC_HINT = /\b(?:x\.?265|h\.?265|hevc|10[ -]?bit|dovi|dv|dolby[ .-]?vision|hdr(?:10\+?)?)\b/i;
+  const convert = {
+    hevc: null, // can this PC decode 10-bit HEVC?
+    retried: new Set(),
+    checkedFor: null,
+
+    async canDecodeHevc() {
+      if (this.hevc !== null) return this.hevc;
+      let ok = false;
+      try {
+        const type = 'video/mp4; codecs="hvc1.2.4.L153.B0"'; // Main 10, 1080p
+        if (window.MediaSource && MediaSource.isTypeSupported(type) && navigator.mediaCapabilities) {
+          const info = await navigator.mediaCapabilities.decodingInfo({ type: "media-source", video: { contentType: type, width: 1920, height: 1080, bitrate: 8e6, framerate: 24 } });
+          ok = !!(info && info.supported);
+        }
+      } catch (_) { ok = false; }
+      try { if (localStorage.getItem("dxbi.hevcFailed")) ok = false; } catch (_) { /* ignore */ }
+      return (this.hevc = ok);
+    },
+
+    active() {
+      return /[?&]forceTranscoding/.test(location.hash);
+    },
+
+    // Reopen the same player route with conversion on (replacing the entry, so Back still goes to the streams)
+    reopen() {
+      if (this.active()) return;
+      const hash = location.hash.slice(1);
+      history.replaceState(history.state, "", "#" + hash + (hash.includes("?") ? "&" : "?") + "forceTranscoding=1");
+      dispatchEvent(new PopStateEvent("popstate", { state: history.state }));
+    },
+
+    async streamText() {
+      const st = await core().getState?.("player").catch(() => null);
+      const stream = st && st.selected && st.selected.stream;
+      if (!stream) return "";
+      return [stream.name, stream.title, stream.description, stream.behaviorHints && stream.behaviorHints.filename].filter(Boolean).join(" ");
+    },
+
+    // On opening a stream: convert up front when it's a format this PC can't decode
+    async ensure() {
+      if (currentRoute() !== "player" || settings.convertVideo === "off" || this.active()) return;
+      const key = location.hash;
+      if (this.checkedFor === key) return;
+      this.checkedFor = key;
+      if (settings.convertVideo === "always") return this.reopen();
+      const text = await this.streamText();
+      if (!text) {
+        this.checkedFor = null; // player state not ready yet: look again on the next pass
+        return;
+      }
+      if (!HEVC_HINT.test(text) || (await this.canDecodeHevc())) return;
+      if (location.hash === key) {
+        log("converting", text.slice(0, 80), "(this PC can't decode 10-bit HEVC)");
+        this.reopen();
+      }
+    },
+
+    // A stream failed: try once more with conversion, and remember HEVC fails here
+    async retry() {
+      if (settings.convertVideo === "off" || this.active()) return false;
+      const key = location.hash;
+      if (this.retried.has(key)) return false;
+      this.retried.add(key);
+      const text = await this.streamText();
+      if (HEVC_HINT.test(text)) {
+        try { localStorage.setItem("dxbi.hevcFailed", "1"); } catch (_) { /* ignore */ }
+        this.hevc = false;
+      }
+      if (location.hash !== key) return false;
+      this.reopen();
+      return true;
+    },
+  };
+
+  // Debrid addons answer an uncached release with a short placeholder clip ("Torrent is being
+  // downloaded to debrid…" on a green screen). Spot it and say what's going on.
+  const placeholder = {
+    checked: new WeakSet(),
+    el: null,
+
+    ensure() {
+      const v = currentRoute() === "player" && document.querySelector('[class*="player-container"] video');
+      if (!v) {
+        this.hide();
+        return;
+      }
+      if (this.checked.has(v)) return;
+      if (!isFinite(v.duration) || v.duration <= 0) {
+        v.addEventListener("loadedmetadata", () => scheduleSync(), { once: true });
+        return;
+      }
+      this.checked.add(v);
+      if (v.duration > 120) return;
+      this.check(v).catch(() => { /* not a placeholder we know */ });
+    },
+
+    async check(v) {
+      const st = await core().getState?.("player").catch(() => null);
+      const url = st && st.selected && st.selected.stream && st.selected.stream.url;
+      if (!url || !/^https?:/.test(url) || !/\/(?:resolve|playback|play)\//i.test(url)) return;
+      const r = await fetch(url, { headers: { Range: "bytes=0-0" }, signal: AbortSignal.timeout(8000) });
+      r.body?.cancel?.();
+      const final = r.url || "";
+      const m = /\/videos?\/([a-z_]+?)(?:_v\d+)?\.mp4/i.exec(final);
+      if (!m || !v.isConnected) return;
+      const kind = m[1].toLowerCase();
+      v.pause();
+      const cachedHint = "Pick a release marked <i>RD+</i> or ⚡ (already cached) to watch straight away";
+      let html;
+      if (/download/.test(kind) && !/fail/.test(kind)) html = `<b>This release isn't ready on your debrid service yet.</b> It's downloading it now, which can take a few minutes (longer for big or rarely shared releases). ${cachedHint}, or come back to this one later.`;
+      else if (/limit/.test(kind)) html = `<b>Your debrid account has hit its download limit for now.</b> ${cachedHint}, or try again later.`;
+      else if (/access|blocked/.test(kind)) html = "<b>Your debrid service refused access.</b> Check that your subscription is active and that the key in your stream addon's settings is still valid.";
+      else html = `<b>Your debrid service couldn't get this release.</b> It may be unavailable, too big or in an unsupported format. ${cachedHint}.`;
+      this.show(html);
+    },
+
+    show(html) {
+      ensureExtrasStyle();
+      const root = document.querySelector('[class*="player-container"]');
+      if (!root) return;
+      this.hide();
+      const el = document.createElement("div");
+      el.className = "dxe-placeholder";
+      el.innerHTML = `<div class="dxe-playhelp"><p>${html}</p><div class="dxe-playhelp-btns"><button class="dxe-btn is-primary" data-act="back">Pick another stream</button></div></div>`;
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (e.target.closest('[data-act="back"]')) history.back();
+      });
+      root.append(el);
+      this.el = el;
+    },
+
+    hide() {
+      if (this.el) this.el.remove();
+      this.el = null;
+    },
+  };
+
   const playbackHelp = {
     el: null,
     forError: null,
@@ -5193,6 +5353,27 @@
       if (this.el && this.el.isConnected && this.forError === label) return;
       this.forError = label;
       ensureExtrasStyle();
+      // Formats this PC can't play: retry once with the streaming server converting it
+      if (/not supported|does not support|decod/i.test(label.textContent) && settings.convertVideo !== "off" && !convert.active() && !convert.retried.has(location.hash)) {
+        const note = document.createElement("div");
+        note.className = "dxe-playhelp";
+        note.innerHTML = "<p>Converting it so this PC can play it…</p>";
+        label.after(note);
+        this.el = note;
+        fetch(streamingServerUrl() + "/settings", { signal: AbortSignal.timeout(2500) })
+          .then((r) => r.ok, () => false)
+          .then((up) => (up ? convert.retry() : false))
+          .then((retrying) => {
+            if (!retrying && note.isConnected) {
+              note.remove();
+              this.forError = null;
+              this.el = null;
+              convert.retried.add(location.hash);
+              scheduleSync();
+            }
+          });
+        return;
+      }
       const el = document.createElement("div");
       el.className = "dxe-playhelp";
       el.innerHTML = '<p>Checking what went wrong…</p><div class="dxe-playhelp-btns"><button class="dxe-btn is-primary" data-act="back">Pick another stream</button></div>';
@@ -5214,7 +5395,9 @@
       if (!serverUp) {
         text = "<b>Stremio's streaming server isn't running.</b> Torrents, and files the built-in player can't open by itself (MKV, HEVC/x265, Dolby Vision), need it. Restart Stremio Enhanced and accept its streaming server setup: on Windows, choosing <i>Stremio Service</i> is easiest. Settings → Streaming shows whether it's online.";
       } else if (/not supported|does not support|decod/i.test(message)) {
-        text = "<b>This release can't play in the built-in player on this computer.</b> It's usually the format (HEVC/x265, Dolby Vision or DTS audio). Pick a release marked x264/H.264 or WEB-DL, or open this one in mpv or VLC.";
+        text = convert.active()
+          ? "<b>This release can't play here, even converted.</b> The file may be damaged or in an unusual format. Pick another release (x264/H.264 or WEB-DL are the safest), or open this one in mpv or VLC."
+          : "<b>This release can't play in the built-in player on this computer.</b> It's usually the format (HEVC/x265, Dolby Vision or DTS audio). Pick a release marked x264/H.264 or WEB-DL, or open this one in mpv or VLC.";
       } else {
         text = "<b>This stream didn't load.</b> The source may be offline or still caching. Try another release.";
       }
