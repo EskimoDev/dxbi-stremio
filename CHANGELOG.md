@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.10.1
+- **Never two billboards on Home.** If the plugin was updated or reloaded while Home's billboard was still loading, the old copy could add a second billboard above the new one. It now checks first and clears any leftover.
+- New screenshots and short animations in the README.
+
+## 2.10.0
+- **Picture & sound panel** (the sliders button in the player):
+  - remove black bars that are part of the video, measured from the picture, or zoom to 110%, 125% or 133%
+  - Dialogue boost and Night mode, for 5.1 and stereo
+  - subtitle sync: click the line you just heard
+  - a second subtitle language at the top of the picture
+- **Library sorting** — newest, oldest or top rated, plus a genre filter.
+- **Watched titles** — optionally dim or hide them in Discover, Search and Home.
+- **Next episode loaded early** — near the end, the same release is warmed up so it starts sooner (cached debrid links or your own streaming server only).
+- **Subtitles on HDR** — optionally dimmed to grey.
+- **Fixes** — subtitle style and font now reach addon subtitles; picture enhancement follows Stremio's Crop and Stretch; the player title no longer collides with buttons on narrower windows.
+
 ## 2.9.6
 - **Recognises a Windows-only converter failure**: when Windows can't start the streaming server's converter because a system DLL is missing (error 3221225781, usually Media Foundation missing on Windows *N* editions), dx.bi says so and explains the fix (install the *Media Feature Pack*, or use *Stremio Service*).
 

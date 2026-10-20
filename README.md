@@ -90,6 +90,10 @@ The theme file is optional, because the plugin carries the same look. Applying a
 
 ### Browsing
 
+<p align="center">
+  <img src="screenshots/hover.webp" alt="Hover preview with trailer" width="100%">
+</p>
+
 - **Cinematic intro** — plays once at startup with its own sound. Press <kbd>Esc</kbd> to skip.
 
 - **Rotating billboard** — a big banner on Home with title art, rating, synopsis, Play and More Info.
@@ -173,13 +177,15 @@ The theme file is optional, because the plugin carries the same look. Applying a
   </tr>
   <tr>
     <td><img src="screenshots/player.jpg" alt="Player"></td>
-    <td><img src="screenshots/player-subs.jpg" alt="Subtitles menu"></td>
+    <td><img src="screenshots/dual-subs.jpg" alt="Two subtitle languages"></td>
   </tr>
   <tr>
-    <td align="center"><sub>Player with seek preview <i>(Big Buck Bunny © Blender Foundation, CC BY 3.0)</i></sub></td>
-    <td align="center"><sub>Subtitles menu</sub></td>
+    <td align="center"><sub>Player with seek-bar preview</sub></td>
+    <td align="center"><sub>Two subtitle languages at once</sub></td>
   </tr>
 </table>
+
+<p align="center"><sub>Player shots use <a href="https://durian.blender.org/">Sintel</a> (© Blender Foundation, CC BY 3.0).</sub></p>
 
 <br>
 
@@ -212,6 +218,10 @@ Each friend needs Stremio Enhanced on a computer with the dx.bi plugin, plus the
 
 Click the sliders button in the player.
 
+<p align="center">
+  <img src="screenshots/panel.jpg" alt="Picture & sound panel" width="100%">
+</p>
+
 - **Picture** — *Remove black bars* measures the picture and crops off bars that are part of the video file, such as a widescreen film inside a 16:9 file. You can also zoom to 110%, 125% or 133%. Stremio's own Fit / Crop / Stretch button still works on top.
 
 - **Sound** — *Dialogue boost* lifts voices and the centre speaker. *Night mode* also evens out loud and quiet scenes, so you can keep the volume down. Both work with 5.1 and stereo.
@@ -219,6 +229,16 @@ Click the sliders button in the player.
 - **Subtitle sync** — shows the lines around the current moment. Click the line you just heard and the subtitles move to match. Fine-tune with ±0.25 s.
 
 - **Second subtitles** — choose another language to show at the top of the picture.
+
+<p align="center">
+  <img src="screenshots/black-bars.webp" alt="Removing black bars on an ultrawide screen" width="100%"><br>
+  <sub>Remove black bars, on a 21:9 ultrawide screen</sub>
+</p>
+
+<p align="center">
+  <img src="screenshots/subtitle-sync.webp" alt="Syncing subtitles with one click" width="100%"><br>
+  <sub>Subtitles 4 seconds late, fixed with one click</sub>
+</p>
 
 ### Picture enhancement
 
