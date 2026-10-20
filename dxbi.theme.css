@@ -1,13 +1,22 @@
 /**
  * @name dx.bi
  * @description Cinematic, Netflix-inspired interface for dx.bi. Pair it with the dx.bi plugin for the billboard, carousels, previews, ratings and player extras.
- * @version 2.9.0
+ * @version 2.9.3
  * @author dx.bi
  * @requirements ["dxbi.plugin.js"]
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.theme.css
  */
 
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300..800&family=Bebas+Neue&display=swap");
+
+/* Country flags drawn the same on every OS: Windows has no flag emoji and shows letters ("GB")
+   instead. A flag-only font (Twemoji Country Flags, 78 KB), downloaded only when a flag is on screen. */
+@font-face {
+    font-family: "Twemoji Country Flags";
+    unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067, U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
+    src: url("https://cdn.jsdelivr.net/npm/country-flag-emoji-polyfill@0.1.8/dist/TwemojiCountryFlags.woff2") format("woff2");
+    font-display: swap;
+}
 
 /* =====================================================================
    1. TOKENS
@@ -74,14 +83,14 @@
 html,
 html body {
     background: var(--dx-bg) !important;
-    font-family: "Inter", "PlusJakartaSans", system-ui, sans-serif !important;
+    font-family: "Twemoji Country Flags", "Inter", "PlusJakartaSans", system-ui, sans-serif !important;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
 }
 
 #app,
 #app * {
-    font-family: "Inter", "PlusJakartaSans", system-ui, sans-serif;
+    font-family: "Twemoji Country Flags", "Inter", "PlusJakartaSans", system-ui, sans-serif;
 }
 
 ::selection {
@@ -4010,4 +4019,25 @@ body:has(.dx-scrub) > [class*="seek-tooltip"] {
 .dx-player-toast.is-on {
     opacity: 1;
     transform: translate(-50%, 0);
+}
+
+/* =====================================================================
+   WINDOWS: no blurred glass behind scrolling panels
+   ===================================================================== */
+
+/* Chromium on Windows can leave stale copies of a scrolled panel on screen when it has a blurred
+   (backdrop-filter) background: the streams list then looks like rows drawn over each other.
+   Solid backgrounds instead (dx.bi's plugin adds .dx-win on Windows). */
+.dx-win #app *,
+.dx-win body > * {
+    backdrop-filter: none !important;
+}
+
+.dx-win #app [class*="metadetails-content"] [class*="streams-list-container"] {
+    background: rgb(19, 19, 23) !important;
+}
+
+.dx-win #app [class*="menu-container"],
+.dx-win .context-menu-portal [class*="menu-container"] {
+    background: rgb(22, 22, 27) !important;
 }

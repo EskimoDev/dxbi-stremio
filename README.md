@@ -263,7 +263,7 @@ Plugins that do something DX.BI doesn't (for example library folders or random p
 
 **How do I remove it?** Switch the plugin off and apply the *Default* theme. Nothing else is changed.
 
-**Does it collect anything?** No. No tracking or accounts. It loads ratings and artwork from Cinemeta, MetaHub, Kitsu and AniList, episode lists from your own metadata addons, skip times from TheIntroDB and AniSkip, filler lists from animefillerlist.com, trailers from YouTube (privacy-enhanced mode, only while a trailer plays) and fonts from Google Fonts — it only asks *about the titles you're looking at*, nothing about you. Watch stats and viewers stay on your PC, in a file next to dx.bi's settings. *Order & backup* talks to Stremio's own servers, only when you press Save or Restore. Watch parties only connect while you're in one, and everything they send is end-to-end encrypted.
+**Does it collect anything?** No. No tracking or accounts. It loads ratings and artwork from Cinemeta, MetaHub, Kitsu and AniList, episode lists from your own metadata addons, skip times from TheIntroDB and AniSkip, filler lists from animefillerlist.com, trailers from YouTube (privacy-enhanced mode, only while a trailer plays) fonts from Google Fonts and a flag font from jsDelivr — it only asks *about the titles you're looking at*, nothing about you. Watch stats and viewers stay on your PC, in a file next to dx.bi's settings. *Order & backup* talks to Stremio's own servers, only when you press Save or Restore. Watch parties only connect while you're in one, and everything they send is end-to-end encrypted.
 
 **Does it work on my phone or TV?** dx.bi runs inside [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced), which is a desktop app for Windows, macOS and Linux. The official Stremio apps for Android, iOS and TVs can't load plugins or themes, so dx.bi (and watch parties) are desktop-only.
 
@@ -282,6 +282,7 @@ Plugins that do something DX.BI doesn't (for example library folders or random p
 - **[Anime4K](https://github.com/bloc97/Anime4K)** by bloc97 — the restore/upscale shaders used by Picture enhancement, included unmodified under the MIT licence ([LICENSE-ANIME4K](LICENSE-ANIME4K)).
 - **Cinemeta** and **MetaHub** for metadata and artwork; **[Kitsu](https://kitsu.app)** and **[AniList](https://anilist.co)** for anime scores; **[TheIntroDB](https://theintrodb.org)** and **[AniSkip](https://aniskip.com)** for skip times; **[animefillerlist.com](https://www.animefillerlist.com)** for the filler guide.
 - Fonts: [Bebas Neue](https://github.com/dharmatype/Bebas-Neue) and [Inter](https://rsms.me/inter/) (SIL Open Font License).
+- Country flags: [Twemoji](https://github.com/jdecked/twemoji) graphics (CC-BY 4.0) via the [Twemoji Country Flags](https://github.com/talkjs/country-flag-emoji-polyfill) font by TalkJS (MIT).
 - Built with the help of [Claude Code](https://www.anthropic.com/claude-code).
 
 <sub>Inspired by the Netflix interface; no Netflix logos, fonts, images or sounds are used — the intro and all sounds are original (see <a href="tools">tools</a>). Not affiliated with Netflix, Inc., Stremio, Stremio Enhanced or any plugin author. <a href="CHANGELOG.md">Changelog</a> · <a href="LICENSE">MIT License</a>.</sub>

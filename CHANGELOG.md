@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.3
+- **Flags show on Windows.** Windows has no flag emoji, so stream languages appeared as letters ("GB / JP / RU"). dx.bi now uses a small flag-only font (Twemoji Country Flags), so flags look the same on every system.
+- **Fixed the streams list looking jumbled on Windows** (rows drawn over each other, Stremio's "Install addons" button showing through). Chromium on Windows can leave stale copies of a scrolled panel that has a blurred glass background, so on Windows those panels and menus now use solid backgrounds.
+
 ## 2.9.2
 - **Fixed "Video is not supported" on Windows** (and other PCs without 10-bit HEVC decoding). Stremio only checks basic HEVC support, then sends 10-bit HEVC and Dolby Vision releases unconverted, which those PCs can't decode. dx.bi now has Stremio's streaming server convert them to H.264 when this PC can't decode them, and retries any video that fails the same way. New setting *Convert videos this PC can't play*: Auto (default), Always, or Never.
 - **Uncached debrid releases explained.** Instead of the green "Torrent is being downloaded to debrid…" clip, dx.bi pauses it and says what's happening (still downloading, limit reached, access refused or failed), with *Pick another stream*.
