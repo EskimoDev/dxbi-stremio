@@ -1,4 +1,15 @@
-# Intro tools
+# Tools
+
+## Built-in theme
+
+The plugin carries a copy of `dxbi.theme.css` (so the plugin alone gives the whole look). After
+changing the theme, copy it in before releasing:
+
+```bash
+node tools/bundle-theme.mjs
+```
+
+## Intro
 
 The intro is rendered from code, so you can change it and re-render.
 

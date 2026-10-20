@@ -4,7 +4,7 @@
 
 <p align="center">
   <b>A Netflix-style look for <a href="https://github.com/REVENGE977/stremio-enhanced">Stremio Enhanced</a>.</b><br>
-  One theme + one plugin. Works with your existing addons. Nothing to configure.
+  One plugin, theme included. Works with your existing addons. Nothing to configure.
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@
 To actually watch things you need a working Stremio setup first:
 
 1. **[Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced/releases)** installed and signed in to a Stremio account.
-2. **Catalog addons** for what shows up on Home and Discover — *Cinemeta* is built in; others (TMDB, anime catalogs, streaming-service catalogs…) are optional.
+2. **Catalog addons** for what shows up on Home and Discover — *Cinemeta* is built in; others (TMDB, anime catalogs, streaming-service catalogs…) are optional. On a fresh account dx.bi offers to add the free ones its own Home uses (see [FAQ](#faq)).
 3. **Stream addons** that provide the actual video sources. Many people link a **debrid service such as [Real-Debrid](https://real-debrid.com/)** to a stream addon for fast, reliable playback; free and official sources exist too.
 
 Setting those up is outside this project — Stremio's community has plenty of guides. What you watch and where it comes from is your responsibility; please follow the laws where you live.
@@ -58,7 +58,7 @@ curl -fsSL https://github.com/notdxbi/dxbi-stremio/releases/latest/download/inst
 
 **2. Restart Stremio Enhanced**
 
-**3. Turn it on** — *Settings → Enhanced*: click **Apply** on the **dx.bi** theme, and switch the **dx.bi** plugin **on**.
+**3. Turn it on** — *Settings → Enhanced*: switch the **dx.bi** plugin **on**. The theme is built into the plugin, so that's all you need. (Applying the **dx.bi** theme under *Themes* works too; applying any other theme switches the built-in one off.)
 
 That's it. Updates are offered automatically inside the app.
 
@@ -68,7 +68,7 @@ That's it. Updates are offered automatically inside the app.
 
 1. Download [`dxbi.theme.css`](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi.theme.css) and [`dxbi.plugin.js`](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi.plugin.js).
 2. In Stremio Enhanced: *Settings → Enhanced* → **Open Themes Folder** (put the `.css` there) and **Open Plugins Folder** (put the `.js` there).
-3. Restart, apply the theme, enable the plugin.
+3. Restart and enable the plugin. (The theme file is optional: the plugin carries the same look.)
 </details>
 
 ---
@@ -82,12 +82,18 @@ That's it. Updates are offered automatically inside the app.
 - **Cinematic intro** with its own sound — plays once at startup, skip with <kbd>Esc</kbd>
 - **Rotating billboard** on Home with title art, rating, synopsis, **Play** and **More Info**
 - **Netflix-style rows** — scroll sideways with arrows
-- **Hover previews** — rest on a title for a card with **Play**, **My List**, rating and genres
+- **Hover previews** — rest on a title for a card with **Play**, **My List**, rating and genres, and its **trailer** playing (muted, tap for sound)
 - **Ratings on posters** — IMDb from your own addons; anime from Kitsu or MyAnimeList catalogs gets its Kitsu or AniList score
 - **Stream sorting & filters** — sort by quality, seeds or size; filter by quality, language, source, provider, ⚡ instant and HDR
 - **Wide Continue Watching** cards with title art and progress
 - **Redesigned player** — seek-bar thumbnail previews, time remaining, ±10 seconds, Next Episode, **Open in mpv / VLC**, clean subtitle and speed menus
 - **Skip Intro & Next Episode** — Netflix-style buttons from community skip databases (movies, series and anime)
+- **Up next countdown** — when the credits roll, a card counts down to the next episode
+- **Anime filler guide** — filler and mixed episodes marked in long anime, with optional *skip filler*
+- **New episode badges** and an **Airing this week** row for shows in your library
+- **Who's watching?** — viewers with their own watch stats, volume and party name
+- **Your stats** — hours watched, streaks, top titles and genres, in your profile menu
+- **Remembers volume & speed**, and **0–9** jump through a video (press **?** for every shortcut)
 - **Addon order & backup** — reorder, back up and restore your addons
 - **Watch party** — watch in sync with friends: shared play, pause and seeking, chat and reactions, end-to-end encrypted
 - **Picture enhancement (upscaler)** — real-time GPU upscaling: **[Anime4K](https://github.com/bloc97/Anime4K)** restore + upscale networks for anime, contrast-adaptive sharpening for movies, HDR handled correctly
@@ -182,6 +188,7 @@ It reads what your addons already show, so it works with any stream addon. Your 
 <img src="screenshots/settings.jpg" alt="DX.BI settings" width="380" align="right">
 
 - Accent colour
+- dx.bi look built in (on, unless another theme is applied)
 - Billboard on/off, content and speed
 - Hover previews
 - Ratings on posters (IMDb, Kitsu, AniList)
@@ -189,9 +196,15 @@ It reads what your addons already show, so it works with any stream addon. Your 
 - Player extras
 - Picture enhancement — Off / Auto / Sharpen / Anime4K (quality or fast)
 - Skip intro/recap/credits buttons and auto-skip
-- Subtitle style and font
+- Subtitle style and font, and whether subtitles start on
 - Picture-in-picture button
 - Addon order & backup
+- Trailers in hover cards
+- Up next countdown (5–20 seconds, or Stremio's own popup)
+- Anime filler guide and skip filler
+- New episode badges and Airing this week
+- Remember volume & speed, extra keyboard shortcuts
+- Watch stats and Who's watching?
 - Watch party — on/off, follow the host, chat & activity in the player, sounds
 - Seek bar previews
 - Time remaining
@@ -218,6 +231,7 @@ DX.BI is one plugin. Everything below used to need a separate plugin and is now 
 | **Picture-in-picture** | Player |
 | **Open in mpv / VLC** | Player |
 | **Stream sorting & filters** | Every streams list |
+| **Up next countdown**, filler guide, new episode badges, airing row, watch stats, viewers | See *What you get* |
 
 **Turn these off** — DX.BI does the same job and they'd show twice or clash: TheIntroDB, IntroDB, Stremio Intro Skip, AniSkip, Stremio Addon Manager, Addon Organizer, Enhanced Video Player, Picture in Picture, Context Menu Fix, Dynamic Hero, Horizontal Navigation, EnhancedCovers and Enhanced Title Bar, and [Lumen](https://github.com/echodzns04/echo-stremio-plugins).
 
@@ -231,11 +245,21 @@ Plugins that do something DX.BI doesn't (for example library folders or random p
 
 **I installed it but nothing plays.** DX.BI is only a reskin — see [Read this first](#read-this-first-its-a-reskin-not-a-streaming-service). Playback comes from your stream addons.
 
-**It looks half-styled.** Make sure the theme is applied *and* the plugin is on, and that the plugins under *Turn these off* are disabled.
+**It looks half-styled.** Make sure the plugin is on, that *Settings → dx.bi → dx.bi look built in* is on (or the dx.bi theme is applied), and that the plugins under *Turn these off* are disabled.
+
+**Do I need any other plugins?** No. Everything is inside the dx.bi plugin (see [Built in](#built-in--no-extra-plugins-needed)), including the theme.
+
+**My Home has different rows from the screenshots.** Home's rows come from the *catalog addons* on your Stremio account, not from dx.bi. On a fresh account dx.bi offers once to add the free catalogs its own Home uses: The Movie Database, Streaming Catalogs (Netflix, Disney+, HBO Max, Prime Video, Apple TV+), Anime Catalogs and TMDB Collections. No accounts or keys needed. You can add them any time from *Addons → Order & backup → Add dx.bi Home rows*, and undo it there too. Stream addons (what actually plays) are your own choice and aren't added.
+
+**"Video is not supported" when I play something.** Stremio couldn't play that file. dx.bi now shows why under the message. Usually either:
+- **Stremio's streaming server isn't running.** Torrents, and files the built-in player can't open by itself (MKV, HEVC/x265, Dolby Vision), need it. Restart Stremio Enhanced and accept its streaming-server setup; on **Windows**, choosing **Stremio Service** is easiest. *Settings → Streaming* shows whether it's online.
+- **The release's format doesn't play on that computer.** Pick an x264/H.264 or WEB-DL release, or press **Open in mpv / VLC**.
+
+**Subtitles turn on by themselves.** Not any more: *Subtitles when a video starts* (in dx.bi's settings) is **Off** by default, like Netflix. Turn them on from the player's subtitles menu. Choose *On, in my Stremio subtitle language* to get Stremio's old behaviour back.
 
 **How do I remove it?** Switch the plugin off and apply the *Default* theme. Nothing else is changed.
 
-**Does it collect anything?** No. No tracking or accounts. It loads ratings and artwork from Cinemeta, MetaHub, Kitsu and AniList, skip times from TheIntroDB and AniSkip, and fonts from Google Fonts — it only asks *about the title you're looking at*, nothing about you. *Order & backup* talks to Stremio's own servers, only when you press Save or Restore. Watch parties only connect while you're in one, and everything they send is end-to-end encrypted.
+**Does it collect anything?** No. No tracking or accounts. It loads ratings and artwork from Cinemeta, MetaHub, Kitsu and AniList, episode lists from your own metadata addons, skip times from TheIntroDB and AniSkip, filler lists from animefillerlist.com, trailers from YouTube (privacy-enhanced mode, only while a trailer plays) and fonts from Google Fonts — it only asks *about the titles you're looking at*, nothing about you. Watch stats and viewers stay on your PC, in a file next to dx.bi's settings. *Order & backup* talks to Stremio's own servers, only when you press Save or Restore. Watch parties only connect while you're in one, and everything they send is end-to-end encrypted.
 
 **Does it work on my phone or TV?** dx.bi runs inside [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced), which is a desktop app for Windows, macOS and Linux. The official Stremio apps for Android, iOS and TVs can't load plugins or themes, so dx.bi (and watch parties) are desktop-only.
 
@@ -252,7 +276,7 @@ Plugins that do something DX.BI doesn't (for example library folders or random p
 - **[Modern Glass](https://github.com/Fxy6969/Stremio-Glass-Theme)** by Fxy (with MrBlu03) — the theme I started from before building DX.BI, and and the home of plugins whose ideas (subtitle presets, picture-in-picture, menu fixes) DX.BI now covers with its own code.
 - The plugin authors whose work showed what Stremio users want — TheIntroDB, Sul-404 (Addon Manager), Fxy and MrBlu03.
 - **[Anime4K](https://github.com/bloc97/Anime4K)** by bloc97 — the restore/upscale shaders used by Picture enhancement, included unmodified under the MIT licence ([LICENSE-ANIME4K](LICENSE-ANIME4K)).
-- **Cinemeta** and **MetaHub** for metadata and artwork; **[Kitsu](https://kitsu.app)** and **[AniList](https://anilist.co)** for anime scores; **[TheIntroDB](https://theintrodb.org)** and **[AniSkip](https://aniskip.com)** for skip times.
+- **Cinemeta** and **MetaHub** for metadata and artwork; **[Kitsu](https://kitsu.app)** and **[AniList](https://anilist.co)** for anime scores; **[TheIntroDB](https://theintrodb.org)** and **[AniSkip](https://aniskip.com)** for skip times; **[animefillerlist.com](https://www.animefillerlist.com)** for the filler guide.
 - Fonts: [Bebas Neue](https://github.com/dharmatype/Bebas-Neue) and [Inter](https://rsms.me/inter/) (SIL Open Font License).
 - Built with the help of [Claude Code](https://www.anthropic.com/claude-code).
 

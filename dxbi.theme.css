@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description Cinematic, Netflix-inspired interface for dx.bi. Pair it with the dx.bi plugin for the billboard, carousels, previews, ratings and player extras.
- * @version 2.8.0
+ * @version 2.9.0
  * @author dx.bi
  * @requirements ["dxbi.plugin.js"]
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.theme.css
@@ -1807,6 +1807,18 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transform: translateX(3px);
 }
 
+/* A stream's right-click menu lives inside its card: lift that card above the ones after it,
+   otherwise they paint over the menu */
+#app [class*="streams-list-container"] [class*="stream-container"]:has([class*="menu-container"]) {
+    position: relative;
+    z-index: 40;
+    transform: none;
+}
+
+#app [class*="streams-list-container"] [class*="stream-container"] [class*="menu-container"] {
+    z-index: 41;
+}
+
 #app [class*="streams-list-container"] [class*="streams-container"] > [class*="stream-container"] {
     align-self: stretch;
     width: auto !important;
@@ -2920,15 +2932,32 @@ html[class*="active-slider-within"] #app [class*="player-container"] [class*="co
     backdrop-filter: none !important;
 }
 
-/* Buffering */
+/* Buffering: a spinner instead of Stremio's title logo (the layer only exists while buffering) */
 #app [class*="player-container"] [class*="buffering-layer"] img,
 #app [class*="player-container"] [class*="buffering-layer"] [class*="image"] {
-    animation: dx-pulse 1.4s ease-in-out infinite;
+    display: none !important;
 }
 
-@keyframes dx-pulse {
-    0%, 100% { opacity: 0.5; transform: scale(0.97); }
-    50% { opacity: 1; transform: scale(1); }
+#app [class*="player-container"] [class*="buffering-layer"] {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+#app [class*="player-container"] [class*="buffering-layer"]::before {
+    content: "";
+    width: 4.2rem;
+    height: 4.2rem;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.14);
+    border-top-color: var(--dx-accent);
+    filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.6));
+    animation: dx-spin 0.85s linear infinite;
+}
+
+@keyframes dx-spin {
+    to { transform: rotate(360deg); }
 }
 
 /* Up next */

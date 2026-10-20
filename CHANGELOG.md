@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.9.0
+- **Trailers in hover cards**: rest on a title and its trailer fades in, muted, with a speaker button for sound. It only appears once it's really playing, and stops the moment you move away.
+- **Up next**: when the credits roll (taken from the skip data, otherwise the last 30 seconds), a Netflix-style card counts down to the next episode with its thumbnail and title. *Play now*, or *Watch credits* to stay. Pausing the video pauses the countdown. Replaces Stremio's own popup (choose 5–20 seconds, or Off to keep Stremio's).
+- **Anime filler guide**: long anime get *Filler* and *Mixed* tags in the episode list, with filler dimmed (community lists from animefillerlist.com, matched strictly by title). **Skip filler** (off by default) lets Up next jump straight to the next canon episode and opens it with the same release, like binge watching.
+- **New episode badges** on library shows with an episode you haven't seen since it came out, and an **Airing this week** row on Home with countdowns. Episode lists come from your own metadata addons (Cinemeta, TMDB, Kitsu…), checked every 6 hours.
+- **Who's watching?**: add viewers (Netflix-style picker, shown at start once there's more than one). Each viewer has their own watch stats, volume/speed and watch-party name. Library and Continue Watching stay shared, because separate libraries need Stremio's own profiles, which Stremio limits to premium.
+- **Your stats** (profile menu): time watched today, this week, month and year, streaks, a 30-day chart, most-watched titles and top genres, favourite time and day. Only time spent actually playing counts.
+- **Remember volume & speed** between streams (per viewer). The watch party's small catch-up speed changes are never saved.
+- **Keyboard**: 0–9 jump to 0–90% in the player (instead of Stremio switching tabs), and **?** shows every shortcut.
+- dx.bi now keeps its own data (viewers, stats, preferences) in `dxbi-data.plugin.json` next to its settings, so it survives Stremio clearing its storage.
+- **Theme built in**: the plugin now carries the dx.bi theme and uses it whenever no other theme is applied, so installing the plugin alone gives the whole look. Applying the theme file, or any other theme, takes over from it. The "Use the dx.bi theme?" prompt is gone.
+- **One-click Home rows**: a fresh account gets one offer to add the free catalog addons dx.bi's Home uses (TMDB, Streaming Catalogs, Anime Catalogs, TMDB Collections). Also in *Addons → Order & backup*, with Undo.
+- **When a video won't play**, dx.bi explains why under Stremio's error (streaming server not running, or a format this computer can't play) with *Pick another stream* and *Open in mpv/VLC* buttons.
+- **Subtitles start off** (new setting, like Netflix). Stremio turned them on whenever a subtitle language was set, and Stremio Enhanced's embedded-subtitle loader forced English even when it wasn't.
+- **Buffering spinner** in the player instead of the title logo.
+- **Watch party**: everyone now hears when someone leaves the movie or comes back, not only when the host leaves. While you're out of what the party is watching, a **Back to …** button brings you straight back in (for the host too).
+- **Fixed**: going back to Home (from Settings, Search…) froze the app for over a second; Home also kept doing needless work every fraction of a second while idle. Both gone.
+- **Fixed**: *Airing this week* showed a show once per upcoming episode (three Cyberpunks). One card per show now, with "+2 more".
+- **Fixed**: playback could freeze on "buffering" with plenty already loaded (a Chromium decoder stall). dx.bi notices and restarts it.
+- **Fixed**: right-clicking a stream showed its menu underneath the streams below it.
+- **Fixed on Windows**: applying a theme in Stremio Enhanced didn't load until a restart (Windows paths weren't turned into file links).
+
 ## 2.8.1
 - **Fixed needing to press back twice** after opening a title from a hover card or the billboard. dx.bi now opens titles the same way Stremio's own links do, so the back arrow returns to where you were in one press (Home, Search and Library all checked).
 - **Fixed the mouse wheel doing nothing while a hover card was open.** Scrolling over the card now scrolls the page (or the row, when you scroll sideways) and closes the card, like Netflix.
