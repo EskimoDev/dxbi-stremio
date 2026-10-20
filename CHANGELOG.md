@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.4
+- **Fixed conversion being skipped when you reopen the same release** (a common way to retry). Each visit to the player now checks again.
+- **When a converted video still fails, dx.bi says why.** If Stremio's streaming server is set to convert with hardware acceleration (*Settings → Streaming → Transcode profile*), which often fails on a PC's graphics card or driver, there's a one-click **Convert without hardware acceleration**. If the server's converter produced nothing, it says so (restart Stremio Enhanced, or reinstall Stremio Service on Windows). Otherwise it's the file itself.
+
 ## 2.9.3
 - **Flags show on Windows.** Windows has no flag emoji, so stream languages appeared as letters ("GB / JP / RU"). dx.bi now uses a small flag-only font (Twemoji Country Flags), so flags look the same on every system.
 - **Fixed the streams list looking jumbled on Windows** (rows drawn over each other, Stremio's "Install addons" button showing through). Chromium on Windows can leave stale copies of a scrolled panel that has a blurred glass background, so on Windows those panels and menus now use solid backgrounds.

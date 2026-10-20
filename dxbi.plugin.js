@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews with trailers, ratings on posters, skip intro and up next, anime filler guide, new episode badges, watch stats and viewers, stream sorting & filters, a Netflix-style player, watch parties with friends, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.9.3
+ * @version 2.9.4
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -5242,7 +5242,13 @@
 
     // On opening a stream: convert up front when it's a format this PC can't decode
     async ensure() {
-      if (currentRoute() !== "player" || settings.convertVideo === "off" || this.active()) return;
+      if (currentRoute() !== "player") {
+        // Each visit to the player starts fresh (people often reopen the same release to retry)
+        this.checkedFor = null;
+        this.retried.clear();
+        return;
+      }
+      if (settings.convertVideo === "off" || this.active()) return;
       const key = location.hash;
       if (this.checkedFor === key) return;
       this.checkedFor = key;
@@ -5382,22 +5388,66 @@
         const act = e.target.closest("[data-act]")?.dataset.act;
         if (act === "back") history.back();
         else if (act === "mpv" || act === "vlc") player.openExternal(act);
+        else if (act === "nohw") this.disableHardwareConversion();
       });
       label.after(el);
       this.el = el;
       this.explain(label.textContent.trim(), el).catch(() => { /* keep the generic text */ });
     },
 
+    // Converted and still failing: did the streaming server's converter actually produce video?
+    // Same change as choosing "Disabled" under Settings → Streaming → Transcode profile, then reopen the video
+    async disableHardwareConversion() {
+      const { getState, dispatch } = core();
+      const server = getState && (await getState("streaming_server").catch(() => null));
+      const current = server && server.settings && server.settings.type === "Ready" ? server.settings.content : null;
+      if (!dispatch || !current) {
+        if (this.el) this.el.querySelector("p").innerHTML = "Couldn't change it from here: set <i>Settings → Streaming → Transcode profile</i> to <b>Disabled</b>, then play the video again.";
+        return;
+      }
+      dispatch({ action: "StreamingServer", args: { action: "UpdateSettings", args: { ...current, transcodeProfile: null } } });
+      if (this.el) this.el.querySelector("p").innerHTML = "Switched to converting without hardware acceleration. Reopening the video…";
+      setTimeout(() => {
+        history.back();
+        setTimeout(() => history.forward(), 500);
+      }, 1200);
+    },
+
+    async diagnoseConversion(serverSettings) {
+      const profile = serverSettings && serverSettings.values && serverSettings.values.transcodeProfile;
+      if (profile) return { kind: "hardware", profile };
+      // What the player actually got from the converter: any converted segment that arrived means
+      // conversion works, and the problem is the file itself
+      const entries = performance.getEntriesByType("resource").filter((e) => /\/hlsv2\//.test(e.name) && /forceTranscoding/.test(e.name));
+      const segments = entries.filter((e) => /segment\d+/.test(e.name));
+      const ok = (e) => e.responseStatus >= 200 && e.responseStatus < 300;
+      if (segments.some(ok)) return { kind: "file" };
+      if (entries.length) return { kind: "converter" };
+      return { kind: "file" };
+    },
+
     async explain(message, el) {
       const base = streamingServerUrl();
-      const serverUp = await fetch(base + "/settings", { signal: AbortSignal.timeout(2500) }).then((r) => r.ok, () => false);
+      const serverSettings = await fetch(base + "/settings", { signal: AbortSignal.timeout(2500) }).then((r) => (r.ok ? r.json().catch(() => ({})) : null), () => null);
+      const serverUp = !!serverSettings;
       let text;
+      let fixHardware = false;
       if (!serverUp) {
         text = "<b>Stremio's streaming server isn't running.</b> Torrents, and files the built-in player can't open by itself (MKV, HEVC/x265, Dolby Vision), need it. Restart Stremio Enhanced and accept its streaming server setup: on Windows, choosing <i>Stremio Service</i> is easiest. Settings → Streaming shows whether it's online.";
       } else if (/not supported|does not support|decod/i.test(message)) {
-        text = convert.active()
-          ? "<b>This release can't play here, even converted.</b> The file may be damaged or in an unusual format. Pick another release (x264/H.264 or WEB-DL are the safest), or open this one in mpv or VLC."
-          : "<b>This release can't play in the built-in player on this computer.</b> It's usually the format (HEVC/x265, Dolby Vision or DTS audio). Pick a release marked x264/H.264 or WEB-DL, or open this one in mpv or VLC.";
+        if (convert.active()) {
+          const why = await this.diagnoseConversion(serverSettings);
+          if (why.kind === "hardware") {
+            fixHardware = true;
+            text = `<b>Stremio's streaming server couldn't convert this video.</b> It's set to convert with hardware acceleration (<i>${esc(why.profile)}</i>), which often doesn't work on a PC's graphics card or driver. Converting without it is slower but works everywhere. (Settings → Streaming → Transcode profile.)`;
+          } else if (why.kind === "converter") {
+            text = "<b>Stremio's streaming server couldn't convert this video.</b> Its converter (ffmpeg) failed or is missing. Restart Stremio Enhanced; on Windows, reinstalling <i>Stremio Service</i> brings the converter back. Meanwhile pick an x264/H.264 or WEB-DL release, or open this one in mpv or VLC.";
+          } else {
+            text = "<b>This release can't play here, even converted.</b> The file may be damaged or in an unusual format. Pick another release (x264/H.264 or WEB-DL are the safest), or open this one in mpv or VLC.";
+          }
+        } else {
+          text = "<b>This release can't play in the built-in player on this computer.</b> It's usually the format (HEVC/x265, Dolby Vision or DTS audio). Pick a release marked x264/H.264 or WEB-DL, or open this one in mpv or VLC.";
+        }
       } else {
         text = "<b>This stream didn't load.</b> The source may be offline or still caching. Try another release.";
       }
@@ -5405,6 +5455,7 @@
       const ext = paths && (paths.mpv ? "mpv" : paths.vlc ? "vlc" : null);
       if (!el.isConnected) return;
       el.querySelector("p").innerHTML = text;
+      if (fixHardware) el.querySelector(".dxe-playhelp-btns").insertAdjacentHTML("afterbegin", '<button class="dxe-btn is-primary" data-act="nohw">Convert without hardware acceleration</button>');
       if (ext && serverUp) el.querySelector(".dxe-playhelp-btns").insertAdjacentHTML("beforeend", `<button class="dxe-btn" data-act="${ext}">Open in ${ext === "mpv" ? "mpv" : "VLC"}</button>`);
     },
   };
@@ -7457,6 +7508,7 @@
     settings,
     sync,
     sfx,
+    convert,
     destroy() {
       mo.disconnect();
       io.disconnect();
