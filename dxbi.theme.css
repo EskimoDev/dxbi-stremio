@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description Cinematic, Netflix-inspired interface for dx.bi. Pair it with the dx.bi plugin for the billboard, carousels, previews, ratings and player extras.
- * @version 2.10.0
+ * @version 2.10.3
  * @author dx.bi
  * @requirements ["dxbi.plugin.js"]
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.theme.css
@@ -684,18 +684,81 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     color: #fff !important;
 }
 
-/* Dismiss (x) on Continue Watching */
+/* Dismiss on Continue Watching: a slim glass tab that opens out into "Remove" when pointed at.
+   It takes the corner from the "+N new episodes" badge while the card is hovered. */
 #app [class*="meta-item-container"] [class*="dismiss-icon-layer"] {
-    z-index: 6;
-    top: 0.5rem;
+    z-index: 7 !important;
+    top: 0.6rem;
     left: auto;
-    right: 0.5rem;
-    width: 1.75rem;
-    height: 1.75rem;
+    right: 0.6rem;
+    width: auto !important;
+    height: 1.55rem !important;
+    min-width: 1.55rem;
+    padding: 0 0.42rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.4rem;
+    background: rgba(12, 12, 14, 0.62);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), 0 4px 14px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    transform: translateY(-2px);
+    transition: opacity 0.18s ease, transform 0.18s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+#app [class*="meta-item-container"]:hover [class*="dismiss-icon-layer"],
+#app [class*="meta-item-container"] [class*="dismiss-icon-layer"]:focus-visible {
+    opacity: 1;
+    transform: none;
 }
 
 #app [class*="meta-item-container"] [class*="dismiss-icon-backdrop"] {
-    background: rgba(0, 0, 0, 0.7) !important;
+    display: none !important;
+}
+
+#app [class*="meta-item-container"] [class*="dismiss-icon-layer"] svg {
+    position: static !important;
+    flex: none;
+    width: 0.62rem !important;
+    height: 0.62rem !important;
+    color: #fff !important;
+    fill: currentColor !important;
+    opacity: 0.85;
+}
+
+#app [class*="meta-item-container"] [class*="dismiss-icon-layer"]::before {
+    content: "Remove";
+    max-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    color: #fff;
+    font: 600 0.72rem/1 Inter, system-ui, sans-serif;
+    letter-spacing: 0.02em;
+    transition: max-width 0.22s ease, margin 0.22s ease;
+}
+
+#app [class*="meta-item-container"] [class*="dismiss-icon-layer"]:hover {
+    background: var(--dx-accent);
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--dx-accent) 45%, transparent);
+}
+
+#app [class*="meta-item-container"] [class*="dismiss-icon-layer"]:hover::before {
+    max-width: 4.5rem;
+    margin-right: 0.4rem;
+}
+
+#app [class*="meta-item-container"] [class*="dismiss-icon-layer"]:hover svg {
+    opacity: 1;
+}
+
+/* the "+N" badge steps aside while the remove tab is showing */
+#app [class*="meta-item-container"] [class*="new-videos"] {
+    transition: opacity 0.18s ease;
+}
+
+#app [class*="meta-item-container"]:hover:has([class*="dismiss-icon-layer"]) [class*="new-videos"] {
+    opacity: 0;
 }
 
 /* Card menu dots */
@@ -1206,45 +1269,129 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
 
 #app [class*="continue-watching-row"]:has(.dx-wide-art) [class*="progress-bar-layer"],
 #app [class*="continue-watching-row"]:has(.dx-wide-art) [class*="play-icon-layer"],
-#app [class*="continue-watching-row"]:has(.dx-wide-art) [class*="dismiss-icon-layer"],
 #app [class*="continue-watching-row"]:has(.dx-wide-art) [class*="new-videos"],
 #app [class*="continue-watching-row"]:has(.dx-wide-art) [class*="watched-icon-layer"] {
     z-index: 3;
 }
 
-/* Hover preview — grows out of the card like Netflix's mini-modal */
+/* Hover preview — unfolds out of the card like Netflix's mini-modal. The outer box carries the
+   shadow (it follows the clipped shape), the inner layer is revealed from the card's outline. */
 .dx-preview {
     position: fixed;
     z-index: 900;
-    border-radius: 8px;
-    background: #181818;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.75), 0 24px 60px rgba(0, 0, 0, 0.6);
-    overflow: hidden;
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
     will-change: transform, opacity;
     transition:
-        transform 0.34s cubic-bezier(0.2, 0.8, 0.2, 1),
+        transform 0.2s ease,
         opacity 0.2s ease,
-        visibility 0s linear 0.34s;
+        visibility 0s linear 0.2s;
 }
 
 .dx-preview.is-open {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transition:
-        transform 0.34s cubic-bezier(0.2, 0.8, 0.2, 1),
-        opacity 0.12s ease,
-        visibility 0s;
+    transition: opacity 0.1s ease, visibility 0s;
 }
 
 .dx-preview.is-closing {
     visibility: visible;
     opacity: 0;
-    transform: scale(0.94) !important;
-    transition: transform 0.18s ease, opacity 0.18s ease;
+    transform: scale(0.97) !important;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.dx-preview-inner {
+    position: relative;
+    min-height: inherit;
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+    background: #181818;
+    overflow: hidden;
+    transition: clip-path 0.48s cubic-bezier(0.2, 0.85, 0.25, 1);
+}
+
+/* fine hairline so the panel's edge reads crisp against the page */
+.dx-preview-inner::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+}
+
+/* Aura: the title's own colours glowing softly around the panel once it has opened,
+   with a deep shadow underneath for lift */
+.dx-preview-aura {
+    position: absolute;
+    z-index: -1;
+    inset: -14px -18px -22px;
+    border-radius: 22px;
+    background: #181818 center / cover no-repeat;
+    filter: blur(30px) saturate(1.5) brightness(0.9);
+    opacity: 0;
+    transform: scale(0.92);
+    transition: opacity 0.55s ease 0.16s, transform 0.6s cubic-bezier(0.2, 0.85, 0.25, 1) 0.1s;
+    pointer-events: none;
+}
+
+.dx-preview::before {
+    content: "";
+    position: absolute;
+    z-index: -2;
+    inset: 10% 6% -4%;
+    border-radius: 18px;
+    background: rgba(0, 0, 0, 0.85);
+    filter: blur(28px);
+    opacity: 0;
+    transition: opacity 0.4s ease 0.12s;
+    pointer-events: none;
+}
+
+.dx-preview.is-open .dx-preview-aura {
+    opacity: 0.55;
+    transform: none;
+}
+
+.dx-preview.is-open::before {
+    opacity: 1;
+}
+
+.dx-preview.is-closing .dx-preview-aura,
+.dx-preview.is-closing::before {
+    transition-delay: 0s;
+}
+
+/* the card's own artwork, fading into the panel as it unfolds */
+.dx-preview-ghost {
+    position: absolute;
+    z-index: 5;
+    border-radius: 6px;
+    background: #222 center / cover no-repeat;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.38s ease 0.06s;
+}
+
+.dx-preview.is-open .dx-preview-ghost {
+    opacity: 0;
+}
+
+/* details settle in just after the panel has opened */
+.dx-preview .dx-preview-body {
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.3s ease 0.16s, transform 0.4s cubic-bezier(0.2, 0.85, 0.25, 1) 0.14s;
+}
+
+.dx-preview.is-open .dx-preview-body {
+    opacity: 1;
+    transform: none;
 }
 
 .dx-preview-media {
@@ -1311,10 +1458,6 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     display: none;
 }
 
-.dx-preview {
-    display: flex;
-    flex-direction: column;
-}
 
 .dx-preview-body {
     flex: 1;
@@ -1372,6 +1515,33 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
 
 .dx-round.is-end {
     margin-left: auto;
+}
+
+/* Remove from Continue Watching: quieter than the others until pointed at */
+.dx-round.dx-remove {
+    border-color: rgba(255, 255, 255, 0.28);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.dx-round.dx-remove:hover {
+    border-color: var(--dx-accent);
+    background: color-mix(in srgb, var(--dx-accent) 22%, transparent);
+    color: #fff;
+}
+
+.dx-round.dx-remove + .dx-round {
+    margin-left: 0.5rem;
+}
+
+/* the last button's tooltip opens leftwards so the card's edge never cuts it off */
+.dx-preview-actions .dx-round:last-child[data-tip]::after {
+    left: auto;
+    right: 0;
+    transform: translate(0, 4px);
+}
+
+.dx-preview-actions .dx-round:last-child[data-tip]:hover::after {
+    transform: none;
 }
 
 .dx-round.is-pop {

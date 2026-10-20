@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.10.3
+- **Hover cards unfold smoothly.** The card opens out from the poster's own outline, with a soft glow in the title's colours, and the titles either side glide aside to make room (and back when it closes). Moving along a row, each card now opens exactly over its title instead of drifting.
+- **Trailers full screen.** While a hover card's trailer plays, the new full-screen button carries on from the same moment, with sound, in dx.bi's own player: title art, Play and More info, pause, mute and a seek bar that fade away when the mouse is still. Esc closes it; Space, M and the arrow keys work too.
+- **Continue Watching remove button.** It no longer hides under the "+N new episodes" badge (the badge steps aside on hover), and it's now a slim tab that opens out into *Remove*. Pointing at it never opens the hover card, and hover cards for Continue Watching titles have their own remove button.
+- **Fixed a title's hover card sometimes not opening again** after you moved away while it was loading.
+
 ## 2.10.2
 - **No more "streaming server isn't running" by mistake.** When a converted video failed, dx.bi could wrongly say the server wasn't running: it gave up after 2.5 seconds while the server was busy, or checked again when Stremio redrew its error box. It now waits longer, asks twice, and keeps the first answer it worked out.
 - **Better advice for Windows error 3221225781.** The missing file isn't Media Foundation, as 2.9.6 said: Stremio Enhanced's own ffprobe only needs files every Windows has. The fix is Stremio Service, re-downloading ffmpeg/ffprobe, or updating a copy of ffmpeg you installed yourself (Stremio Enhanced uses it first).

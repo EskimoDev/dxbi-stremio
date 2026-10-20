@@ -100,7 +100,7 @@ The theme file is optional, because the plugin carries the same look. Applying a
 
 - **Netflix-style rows** — scroll sideways with arrows.
 
-- **Hover previews** — rest on a title to see a card with its rating, genres and trailer.
+- **Hover previews** — rest on a title and its card unfolds with a soft glow while the row makes room, showing its rating, genres and trailer. One click takes the trailer full screen.
 
 - **Ratings on posters** — IMDb scores from your own addons. Anime gets its Kitsu or AniList score.
 
