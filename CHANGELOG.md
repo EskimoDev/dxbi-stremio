@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.10.4
+- **Hover cards open without a single stutter.** Measured on a 165 Hz screen, the opening used to start with frames of 117, 45 and 40 ms; now every frame is about 6 ms. The causes, all fixed:
+  - Several theme rules made the browser restyle the whole page whenever anything was hovered or added (`body:has(...)`, and `:hover`/`:focus` rules followed by `[class*=...]`). Hover effects now use variables set on the hovered element itself, and the plugin marks rows and cards with plain attributes instead of `:has()`.
+  - The title's details and artwork are now fetched and decoded while the pointer rests, before anything moves, and the row is measured before the animation starts.
+  - The poster no longer fades early, which briefly showed the layer underneath.
+- **Titles cut off by the edge of the screen stay in their row:** no hover card pops out over the edge. Titles at either end of the screen grow inwards from their own edge.
+- New screenshots and hover animation in the README.
+
 ## 2.10.3
 - **Hover cards unfold smoothly.** The card opens out from the poster's own outline, with a soft glow in the title's colours, and the titles either side glide aside to make room (and back when it closes). Moving along a row, each card now opens exactly over its title instead of drifting.
 - **Trailers full screen.** While a hover card's trailer plays, the new full-screen button carries on from the same moment, with sound, in dx.bi's own player: title art, Play and More info, pause, mute and a seek bar that fade away when the mouse is still. Esc closes it; Space, M and the arrow keys work too.

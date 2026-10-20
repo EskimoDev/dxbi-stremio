@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description Cinematic, Netflix-inspired interface for dx.bi. Pair it with the dx.bi plugin for the billboard, carousels, previews, ratings and player extras.
- * @version 2.10.3
+ * @version 2.10.4
  * @author dx.bi
  * @requirements ["dxbi.plugin.js"]
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.theme.css
@@ -222,15 +222,17 @@ body.dx-scrolled #app [class*="main-nav-bars-container"] > nav[class*="horizonta
     font-weight: 500;
     letter-spacing: 0.01em;
     text-transform: capitalize;
-    color: var(--dx-text-2);
+    color: var(--dx-nav-label, var(--dx-text-2));
     opacity: 1;
     overflow: visible;
     white-space: nowrap;
     transition: color 0.25s var(--dx-ease);
 }
 
-#app nav[class*="vertical-nav-bar"] a[class*="nav-tab-button"]:hover [class*="label"] {
-    color: var(--dx-text);
+/* Hover effects below set a variable on the hovered element itself, never "hovered [class*=x]":
+   that shape makes the browser restyle the whole page on every hover change. */
+#app nav[class*="vertical-nav-bar"] a[class*="nav-tab-button"]:hover {
+    --dx-nav-label: var(--dx-text);
 }
 
 #app nav[class*="vertical-nav-bar"] a[class*="nav-tab-button"].selected [class*="label"] {
@@ -377,7 +379,7 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     }
 
     #app [class*="main-nav-bars-container"] nav[class*="horizontal-nav-bar"] [class*="search-bar-container"] [class*="search-input"] {
-        opacity: 0;
+        opacity: var(--dx-search-open, 0);
     }
 
     #app [class*="main-nav-bars-container"] nav[class*="horizontal-nav-bar"] [class*="search-bar-container"]:focus-within,
@@ -386,11 +388,7 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
         z-index: 7;
         width: 18rem;
         padding: 0 0.35rem 0 0.9rem;
-    }
-
-    #app [class*="main-nav-bars-container"] nav[class*="horizontal-nav-bar"] [class*="search-bar-container"]:focus-within [class*="search-input"],
-    #app [class*="main-nav-bars-container"] nav[class*="horizontal-nav-bar"] [class*="search-bar-container"].active [class*="search-input"] {
-        opacity: 1;
+        --dx-search-open: 1;
     }
 }
 
@@ -461,14 +459,13 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     height: 2rem;
     padding: 0 0.4rem 0 0.75rem;
     border-radius: var(--dx-radius-s);
-    opacity: 0;
-    transform: translateX(-6px);
+    opacity: var(--dx-row-hot, 0);
+    transform: translateX(calc(6px * (var(--dx-row-hot, 0) - 1)));
     transition: opacity 0.3s, transform 0.3s var(--dx-ease-out), background-color 0.2s;
 }
 
-#app [class*="meta-row"]:hover [class*="see-all-container"] {
-    opacity: 1;
-    transform: none;
+#app [class*="meta-row"]:hover {
+    --dx-row-hot: 1;
 }
 
 #app [class*="meta-row"] [class*="see-all-container"]:hover {
@@ -524,7 +521,7 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
 
 /* Landscape rows (and Continue Watching, made landscape by the plugin) */
 #app [class*="board-content-"]:not([class*="board-content-container"]) [class*="board-row-landscape"] > [class*="meta-items-container"] > *,
-#app [class*="board-content-"]:not([class*="board-content-container"]) [class*="continue-watching-row"]:has(.dx-wide-art) > [class*="meta-items-container"] > * {
+#app [class*="board-content-"]:not([class*="board-content-container"]) [class*="continue-watching-row"][data-dx-wide-row] > [class*="meta-items-container"] > * {
     flex-basis: calc(100% / var(--dx-wide-cols, 4)) !important;
 }
 
@@ -557,12 +554,29 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: box-shadow 0.3s;
 }
 
-#app [class*="meta-item-container"]:is(.hovered, :focus-within, .active, .selected) [class*="poster-container"] {
+#app [class*="meta-item-container"]:is(.hovered, .active, .selected) [class*="poster-container"] {
     box-shadow: var(--dx-shadow-2) !important;
     transform: translateY(-4px) scale(1.035);
 }
 
-#app [class*="meta-item-container"]:is(.hovered, :focus-within, .active, .selected) [class*="poster-container"]::after {
+#app [class*="meta-item-container"]:focus-within {
+    --dx-card-focus: 1;
+}
+
+#app [class*="meta-item-container"]:active:not(.active) {
+    --dx-card-press: 1;
+}
+
+/* keyboard focus: the same ring as hover */
+#app [class*="meta-item-container"] [class*="poster-container"]::after {
+    box-shadow: inset 0 0 0 calc(2px * var(--dx-card-focus, 0)) rgba(255, 255, 255, 0.85);
+}
+
+#app [class*="meta-item-container"] [class*="poster-container"] {
+    scale: calc(1 - 0.03 * var(--dx-card-press, 0));
+}
+
+#app [class*="meta-item-container"]:is(.hovered, .active, .selected) [class*="poster-container"]::after {
     box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.85);
 }
 
@@ -570,7 +584,7 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: transform 0.6s var(--dx-ease-out) !important;
 }
 
-#app [class*="meta-item-container"]:is(.hovered, :focus-within) [class*="poster-image-layer"] {
+#app [class*="meta-item-container"].hovered [class*="poster-image-layer"] {
     transform: scale(1.04) !important;
 }
 
@@ -578,9 +592,6 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     object-fit: cover;
 }
 
-#app [class*="meta-item-container"]:active:not(.active) [class*="poster-container"] {
-    scale: 0.97;
-}
 
 /* Titles under cards: quiet, single line */
 #app [class*="meta-item-container"] [class*="title-bar-container"] {
@@ -638,7 +649,7 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: opacity 0.25s;
 }
 
-#app [class*="meta-item-container"]:is(.hovered, :focus-within) [class*="play-icon-layer"] {
+#app [class*="meta-item-container"].hovered [class*="play-icon-layer"] {
     opacity: 1;
 }
 
@@ -649,7 +660,7 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     backdrop-filter: blur(6px);
 }
 
-#app [class*="meta-item-container"]:is(.hovered, :focus-within) [class*="play-icon-background"] {
+#app [class*="meta-item-container"].hovered [class*="play-icon-background"] {
     background: var(--dx-accent) !important;
     border-color: var(--dx-accent);
 }
@@ -707,7 +718,7 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: opacity 0.18s ease, transform 0.18s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-#app [class*="meta-item-container"]:hover [class*="dismiss-icon-layer"],
+#app [class*="meta-item-container"].hovered [class*="dismiss-icon-layer"],
 #app [class*="meta-item-container"] [class*="dismiss-icon-layer"]:focus-visible {
     opacity: 1;
     transform: none;
@@ -724,7 +735,7 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     height: 0.62rem !important;
     color: #fff !important;
     fill: currentColor !important;
-    opacity: 0.85;
+    opacity: 1;
 }
 
 #app [class*="meta-item-container"] [class*="dismiss-icon-layer"]::before {
@@ -748,16 +759,12 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     margin-right: 0.4rem;
 }
 
-#app [class*="meta-item-container"] [class*="dismiss-icon-layer"]:hover svg {
-    opacity: 1;
-}
-
 /* the "+N" badge steps aside while the remove tab is showing */
 #app [class*="meta-item-container"] [class*="new-videos"] {
     transition: opacity 0.18s ease;
 }
 
-#app [class*="meta-item-container"]:hover:has([class*="dismiss-icon-layer"]) [class*="new-videos"] {
+#app [class*="continue-watching-row"] [class*="meta-item-container"].hovered [class*="new-videos"] {
     opacity: 0;
 }
 
@@ -1122,6 +1129,7 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
 .dx-arrow svg {
     width: 2rem;
     height: 2rem;
+    transform: scale(var(--dx-arrow-scale, 1));
     transition: transform 0.25s var(--dx-ease-out);
 }
 
@@ -1139,8 +1147,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     opacity: 1;
 }
 
-.dx-arrow:hover svg {
-    transform: scale(1.25);
+.dx-arrow:hover {
+    --dx-arrow-scale: 1.25;
 }
 
 .dx-arrow.is-hidden {
@@ -1259,18 +1267,18 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     text-overflow: ellipsis;
 }
 
-#app [class*="continue-watching-row"]:has(.dx-wide-art) [class*="poster-container"] {
+#app [class*="continue-watching-row"][data-dx-wide-row] [class*="poster-container"] {
     padding-top: 56.25% !important;
 }
 
-#app [class*="continue-watching-row"]:has(.dx-wide-art) [class*="poster-image-layer"] {
+#app [class*="continue-watching-row"][data-dx-wide-row] [class*="poster-image-layer"] {
     opacity: 0;
 }
 
-#app [class*="continue-watching-row"]:has(.dx-wide-art) [class*="progress-bar-layer"],
-#app [class*="continue-watching-row"]:has(.dx-wide-art) [class*="play-icon-layer"],
-#app [class*="continue-watching-row"]:has(.dx-wide-art) [class*="new-videos"],
-#app [class*="continue-watching-row"]:has(.dx-wide-art) [class*="watched-icon-layer"] {
+#app [class*="continue-watching-row"][data-dx-wide-row] [class*="progress-bar-layer"],
+#app [class*="continue-watching-row"][data-dx-wide-row] [class*="play-icon-layer"],
+#app [class*="continue-watching-row"][data-dx-wide-row] [class*="new-videos"],
+#app [class*="continue-watching-row"][data-dx-wide-row] [class*="watched-icon-layer"] {
     z-index: 3;
 }
 
@@ -1312,6 +1320,7 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     background: #181818;
     overflow: hidden;
     transition: clip-path 0.48s cubic-bezier(0.2, 0.85, 0.25, 1);
+    will-change: clip-path;
 }
 
 /* fine hairline so the panel's edge reads crisp against the page */
@@ -1338,6 +1347,7 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transform: scale(0.92);
     transition: opacity 0.55s ease 0.16s, transform 0.6s cubic-bezier(0.2, 0.85, 0.25, 1) 0.1s;
     pointer-events: none;
+    will-change: opacity, transform;
 }
 
 .dx-preview::before {
@@ -1375,7 +1385,9 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     background: #222 center / cover no-repeat;
     pointer-events: none;
     opacity: 1;
-    transition: opacity 0.38s ease 0.06s;
+    /* fades only once the panel's artwork is showing around it: no see-through moment */
+    transition: opacity 0.3s ease 0.16s;
+    will-change: opacity;
 }
 
 .dx-preview.is-open .dx-preview-ghost {
@@ -2504,7 +2516,7 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     color: var(--dx-text-2);
 }
 
-body:has(.dx-player-title) #app [class*="player-container"] [class*="player-title-container"] {
+body[data-dx-ptitle] #app [class*="player-container"] [class*="player-title-container"] {
     visibility: hidden;
 }
 
@@ -2553,20 +2565,19 @@ body:has(.dx-player-title) #app [class*="player-container"] [class*="player-titl
 }
 
 #app [class*="player-container"] [class*="seek-bar-container"] [class*="slider-container"] {
-    --track-size: 4px;
+    --track-size: calc(4px + 3px * var(--dx-seek-hot, 0));
     --thumb-size: 16px;
+}
+
+#app [class*="player-container"] [class*="seek-bar-container"]:hover {
+    --dx-seek-hot: 1;
 }
 
 /* Stremio centres the knob with translateX(-50%) — keep that, only add the scale */
 #app [class*="player-container"] [class*="seek-bar-container"] [class*="thumb"] {
-    transform: translateX(-50%) scale(0);
+    transform: translateX(-50%) scale(calc(1.15 * var(--dx-seek-hot, 0)));
 }
 
-#app [class*="player-container"] [class*="seek-bar-container"]:hover [class*="slider-container"] {
-    --track-size: 7px;
-}
-
-#app [class*="player-container"] [class*="seek-bar-container"]:hover [class*="thumb"],
 html[class*="active-slider-within"] #app [class*="player-container"] [class*="seek-bar-container"] [class*="thumb"] {
     transform: translateX(-50%) scale(1.15);
 }
@@ -2620,13 +2631,14 @@ html[class*="active-slider-within"] #app [class*="player-container"] [class*="se
     height: 2.15rem !important;
     color: #fff;
     opacity: 1 !important;
+    transform: scale(var(--dx-btn-scale, 1));
     transition: transform 0.18s var(--dx-ease-out);
 }
 
-#app [class*="player-container"] [class*="control-bar-button-"]:hover:not(.disabled) svg,
-#app [class*="player-container"] [class*="control-bar-buttons-menu-button"]:hover svg,
-.dx-seek:hover svg {
-    transform: scale(1.22);
+#app [class*="player-container"] [class*="control-bar-button-"]:hover:not(.disabled),
+#app [class*="player-container"] [class*="control-bar-buttons-menu-button"]:hover,
+.dx-seek:hover {
+    --dx-btn-scale: 1.22;
 }
 
 #app [class*="player-container"] [class*="control-bar-button-"].disabled svg {
@@ -3208,8 +3220,10 @@ html[class*="active-slider-within"] #app [class*="player-container"] [class*="co
    15. REFINEMENTS
    ===================================================================== */
 
-/* Stock hover tooltips sit in the middle of posters — the preview card replaces them */
-body:has(#app [class*="meta-item-container"]:hover) .tooltips-items-container {
+/* Stock hover tooltips sit in the middle of posters — the preview card replaces them.
+   The plugin flags the tooltip box itself while a poster is pointed at: a body:has(...:hover) rule
+   (or any class on <html>/<body>) made the browser restyle the whole page on every hover. */
+.tooltips-items-container[data-dx-hide] {
     display: none !important;
 }
 
@@ -3347,10 +3361,6 @@ body #skiprange-upgrade-btn:hover {
     border-color: #fff !important;
 }
 
-body #tidb-active-btn:hover img,
-body #skiprange-active-btn:hover img {
-    filter: none !important;
-}
 
 /* Enhanced Player title above the seek bar */
 #app .custom-series-name {
@@ -3496,18 +3506,14 @@ body #skiprange-active-btn:hover img {
     color: var(--dx-text-2);
 }
 
-/* While Context Menu Fix shows its clone, hide the original button underneath */
-body:has(.context-menu-portal [class*="menu-button-container"]) #app nav [class*="menu-button-container"] {
-    visibility: hidden;
-}
 
 /* =====================================================================
    18. ENHANCED VIDEO PLAYER compatibility (subtitle style panel + title)
    ===================================================================== */
 
 /* dx.bi shows the title in the control bar; hide the duplicate */
-body:has(.dx-player-title) #app .custom-series-name,
-body:has(.dx-player-title) #app .custom-episode-title {
+body[data-dx-ptitle] #app .custom-series-name,
+body[data-dx-ptitle] #app .custom-episode-title {
     display: none !important;
 }
 
@@ -4125,7 +4131,7 @@ body:has(.dx-player-title) #app .custom-episode-title {
 }
 
 /* dx.bi's card already shows the time — hide Stremio's small tooltip while it's there */
-body:has(.dx-scrub) > [class*="seek-tooltip"] {
+body[data-dx-route="player"] > [class*="seek-tooltip"] {
     display: none !important;
 }
 
