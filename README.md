@@ -337,7 +337,11 @@ Stremio couldn't play that file, and DX.BI shows why underneath. Usually it's on
 
 ### Windows: "Probe process exited with code: 3221225781"
 
-Windows couldn't start the streaming server's converter because a system file is missing. Usually that's Media Foundation, which Windows *N* editions leave out. Install the *Media Feature Pack* (Windows Settings → *Optional features* → *Add a feature*) and restart, or switch to Stremio Service.
+Windows couldn't start the streaming server's video tool (ffprobe) because a file it needs is missing. To fix it, try these in order:
+
+- Switch to *Stremio Service*, which brings its own working copy. Install it and choose it when Stremio Enhanced starts.
+- Or close Stremio Enhanced and delete `ffmpeg.exe` and `ffprobe.exe` in `%APPDATA%\stremio-enhanced\streamingserver`. Fresh copies are downloaded on the next start.
+- If you've installed ffmpeg yourself, Stremio Enhanced uses that copy first when it's on your PATH. Update it or remove it from the PATH.
 
 ### A green screen says "Torrent is being downloaded to debrid…"
 

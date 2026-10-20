@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.10.2
+- **No more "streaming server isn't running" by mistake.** When a converted video failed, dx.bi could wrongly say the server wasn't running: it gave up after 2.5 seconds while the server was busy, or checked again when Stremio redrew its error box. It now waits longer, asks twice, and keeps the first answer it worked out.
+- **Better advice for Windows error 3221225781.** The missing file isn't Media Foundation, as 2.9.6 said: Stremio Enhanced's own ffprobe only needs files every Windows has. The fix is Stremio Service, re-downloading ffmpeg/ffprobe, or updating a copy of ffmpeg you installed yourself (Stremio Enhanced uses it first).
+- *Copy details* now includes the Windows build and processor type.
+
 ## 2.10.1
 - **Never two billboards on Home.** If the plugin was updated or reloaded while Home's billboard was still loading, the old copy could add a second billboard above the new one. It now checks first and clears any leftover.
 - New screenshots and short animations in the README.
