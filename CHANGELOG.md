@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.10.5
+- **Rows fade softly into the screen edges.** Titles that slide aside for a hover card, or peek in from a scrolled row, now fade out at the edge of the screen instead of being sliced off.
+- **Continue Watching stays calm.** Its cards no longer open a hover card; they lift gently and show play and the remove tab.
+
 ## 2.10.4
 - **Hover cards open without a single stutter.** Measured on a 165 Hz screen, the opening used to start with frames of 117, 45 and 40 ms; now every frame is about 6 ms. The causes, all fixed:
   - Several theme rules made the browser restyle the whole page whenever anything was hovered or added (`body:has(...)`, and `:hover`/`:focus` rules followed by `[class*=...]`). Hover effects now use variables set on the hovered element itself, and the plugin marks rows and cards with plain attributes instead of `:has()`.
