@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews with trailers, ratings on posters, skip intro and up next, anime filler guide, new episode badges, watch stats and viewers, stream sorting & filters, a Netflix-style player, watch parties with friends, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.9.0
+ * @version 2.9.1
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -59,6 +59,7 @@
     previews: true,
     ratings: true,
     wideContinue: true,
+    videoRowsOnly: true,
     playerExtras: true,
     seekPreviews: true,
     remainingTime: true,
@@ -111,6 +112,7 @@
       ],
     },
     { key: "builtInTheme", type: "toggle", label: "dx.bi look built in", description: "Use the dx.bi theme without installing it separately. Steps aside by itself when you apply another theme in Settings → Enhanced → Themes.", defaultValue: DEFAULTS.builtInTheme },
+    { key: "videoRowsOnly", type: "toggle", label: "Only movie, series & anime rows on Home", description: "Hides rows from addons that list other things, like a debrid account's downloads or YouTube channels. They stay in Discover.", defaultValue: DEFAULTS.videoRowsOnly },
     { key: "billboard", type: "toggle", label: "Billboard on Home", description: "Large rotating feature banner at the top of Home.", defaultValue: DEFAULTS.billboard },
     {
       key: "billboardSource",
@@ -1021,6 +1023,18 @@
     },
     { rootMargin: "300px 600px" }
   );
+
+  // Home rows whose catalog isn't films or shows (Real-Debrid downloads, YouTube channels, "other")
+  const VIDEO_TYPES = new Set(["movie", "series", "anime", "collections", "tv"]);
+  function filterRows() {
+    if (currentRoute() !== "board") return;
+    for (const row of document.querySelectorAll('[class*="board-content-"]:not([class*="board-content-container"]) > [class*="board-row"]')) {
+      const href = row.querySelector('[class*="header-container"] a[href^="#/discover/"]')?.getAttribute("href");
+      const type = href ? decodeURIComponent(href.split("/")[3] || "") : "";
+      const hide = settings.videoRowsOnly && !!type && !VIDEO_TYPES.has(type.toLowerCase());
+      if (row.classList.contains("dx-row-off") !== hide) row.classList.toggle("dx-row-off", hide);
+    }
+  }
 
   function allCards() {
     return document.querySelectorAll('#app [class*="meta-item-container"]');
@@ -4874,7 +4888,7 @@
     const steps = [updateRoute, brandTitle, () => player.ensure(), () => playbackHelp.ensure(), () => scrub.ensure(), () => enhance.ensure(), () => watchParty.ensure(), () => skip.ensure(), () => addonTools.ensure(), communitySync];
     if (currentRoute() === "detail") steps.push(() => streamTools.ensure());
     if (currentRoute() !== "player") {
-      steps.push(() => hero.ensure(), updateAllArrows, syncCards);
+      steps.push(() => hero.ensure(), filterRows, updateAllArrows, syncCards);
     }
     // One failing step must never stop the others
     for (const step of steps) {
@@ -4936,6 +4950,7 @@
   .dxe-btn:hover { background: rgba(255,255,255,.17); }
   .dxe-btn.is-primary { background: var(--dx-accent, #e50914); }
   .dxe-btn:disabled { opacity: .4; cursor: default; }
+  .dx-row-off { display: none !important; }
   .dxe-playhelp { max-width: 36rem; margin: 1.2rem auto 0; padding: 0 1.5rem; text-align: center; color: rgba(255,255,255,.75); pointer-events: auto; }
   .dxe-playhelp p { margin: 0; font: 500 .95rem/1.55 Inter, system-ui, sans-serif !important; }
   .dxe-playhelp p b, .dxe-playhelp p i { font: inherit !important; }

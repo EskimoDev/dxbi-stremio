@@ -193,6 +193,7 @@ It reads what your addons already show, so it works with any stream addon. Your 
 - Hover previews
 - Ratings on posters (IMDb, Kitsu, AniList)
 - Wide Continue Watching
+- Only movie, series & anime rows on Home
 - Player extras
 - Picture enhancement — Off / Auto / Sharpen / Anime4K (quality or fast)
 - Skip intro/recap/credits buttons and auto-skip

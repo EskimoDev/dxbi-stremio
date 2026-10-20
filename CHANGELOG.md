@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.9.1
+- **Home shows only movie, series & anime rows** (new setting, on by default). Rows from addons that list other things, like a debrid account's downloads or YouTube channels, are hidden on Home and stay available in Discover.
+
 ## 2.9.0
 - **Trailers in hover cards**: rest on a title and its trailer fades in, muted, with a speaker button for sound. It only appears once it's really playing, and stops the moment you move away.
 - **Up next**: when the credits roll (taken from the skip data, otherwise the last 30 seconds), a Netflix-style card counts down to the next episode with its thumbnail and title. *Play now*, or *Watch credits* to stay. Pausing the video pauses the countdown. Replaces Stremio's own popup (choose 5–20 seconds, or Off to keep Stremio's).
