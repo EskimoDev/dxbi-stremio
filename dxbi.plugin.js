@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews with trailers, ratings on posters, skip intro and up next, anime filler guide, new episode badges, watch stats and viewers, stream sorting & filters, a Netflix-style player, watch parties with friends, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.9.5
+ * @version 2.9.6
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -17,7 +17,7 @@
   // Stremio Enhanced loads each plugin as <script id="<file name>">, which tells us our settings key
   const SCRIPT_ID = (document.currentScript && document.currentScript.id) || "dxbi.plugin.js";
   const PLUGIN_KEY = SCRIPT_ID.replace(/\.plugin\.js$/, "");
-  const PLUGIN_VERSION = "2.9.5"; // kept in step with @version by tools/bundle-theme.mjs
+  const PLUGIN_VERSION = "2.9.6"; // kept in step with @version by tools/bundle-theme.mjs
   const log = (...args) => console.log("[dx.bi]", ...args);
 
   // Stremio Web can drop window.core on some routes (Stremio Enhanced works around the same thing),
@@ -5434,6 +5434,9 @@
         report.refetch = r.status || r.error || 0;
         if (!r.ok && typeof r.text === "function") report.serverSaid = (await r.text().catch(() => "")).slice(0, 300);
         if (r.ok && segments.length) return { kind: "file" };
+        // 3221225781 = 0xC0000135: Windows couldn't start ffmpeg/ffprobe because a DLL is missing
+        // (usually Media Foundation, absent on Windows "N" editions)
+        if (/3221225781|c0000135/i.test(report.serverSaid || "")) return { kind: "dll" };
         return { kind: "converter" };
       }
       return { kind: "file" };
@@ -5505,6 +5508,8 @@
           if (why.kind === "hardware") {
             fixHardware = true;
             text = `<b>Stremio's streaming server couldn't convert this video.</b> It's set to convert with hardware acceleration (<i>${esc(why.profile)}</i>), which often doesn't work on a PC's graphics card or driver. Converting without it is slower but works everywhere. (Settings → Streaming → Transcode profile.)`;
+          } else if (why.kind === "dll") {
+            text = "<b>Windows can't start the streaming server's converter: a system file (DLL) it needs is missing.</b> This usually means Windows' Media Foundation isn't installed, as on Windows 10/11 <i>N</i> editions. Install the <i>Media Feature Pack</i> (in Windows Settings, search <i>Optional features</i> → <i>Add a feature</i>) and restart the PC. Or switch to <i>Stremio Service</i>, which has its own converter. Meanwhile, open this one in VLC.";
           } else if (why.kind === "converter") {
             text = "<b>Stremio's streaming server couldn't convert this video.</b> Its converter (ffmpeg) failed or is missing. Restart Stremio Enhanced; on Windows, reinstalling <i>Stremio Service</i> brings the converter back. Meanwhile pick an x264/H.264 or WEB-DL release, or open this one in mpv or VLC.";
           } else {

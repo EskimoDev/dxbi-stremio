@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.9.6
+- **Recognises a Windows-only converter failure**: when Windows can't start the streaming server's converter because a system DLL is missing (error 3221225781, usually Media Foundation missing on Windows *N* editions), dx.bi says so and explains the fix (install the *Media Feature Pack*, or use *Stremio Service*).
+
 ## 2.9.5
 - **Copy details** on the error screen when a converted video won't play: a short report of the streaming server's version and conversion settings, the file's formats and what the converter returned (no links, keys or titles), to paste into a GitHub issue.
 - More reliable check of whether the converter worked: if the player's download records hide the result, dx.bi asks the server again itself.

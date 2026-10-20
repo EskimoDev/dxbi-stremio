@@ -257,6 +257,8 @@ Plugins that do something DX.BI doesn't (for example library folders or random p
 - **Stremio's streaming server isn't running.** Torrents, and files the built-in player can't open by itself (MKV, HEVC/x265, Dolby Vision), need it. Restart Stremio Enhanced and accept its streaming-server setup; on **Windows**, choosing **Stremio Service** is easiest. *Settings → Streaming* shows whether it's online.
 - **The release's format doesn't play on that computer** (HEVC/x265 10-bit or Dolby Vision, common on Windows 10). Since 2.9.2 dx.bi has the streaming server convert these automatically (*Convert videos this PC can't play*, in dx.bi's settings). If it still fails, pick an x264/H.264 or WEB-DL release, or press **Open in mpv / VLC**.
 
+**Windows: "Probe process exited with code: 3221225781" (in *Copy details*).** Windows couldn't start the streaming server's converter because a system file is missing, usually Media Foundation, which Windows 10/11 *N* editions leave out. Install the **Media Feature Pack** (Windows Settings → search *Optional features* → *Add a feature*) and restart, or switch to **Stremio Service**, which brings its own converter.
+
 **A green screen says "Torrent is being downloaded to debrid…".** That release isn't cached on your debrid service yet; it's a short clip from your stream addon, not a dx.bi error. dx.bi pauses it and explains. Pick a release marked **RD+** or ⚡ to watch straight away.
 
 **Subtitles turn on by themselves.** Not any more: *Subtitles when a video starts* (in dx.bi's settings) is **Off** by default, like Netflix. Turn them on from the player's subtitles menu. Choose *On, in my Stremio subtitle language* to get Stremio's old behaviour back.
