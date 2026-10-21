@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description Cinematic, Netflix-inspired interface for dx.bi. Pair it with the dx.bi plugin for the billboard, carousels, previews, ratings and player extras.
- * @version 2.10.5
+ * @version 2.10.6
  * @author dx.bi
  * @requirements ["dxbi.plugin.js"]
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.theme.css
@@ -2510,6 +2510,14 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
 
 #app [class*="player-container"] [class*="player-nav"] [class*="player-button"]:hover {
     transform: scale(1.15);
+}
+
+/* Some Windows installs drew the back arrow unsized: a black chevron across the whole video that
+   sent every click back to the streams list. Keep top-bar icons small and click-through always. */
+#app [class*="player-container"] [class*="nav-bar-layer"] svg {
+    max-width: 3rem !important;
+    max-height: 3rem !important;
+    pointer-events: none !important;
 }
 
 #app [class*="player-container"] [class*="player-nav"] [class*="player-button"] svg {
