@@ -104,6 +104,8 @@ The look is built into the plugin, so no theme file is needed. Applying any othe
 
 - **Ratings on posters** — IMDb scores from your own addons. Anime gets its Kitsu or AniList score.
 
+- **Reviews on title pages** — Rotten Tomatoes and Metacritic scores beside the IMDb rating, and a Reviews button with what critics said. Works without an account; free keys add audience reviews and more scores.
+
 - **Wide Continue Watching** — landscape cards with title art and progress.
 
 - **Watched titles** — optionally dim or hide what you've already seen in Discover, Search and Home.
@@ -240,6 +242,24 @@ Click the sliders button in the player.
   <sub>Subtitles 4 seconds late, fixed with one click</sub>
 </p>
 
+### Reviews
+
+<img src="screenshots/reviews.jpg" alt="Reviews" width="380" align="right">
+
+Every movie and show page gets critics' scores next to its IMDb rating, and a *Reviews* button beside *Trailer*.
+
+- *Scores*: Rotten Tomatoes and Metacritic, from Wikidata.
+- *What critics said*: the critics' summary from the title's Wikipedia article, with a link to read more.
+
+That works for everyone with no setup. Two free keys add more, and each one is only ever sent to its own service:
+
+- A *TMDB key* adds audience reviews. Sign up at [themoviedb.org](https://www.themoviedb.org/signup), open *Settings → API*, and paste the API key or the read access token.
+- An *MDBList key* adds fresher scores, including Rotten Tomatoes audience, Letterboxd and Trakt (1,000 titles a day). Sign in at [mdblist.com](https://mdblist.com), open *Preferences*, and copy the API key.
+
+Paste them under *Reviews* in dx.bi's settings, then press *Close* to save.
+
+<br clear="right">
+
 ### Picture enhancement
 
 Makes anime, especially older or lower-resolution episodes, look cleaner and sharper.
@@ -279,6 +299,7 @@ Look
 - accent colour, built-in theme
 - billboard: on/off, content and speed
 - hover previews, trailers, ratings, wide Continue Watching
+- reviews on title pages, with optional TMDB and MDBList keys
 - only movie, series and anime rows on Home
 - watched titles: show, dim or hide
 
@@ -362,6 +383,7 @@ No tracking and no accounts. It only asks public services about the titles you'r
 - ratings and artwork: Cinemeta, MetaHub, Kitsu, AniList
 - skip times: TheIntroDB, AniSkip
 - filler lists: animefillerlist.com
+- reviews: Wikidata and Wikipedia; TMDB and MDBList only if you add your own key
 - trailers: YouTube (privacy-enhanced mode, only while a trailer plays)
 - fonts: Google Fonts and jsDelivr
 
@@ -391,7 +413,7 @@ Stremio changes its interface now and then. [Open an issue](https://github.com/n
 - [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced) by REVENGE977 — makes themes and plugins possible.
 - The plugin authors whose work showed what Stremio users want — TheIntroDB, Sul-404 (Addon Manager), Fxy and MrBlu03.
 - [Anime4K](https://github.com/bloc97/Anime4K) by bloc97 — the shaders behind Picture enhancement, included unmodified under the MIT licence ([LICENSE-ANIME4K](LICENSE-ANIME4K)).
-- Cinemeta and MetaHub for metadata and artwork; [Kitsu](https://kitsu.app) and [AniList](https://anilist.co) for anime scores; [TheIntroDB](https://theintrodb.org) and [AniSkip](https://aniskip.com) for skip times; [animefillerlist.com](https://www.animefillerlist.com) for the filler guide.
+- Cinemeta and MetaHub for metadata and artwork; [Kitsu](https://kitsu.app) and [AniList](https://anilist.co) for anime scores; [TheIntroDB](https://theintrodb.org) and [AniSkip](https://aniskip.com) for skip times; [animefillerlist.com](https://www.animefillerlist.com) for the filler guide; [Wikidata](https://www.wikidata.org) (CC0) and [Wikipedia](https://en.wikipedia.org) (CC BY-SA) for review scores and critics' summaries; [MDBList](https://mdblist.com) for extra scores. Audience reviews come from [TMDB](https://www.themoviedb.org): this product uses the TMDB API but is not endorsed or certified by TMDB.
 - Fonts: [Bebas Neue](https://github.com/dharmatype/Bebas-Neue) and [Inter](https://rsms.me/inter/) (SIL Open Font License).
 - Country flags: [Twemoji](https://github.com/jdecked/twemoji) graphics (CC-BY 4.0) via the [Twemoji Country Flags](https://github.com/talkjs/country-flag-emoji-polyfill) font by TalkJS (MIT).
 - Built with the help of [Claude Code](https://www.anthropic.com/claude-code).

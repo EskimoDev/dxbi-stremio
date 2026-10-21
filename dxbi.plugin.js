@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
- * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews with trailers, ratings on posters, skip intro and up next, anime filler guide, new episode badges, watch stats and viewers, stream sorting & filters, a Netflix-style player with black-bar removal, night mode and subtitle sync, watch parties with friends, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.10.7
+ * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews with trailers, ratings on posters, critic reviews, skip intro and up next, anime filler guide, new episode badges, watch stats and viewers, stream sorting & filters, a Netflix-style player with black-bar removal, night mode and subtitle sync, watch parties with friends, a cinematic intro and interface sounds. Use with the dx.bi theme.
+ * @version 2.11.0
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -17,7 +17,7 @@
   // Stremio Enhanced loads each plugin as <script id="<file name>">, which tells us our settings key
   const SCRIPT_ID = (document.currentScript && document.currentScript.id) || "dxbi.plugin.js";
   const PLUGIN_KEY = SCRIPT_ID.replace(/\.plugin\.js$/, "");
-  const PLUGIN_VERSION = "2.10.7"; // kept in step with @version by tools/bundle-theme.mjs
+  const PLUGIN_VERSION = "2.11.0"; // kept in step with @version by tools/bundle-theme.mjs
   const log = (...args) => console.log("[dx.bi]", ...args);
 
   // Stremio Web can drop window.core on some routes (Stremio Enhanced works around the same thing),
@@ -59,6 +59,9 @@
     billboardInterval: "9",
     previews: true,
     ratings: true,
+    reviews: true,
+    tmdbKey: "",
+    mdblistKey: "",
     wideContinue: true,
     videoRowsOnly: true,
     playerExtras: true,
@@ -254,6 +257,9 @@
       ],
     },
     { key: "librarySort", type: "toggle", label: "Library: sort by year & rating, filter by genre", description: "Extra sort buttons and a genre filter on the Library page.", defaultValue: DEFAULTS.librarySort },
+    { key: "reviews", type: "toggle", label: "Reviews on title pages", description: "Rotten Tomatoes and Metacritic scores next to the IMDb rating, and a Reviews button with what critics said (from Wikidata and Wikipedia, no account needed).", defaultValue: DEFAULTS.reviews },
+    { key: "tmdbKey", type: "input", label: "Reviews: TMDB key (optional)", description: "Adds audience reviews. Free: sign up at themoviedb.org, then Settings → API, and paste the API key or the read access token. It's only sent to TMDB.", defaultValue: DEFAULTS.tmdbKey },
+    { key: "mdblistKey", type: "input", label: "Reviews: MDBList key (optional)", description: "Adds fresher scores, including Rotten Tomatoes audience, Letterboxd and Trakt. Free (1,000 titles a day): sign in at mdblist.com, then Preferences → API key. It's only sent to MDBList.", defaultValue: DEFAULTS.mdblistKey },
     { key: "trailers", type: "toggle", label: "Trailers in hover cards", description: "Rest on a title and its trailer starts playing in the card, muted (tap the speaker for sound).", defaultValue: DEFAULTS.trailers },
     {
       key: "upNext",
@@ -359,6 +365,7 @@
   // ---------------------------------------------------------------------------
 
   const ICONS = {
+    reviews: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.8.8-4.2 4.1 1 5.8L12 16.8l-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"/></svg>',
     play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.53.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>',
     info: '<svg viewBox="0 0 24 24" aria-hidden="true" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9.25"/><path d="M12 11v6M12 7.5v.01"/></svg>',
     chevronDown: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
@@ -1637,6 +1644,404 @@
       }
       el.classList.add("is-closing");
       setTimeout(() => el.classList.remove("is-closing"), 200);
+    },
+  };
+
+  // ---------------------------------------------------------------------------
+  // Reviews on the title page: critics' scores by the IMDb rating, and a Reviews button with
+  // Wikipedia's summary of what critics said. Wikidata and Wikipedia need no key. With a free
+  // key of your own, MDBList adds fresher scores (audience, Letterboxd, Trakt…) and TMDB adds
+  // audience reviews. Keys only ever go to their own service.
+  // ---------------------------------------------------------------------------
+
+  const WIKIDATA = {
+    rottenTomatoes: "Q105584",
+    metacritic: "Q150248",
+    tomatometer: "Q108403393",
+    metascore: "Q106515043",
+  };
+
+  // MDBList's sources, in the order they're shown, and how each one writes its score
+  const MDBLIST_SOURCES = [
+    ["tomatoes", "Rotten Tomatoes", "Critics", (r) => pct(r.value ?? r.score)],
+    ["popcorn", "Rotten Tomatoes", "Audience", (r) => pct(r.value ?? r.score)],
+    ["metacritic", "Metacritic", "Critics", (r) => num(r.value ?? r.score, 0)],
+    ["metacriticuser", "Metacritic", "Users", (r) => num(r.value, 1)],
+    ["letterboxd", "Letterboxd", "Members", (r) => num(r.value, 1, "/5")],
+    ["trakt", "Trakt", "Members", (r) => pct(r.score ?? r.value)],
+    ["tmdb", "TMDB", "Members", (r) => pct(r.score ?? r.value)],
+    ["rogerebert", "Roger Ebert", "Critic", (r) => num(r.value, 1, "/4")],
+    ["myanimelist", "MyAnimeList", "Members", (r) => num(r.value, 2)],
+  ];
+
+  function pct(v) {
+    const n = parseFloat(v);
+    return Number.isFinite(n) && n > 0 ? `${Math.round(n)}%` : "";
+  }
+
+  function num(v, digits, suffix = "") {
+    const n = parseFloat(v);
+    return Number.isFinite(n) && n > 0 ? n.toFixed(digits).replace(/\.0+$/, "") + suffix : "";
+  }
+
+  const reviews = {
+    pending: new Map(),
+    data: new Map(),
+    el: null,
+
+    // The title the page shows: #/detail/<type>/<id>[/<video>]
+    current() {
+      const parts = (location.hash || "").replace(/^#\/?/, "").split("/");
+      if (parts[0] !== "detail" || !parts[1] || !parts[2]) return null;
+      const type = decodeURIComponent(parts[1]);
+      const id = decodeURIComponent(parts[2]);
+      return { type, id, key: `${type}:${id}` };
+    },
+
+    ensure() {
+      const t = settings.reviews && currentRoute() === "detail" ? this.current() : null;
+      const box = document.querySelector('[class*="metadetails-container"] [class*="meta-preview-container"]');
+      if (!t || !box) {
+        document.querySelectorAll(".dx-scores, .dx-reviews-btn").forEach((n) => n.remove());
+        if (!t) this.close();
+        return;
+      }
+      ensureExtrasStyle();
+      this.ensureButton(box, t);
+      const data = this.data.get(t.key);
+      if (data) this.paintScores(box, t, data);
+      else this.load(t).then(() => scheduleSync());
+    },
+
+    ensureButton(box, t) {
+      const row = box.querySelector('[class*="action-buttons-container"]');
+      if (!row) return;
+      let b = row.querySelector(":scope > .dx-reviews-btn");
+      if (!b) {
+        b = document.createElement("div");
+        b.className = "dx-reviews-btn";
+        b.setAttribute("role", "button");
+        b.tabIndex = 0;
+        b.innerHTML = `${ICONS.reviews}<span>Reviews</span>`;
+        b.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const now = this.current();
+          if (now) this.open(now);
+        });
+        b.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            b.click();
+          }
+        });
+        // right after Play / Trailer, the page's main buttons
+        const first = row.querySelector(':scope > [class*="action-button-container"][class*="wide"]');
+        row.insertBefore(b, first ? first.nextSibling : row.firstChild);
+      }
+      b.dataset.key = t.key;
+    },
+
+    // Critics' scores next to the IMDb rating
+    paintScores(box, t, data) {
+      const info = box.querySelector('[class*="runtime-release-info-container"]');
+      if (!info) return;
+      const chips = this.chips(data);
+      let el = info.querySelector(":scope > .dx-scores");
+      if (!chips.length) {
+        if (el) el.remove();
+        return;
+      }
+      if (el && el.dataset.key === t.key) return;
+      if (!el) {
+        el = document.createElement("span");
+        el.className = "dx-scores";
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const now = this.current();
+          if (now) this.open(now);
+        });
+        info.append(el);
+      }
+      el.dataset.key = t.key;
+      el.innerHTML = chips.map((c) => `<span class="dx-score is-${c.cls}" title="${esc(c.title)}"><b>${esc(c.value)}</b><i>${esc(c.tag)}</i></span>`).join("");
+    },
+
+    chips(data) {
+      const out = [];
+      const s = data.scores || [];
+      const rt = s.find((x) => x.source === "tomatoes");
+      const mc = s.find((x) => x.source === "metacritic");
+      const lb = s.find((x) => x.source === "letterboxd");
+      // coloured the way each site does: fresh / rotten, and Metacritic's green / yellow / red
+      if (rt) out.push({ cls: parseFloat(rt.value) >= 60 ? "rt" : "rt is-low", value: rt.value, tag: "RT", title: "Rotten Tomatoes: critics" });
+      if (mc) {
+        const n = parseFloat(mc.value);
+        out.push({ cls: n >= 61 ? "mc" : n >= 40 ? "mc is-mixed" : "mc is-low", value: mc.value, tag: "Metacritic", title: "Metacritic: critics" });
+      }
+      if (lb) out.push({ cls: "lb", value: lb.value.replace("/5", ""), tag: "Letterboxd", title: "Letterboxd: members, out of 5" });
+      return out;
+    },
+
+    load(t) {
+      if (this.pending.has(t.key)) return this.pending.get(t.key);
+      const promise = (async () => {
+        const ids = await this.ids(t);
+        const [wd, mdb] = await Promise.all([
+          this.wikidata(ids).catch(() => null),
+          settings.mdblistKey ? this.mdblist(ids).catch((err) => ({ error: err.message })) : null,
+        ]);
+        if (wd && wd.imdb && !ids.imdb) ids.imdb = wd.imdb;
+        const scores = mdb && mdb.scores && mdb.scores.length ? mdb.scores : (wd && wd.scores) || [];
+        const data = { ids, scores, fromMdblist: scores === (mdb && mdb.scores), article: wd && wd.article, mdbError: mdb && mdb.error };
+        this.data.set(t.key, data);
+        return data;
+      })();
+      this.pending.set(t.key, promise);
+      promise.finally(() => this.pending.delete(t.key));
+      return promise;
+    },
+
+    // Every id we can use for this title, from the one Stremio gave us
+    async ids(t) {
+      const series = t.type !== "movie";
+      const ids = { type: series ? "series" : "movie" };
+      const id = t.id.split(":");
+      if (/^tt\d+$/.test(id[0])) ids.imdb = id[0];
+      else if (id[0] === "tmdb" && /^\d+$/.test(id[1] || "")) ids.tmdb = id[1];
+      else if (id[0] === "mal" && /^\d+$/.test(id[1] || "")) ids.mal = id[1];
+      else if (id[0] === "kitsu" && /^\d+$/.test(id[1] || "")) {
+        const mal = await skip.malId(id[1]).catch(() => null);
+        if (mal) ids.mal = String(mal);
+      }
+      // anime addons often know the IMDb id too
+      const known = coreMeta.get(t.type, t.id);
+      if (!ids.imdb && known && isImdb(known.imdbId)) ids.imdb = known.imdbId;
+      return ids;
+    },
+
+    // Wikidata (CC0): the latest Rotten Tomatoes and Metacritic scores, the English Wikipedia
+    // article, and the IMDb id for titles Stremio only knows by another id
+    async wikidata(ids) {
+      const key = `reviews:wd:${ids.imdb || ids.tmdb || ids.mal}`;
+      const cached = readCached(key);
+      if (cached !== undefined) return cached;
+      const match = ids.imdb ? `wdt:P345 "${ids.imdb}"`
+        : ids.tmdb ? `wdt:${ids.type === "movie" ? "P4947" : "P4983"} "${ids.tmdb}"`
+        : ids.mal ? `wdt:P4086 "${ids.mal}"` : null;
+      if (!match) return null;
+      const query = `SELECT ?score ?by ?method ?when ?article ?imdb WHERE {
+        ?f ${match}.
+        OPTIONAL { ?f wdt:P345 ?imdb }
+        OPTIONAL { ?f p:P444 ?s. ?s ps:P444 ?score; pq:P447 ?by. VALUES ?by { wd:${WIKIDATA.rottenTomatoes} wd:${WIKIDATA.metacritic} }
+          OPTIONAL { ?s pq:P459 ?method } OPTIONAL { ?s pq:P585 ?when } }
+        OPTIONAL { ?article schema:about ?f; schema:isPartOf <https://en.wikipedia.org/> }
+      } LIMIT 60`;
+      const r = await fetch(`https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`, { headers: { Accept: "application/sparql-results+json" }, signal: AbortSignal.timeout(12000) });
+      if (!r.ok) throw new Error(`Wikidata ${r.status}`);
+      const rows = ((await r.json()).results || {}).bindings || [];
+      const v = (row, k) => (row[k] ? row[k].value.replace("http://www.wikidata.org/entity/", "") : "");
+      const latest = (by, method, shape) => rows
+        .filter((row) => v(row, "by") === by && (v(row, "method") === method || (!v(row, "method") && shape.test(v(row, "score")))))
+        .sort((a, b) => v(b, "when").localeCompare(v(a, "when")))[0];
+      const scores = [];
+      const rt = latest(WIKIDATA.rottenTomatoes, WIKIDATA.tomatometer, /^\d+\s*%$/);
+      if (rt && pct(v(rt, "score"))) scores.push({ source: "tomatoes", name: "Rotten Tomatoes", note: "Critics", value: pct(v(rt, "score")) });
+      const mc = latest(WIKIDATA.metacritic, WIKIDATA.metascore, /^\d+\s*\/\s*100$/);
+      if (mc && num(v(mc, "score"), 0)) scores.push({ source: "metacritic", name: "Metacritic", note: "Critics", value: num(v(mc, "score"), 0) });
+      const first = rows[0] || {};
+      const result = { scores, article: v(first, "article") || null, imdb: v(first, "imdb") || null };
+      writeCached(key, result);
+      return result;
+    },
+
+    // MDBList (free key, 1,000 requests a day): scores from many sites in one request
+    async mdblist(ids) {
+      const by = ids.imdb ? ["imdb", ids.imdb] : ids.tmdb ? ["tmdb", ids.tmdb] : ids.mal ? ["mal", ids.mal] : null;
+      if (!by) return null;
+      const key = `reviews:mdb:${by.join(":")}`;
+      const cached = readCached(key);
+      if (cached !== undefined) return cached;
+      const kind = by[0] === "mal" ? "any" : ids.type === "movie" ? "movie" : "show";
+      const r = await fetch(`https://api.mdblist.com/${by[0]}/${kind}/${encodeURIComponent(by[1])}/?apikey=${encodeURIComponent(settings.mdblistKey)}`, { signal: AbortSignal.timeout(12000) });
+      if (r.status === 401 || r.status === 403) throw new Error("MDBList didn't accept your key");
+      if (r.status === 429) throw new Error("MDBList's daily limit is used up");
+      if (r.status === 404) {
+        writeCached(key, { scores: [] });
+        return { scores: [] };
+      }
+      if (!r.ok) throw new Error(`MDBList ${r.status}`);
+      const j = await r.json();
+      const ratings = Array.isArray(j.ratings) ? j.ratings : [];
+      const scores = [];
+      for (const [source, name, note, format] of MDBLIST_SOURCES) {
+        const rating = ratings.find((x) => x && (x.source === source || (source === "myanimelist" && x.source === "mal")));
+        const value = rating ? format(rating) : "";
+        if (value) scores.push({ source, name, note, value, votes: parseInt(rating.votes, 10) || 0, url: /^https:\/\//.test(rating.url || "") ? rating.url : "" });
+      }
+      const result = { scores, imdb: j.imdb_id || null };
+      writeCached(key, result);
+      return result;
+    },
+
+    // Wikipedia (CC BY-SA): the first paragraphs of the article's critics section
+    async wikipedia(article) {
+      const title = decodeURIComponent((article || "").split("/wiki/")[1] || "");
+      if (!title) return null;
+      const key = `reviews:wp:${title}`;
+      const cached = readCached(key);
+      if (cached !== undefined) return cached;
+      const api = "https://en.wikipedia.org/w/api.php?format=json&formatversion=2&redirects=1&action=parse";
+      const headers = { "Api-User-Agent": "dx.bi (https://github.com/notdxbi/dxbi-stremio)" };
+      const r = await fetch(`${api}&prop=sections&page=${encodeURIComponent(title)}`, { headers, signal: AbortSignal.timeout(12000) });
+      if (!r.ok) throw new Error(`Wikipedia ${r.status}`);
+      const sections = (((await r.json()).parse || {}).sections) || [];
+      const pick = sections.find((s) => /^critical (response|reception)$/i.test(s.line))
+        || sections.find((s) => /^(critical|critics)/i.test(s.line))
+        || sections.find((s) => /^reception/i.test(s.line));
+      let result = { text: [], section: null, url: article };
+      if (pick) {
+        const r2 = await fetch(`${api}&prop=text&disableeditsection=1&disablelimitreport=1&page=${encodeURIComponent(title)}&section=${encodeURIComponent(pick.index)}`, { headers, signal: AbortSignal.timeout(12000) });
+        if (!r2.ok) throw new Error(`Wikipedia ${r2.status}`);
+        const html = (((await r2.json()).parse || {}).text) || "";
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        doc.querySelectorAll("sup, style, .mw-ref, .noprint, .reference, table, figure, blockquote").forEach((n) => n.remove());
+        const text = [];
+        let length = 0;
+        for (const p of doc.querySelectorAll("p")) {
+          const line = p.textContent.replace(/\s+/g, " ").trim();
+          if (line.length < 60) continue;
+          text.push(line);
+          length += line.length;
+          if (text.length >= 3 || length > 900) break;
+        }
+        result = { text, section: pick.line, url: `${article}#${encodeURIComponent((pick.anchor || pick.line).replace(/ /g, "_"))}` };
+      }
+      writeCached(key, result);
+      return result;
+    },
+
+    // TMDB (free key): audience reviews. Takes either the API key or the longer read access token.
+    async tmdb(ids) {
+      const token = settings.tmdbKey.trim();
+      const auth = token.startsWith("eyJ") ? { headers: { Authorization: `Bearer ${token}` } } : { headers: {} };
+      const withKey = (url) => (token.startsWith("eyJ") ? url : `${url}${url.includes("?") ? "&" : "?"}api_key=${encodeURIComponent(token)}`);
+      const kind = ids.type === "movie" ? "movie" : "tv";
+      let tmdbId = ids.tmdb;
+      const key = `reviews:tmdb:${kind}:${tmdbId || ids.imdb}`;
+      const cached = readCached(key);
+      if (cached !== undefined) return cached;
+      const get = async (url) => {
+        const r = await fetch(withKey(url), { ...auth, signal: AbortSignal.timeout(12000) });
+        if (r.status === 401) throw new Error("TMDB didn't accept your key");
+        if (!r.ok) throw new Error(`TMDB ${r.status}`);
+        return r.json();
+      };
+      if (!tmdbId && ids.imdb) {
+        const found = await get(`https://api.themoviedb.org/3/find/${encodeURIComponent(ids.imdb)}?external_source=imdb_id`);
+        const hit = (kind === "movie" ? found.movie_results : found.tv_results) || [];
+        tmdbId = hit[0] && hit[0].id;
+      }
+      if (!tmdbId) return { reviews: [] };
+      const j = await get(`https://api.themoviedb.org/3/${kind}/${encodeURIComponent(tmdbId)}/reviews?language=en-US&page=1`);
+      const list = (j.results || []).slice(0, 8).map((x) => ({
+        author: (x.author_details && (x.author_details.name || x.author_details.username)) || x.author || "TMDB user",
+        rating: x.author_details && Number.isFinite(x.author_details.rating) ? x.author_details.rating : null,
+        when: x.created_at || "",
+        text: String(x.content || "").replace(/\r/g, "").replace(/[*_]{1,2}([^*_\n]+)[*_]{1,2}/g, "$1").trim(),
+        url: /^https:\/\//.test(x.url || "") ? x.url : "",
+      })).filter((x) => x.text);
+      const result = { reviews: list, total: j.total_results || list.length, url: `https://www.themoviedb.org/${kind}/${tmdbId}/reviews` };
+      writeCached(key, result);
+      return result;
+    },
+
+    async open(t) {
+      this.close();
+      ensureExtrasStyle();
+      const el = document.createElement("div");
+      el.className = "dxe-modal";
+      el.innerHTML = `<div class="dxe-sheet is-reviews" role="dialog" aria-label="Reviews">
+        <div class="dxe-head"><b>Reviews<small>${esc((document.querySelector('[class*="meta-preview-container"] img[class*="logo"]') || {}).title || "")}</small></b><button class="dxe-btn" data-act="close">Close</button></div>
+        <div class="dxr-body"><div class="dxr-loading">Gathering reviews…</div></div>
+      </div>`;
+      for (const type of ["keydown", "keyup", "keypress"]) el.addEventListener(type, (e) => e.stopPropagation());
+      el.addEventListener("click", (e) => {
+        if (e.target === el || e.target.closest("[data-act=close]")) this.close();
+        const more = e.target.closest("[data-act=more]");
+        if (more) {
+          more.closest(".dxr-review").classList.add("is-open");
+          more.remove();
+        }
+      });
+      // Escape closes the sheet, not the page underneath
+      this._esc = (e) => {
+        if (e.key !== "Escape") return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        this.close();
+      };
+      window.addEventListener("keydown", this._esc, true);
+      document.body.append(el);
+      this.el = el;
+      sfx.play("menu");
+      getInfo(t.type, t.id).then((meta) => {
+        const small = el.querySelector(".dxe-head small");
+        if (small && meta && meta.name) small.textContent = meta.name;
+      }).catch(() => { /* no name: the sheet still works */ });
+
+      const data = this.data.get(t.key) || (await this.load(t));
+      if (this.el !== el) return;
+      const [wiki, tmdb] = await Promise.all([
+        data.article ? this.wikipedia(data.article).catch(() => null) : null,
+        settings.tmdbKey.trim() && (data.ids.imdb || data.ids.tmdb) ? this.tmdb(data.ids).catch((err) => ({ error: err.message })) : null,
+      ]);
+      if (this.el !== el) return;
+      el.querySelector(".dxr-body").innerHTML = this.html(data, wiki, tmdb);
+    },
+
+    html(data, wiki, tmdb) {
+      const scores = data.scores || [];
+      const parts = [];
+      if (scores.length) {
+        parts.push(`<div class="dxe-section"><div class="dxe-label">Scores</div><div class="dxr-scores">${scores.map((s) => {
+          const inner = `<b>${esc(s.value)}</b><span>${esc(s.name)}</span><small>${esc(s.note)}${s.votes ? ` · ${s.votes.toLocaleString()} ratings` : ""}</small>`;
+          return s.url ? `<a class="dxr-score" href="${esc(s.url)}" target="_blank" rel="noopener">${inner}</a>` : `<div class="dxr-score">${inner}</div>`;
+        }).join("")}</div></div>`);
+      }
+      if (wiki && wiki.text && wiki.text.length) {
+        parts.push(`<div class="dxe-section"><div class="dxe-label">What critics said</div>
+          <div class="dxr-wiki">${wiki.text.map((p) => `<p>${esc(p)}</p>`).join("")}</div>
+          <a class="dxr-link" href="${esc(wiki.url)}" target="_blank" rel="noopener">Read more on Wikipedia</a></div>`);
+      }
+      if (tmdb && tmdb.reviews && tmdb.reviews.length) {
+        parts.push(`<div class="dxe-section"><div class="dxe-label">Audience reviews</div>${tmdb.reviews.map((r) => `
+          <div class="dxr-review${r.text.length > 420 ? " is-long" : ""}">
+            <div class="dxr-who"><b>${esc(r.author)}</b>${r.rating != null ? `<span class="dxr-stars">${esc(num(r.rating, 1))}/10</span>` : ""}${r.when ? `<small>${esc(new Date(r.when).toLocaleDateString(undefined, { year: "numeric", month: "short" }))}</small>` : ""}</div>
+            <div class="dxr-text">${r.text.split(/\n{2,}/).map((p) => `<p>${esc(p)}</p>`).join("")}</div>
+            ${r.text.length > 420 ? '<button class="dxr-more" data-act="more">Read more</button>' : ""}
+          </div>`).join("")}
+          ${tmdb.total > tmdb.reviews.length ? `<a class="dxr-link" href="${esc(tmdb.url)}" target="_blank" rel="noopener">All ${esc(tmdb.total)} reviews on TMDB</a>` : ""}</div>`);
+      } else if (tmdb && tmdb.error) {
+        parts.push(`<div class="dxe-section"><div class="dxe-label">Audience reviews</div><p class="dxr-note">${esc(tmdb.error)}. Check the key in Settings → Enhanced → Plugins → dx.bi.</p></div>`);
+      } else if (tmdb) {
+        parts.push(`<div class="dxe-section"><div class="dxe-label">Audience reviews</div><p class="dxr-note">No one has reviewed this on TMDB yet.</p></div>`);
+      }
+      if (data.mdbError) parts.push(`<p class="dxr-note">${esc(data.mdbError)}, so these scores come from Wikidata.</p>`);
+      if (!parts.length) parts.push('<p class="dxr-note">No reviews found for this title yet.</p>');
+      const hints = [];
+      if (!settings.tmdbKey.trim()) hints.push("a free TMDB key for audience reviews");
+      if (!settings.mdblistKey.trim()) hints.push("a free MDBList key for audience and Letterboxd scores");
+      if (hints.length) parts.push(`<p class="dxr-note">Want more? Add ${hints.join(" and ")} in Settings → Enhanced → Plugins → dx.bi.</p>`);
+      const credits = [data.fromMdblist ? "Scores from MDBList" : scores.length ? "Scores from Wikidata" : "", wiki && wiki.text && wiki.text.length ? "Summary from Wikipedia (CC BY-SA)" : "", tmdb && tmdb.reviews ? "This product uses the TMDB API but is not endorsed or certified by TMDB" : ""].filter(Boolean);
+      if (credits.length) parts.push(`<p class="dxr-credit">${credits.map(esc).join(" · ")}</p>`);
+      return parts.join("");
+    },
+
+    close() {
+      if (this._esc) window.removeEventListener("keydown", this._esc, true);
+      this._esc = null;
+      if (this.el) this.el.remove();
+      this.el = null;
     },
   };
 
@@ -5135,6 +5540,7 @@
   function sync() {
     const steps = [updateRoute, brandTitle, () => player.ensure(), () => { convert.ensure().catch(() => { /* player state not ready */ }); }, () => placeholder.ensure(), () => playbackHelp.ensure(), () => scrub.ensure(), () => enhance.ensure(), () => watchParty.ensure(), () => skip.ensure(), () => tune.ensure(), () => addonTools.ensure(), communitySync];
     if (currentRoute() === "detail") steps.push(() => streamTools.ensure());
+    steps.push(() => reviews.ensure());
     if (currentRoute() !== "player") {
       steps.push(() => hero.ensure(), filterRows, updateAllArrows, syncCards, () => librarySort.ensure(), applyWatchedTitles);
     }
@@ -5147,7 +5553,7 @@
   const mo = new MutationObserver((records) => {
     for (const r of records) {
       // Ignore changes we made ourselves
-      if (r.target.closest && r.target.closest(".dx-hero, .dx-preview, .dx-row-pages, .dxe-airing, .dxe-upnext, .dxe-playhelp, .dxe-placeholder, .dxe-skip, .dxe-trailer, .dx-wide-art, .dx-player-title, .dx-player-flash, .dx-streambar, .dx-stream-empty, .dx-scrub, .dx-enhance-subs, .dx-player-toast, .dxp-nav-btn, .dxp-player-btn, .dxt-panel, .dx-sub2, .dxl-tools, .dxe-theatre")) continue;
+      if (r.target.closest && r.target.closest(".dx-hero, .dx-preview, .dx-row-pages, .dxe-airing, .dxe-upnext, .dxe-playhelp, .dxe-placeholder, .dxe-skip, .dxe-trailer, .dx-wide-art, .dx-player-title, .dx-player-flash, .dx-streambar, .dx-stream-empty, .dx-scrub, .dx-enhance-subs, .dx-player-toast, .dxp-nav-btn, .dxp-player-btn, .dxt-panel, .dx-sub2, .dxl-tools, .dxe-theatre, .dx-scores, .dx-reviews-btn")) continue;
       scheduleSync();
       return;
     }
@@ -5211,6 +5617,46 @@
   .dxe-msg.is-good { color: #4ade80; }
   .dxe-sheet.is-wide { width: 62rem; }
   .dxe-sheet.is-keys { width: 44rem; }
+  /* one group with the IMDb rating: Stremio spaces that row wider than these chips need */
+  .dx-scores { display: inline-flex; flex-wrap: wrap; gap: .5rem; margin-left: -.6rem; cursor: pointer; }
+  .dx-score { --c: 255,255,255; height: 1.9rem; display: inline-flex; align-items: center; gap: .4rem; padding: 0 .6rem; border-radius: 4px; background: rgba(var(--c),.12); border: 1px solid rgba(var(--c),.4); color: #fff; transition: background-color .2s; }
+  .dx-scores:hover .dx-score { background: rgba(var(--c),.22); }
+  .dx-score b { font: 800 .95rem/1 Inter, system-ui, sans-serif !important; }
+  .dx-score i { font: 700 .62rem/1 Inter, system-ui, sans-serif !important; font-style: normal; letter-spacing: .06em; text-transform: uppercase; color: rgb(var(--c)); }
+  .dx-score.is-rt { --c: 250,80,40; }
+  .dx-score.is-rt.is-low { --c: 120,200,70; }
+  .dx-score.is-mc { --c: 102,204,51; }
+  .dx-score.is-mc.is-mixed { --c: 255,204,51; }
+  .dx-score.is-mc.is-low { --c: 255,70,70; }
+  .dx-score.is-lb { --c: 0,224,84; }
+  /* the bottom margin matches Stremio's own action buttons, so the row lines up */
+  .dx-reviews-btn { height: 3rem; margin-bottom: 1rem; display: inline-flex; align-items: center; gap: .55rem; padding: 0 1.25rem 0 1.05rem; border-radius: 999px; background: rgba(42,42,48,.65); border: 1.5px solid rgba(255,255,255,.28); color: #fff; cursor: pointer; user-select: none; transition: background-color .2s, border-color .2s, transform .2s cubic-bezier(.16,1,.3,1); }
+  .dx-reviews-btn:hover, .dx-reviews-btn:focus-visible { border-color: #fff; background: rgba(255,255,255,.12); transform: translateY(-1px); outline: none; }
+  .dx-reviews-btn svg { width: 1.25rem; height: 1.25rem; flex: none; }
+  .dx-reviews-btn span { font: 700 .95rem/1 Inter, system-ui, sans-serif !important; }
+  .dxe-sheet.is-reviews { width: 46rem; }
+  .dxr-body { flex: 1; min-height: 0; overflow-y: auto; padding: .2rem 1.4rem 1.4rem; display: flex; flex-direction: column; gap: 1.5rem; }
+  .dxr-body > * { flex: none; }
+  .dxr-loading { padding: 2.5rem 0; text-align: center; color: rgba(255,255,255,.5); font: 500 .9rem Inter, system-ui, sans-serif !important; }
+  .dxr-scores { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: .6rem; }
+  .dxr-score { display: flex; flex-direction: column; gap: .25rem; padding: .85rem .95rem; border-radius: .7rem; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.07); color: #fff; text-decoration: none; }
+  a.dxr-score:hover { background: rgba(255,255,255,.09); }
+  .dxr-score b { font: 800 1.5rem/1.1 Inter, system-ui, sans-serif !important; }
+  .dxr-score span { font: 700 .82rem/1.3 Inter, system-ui, sans-serif !important; }
+  .dxr-score small { color: rgba(255,255,255,.5); font: 500 .72rem/1.3 Inter, system-ui, sans-serif !important; }
+  .dxr-wiki p, .dxr-text p { margin: 0 0 .7rem; color: rgba(255,255,255,.82); font: 400 .93rem/1.6 Inter, system-ui, sans-serif !important; }
+  .dxr-link { display: inline-block; color: #fff; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,.3); font: 700 .84rem/1.4 Inter, system-ui, sans-serif !important; }
+  .dxr-link:hover { border-color: #fff; }
+  .dxr-review { padding: .95rem 1.05rem; margin-bottom: .6rem; border-radius: .7rem; background: rgba(255,255,255,.04); }
+  .dxr-who { display: flex; align-items: baseline; gap: .6rem; margin-bottom: .5rem; }
+  .dxr-who b { font: 700 .9rem/1.3 Inter, system-ui, sans-serif !important; }
+  .dxr-stars { color: #f5c518; font: 800 .8rem/1 Inter, system-ui, sans-serif !important; }
+  .dxr-who small { margin-left: auto; color: rgba(255,255,255,.45); font: 500 .75rem/1 Inter, system-ui, sans-serif !important; }
+  .dxr-text p:last-child { margin-bottom: 0; }
+  .dxr-review.is-long:not(.is-open) .dxr-text { max-height: 7.8rem; overflow: hidden; -webkit-mask-image: linear-gradient(#000 65%, transparent); mask-image: linear-gradient(#000 65%, transparent); }
+  .dxr-more { margin-top: .4rem; padding: 0; border: 0; background: none; color: #fff; cursor: pointer; font: 700 .82rem/1.4 Inter, system-ui, sans-serif !important; }
+  .dxr-note { margin: 0; color: rgba(255,255,255,.55); font: 500 .85rem/1.5 Inter, system-ui, sans-serif !important; }
+  .dxr-credit { margin: 0; color: rgba(255,255,255,.35); font: 500 .72rem/1.5 Inter, system-ui, sans-serif !important; }
   .dxe-head .dxe-btn { flex: none; }
   .dxe-label { color: rgba(255,255,255,.5); font: 700 .7rem/1 Inter, system-ui, sans-serif !important; letter-spacing: .08em; text-transform: uppercase; margin-bottom: .7rem; }
   .dxe-section { min-width: 0; }
@@ -9183,6 +9629,8 @@
       document.querySelectorAll(".dx-tune-btn, .dxl-tools").forEach((el) => el.remove());
       keys.close();
       statsPanel.close();
+      reviews.close();
+      document.querySelectorAll(".dx-scores, .dx-reviews-btn").forEach((el) => el.remove());
       whoIsWatching.close();
       airing.remove();
       document.body.classList.remove("dx-upnext");

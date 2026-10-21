@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.11.0
+- **Reviews on title pages.** Rotten Tomatoes and Metacritic scores now sit beside the IMDb rating, and a new *Reviews* button opens the critics' summary from Wikipedia, with a link to read more. No account or setup needed.
+- **Optional free keys add more.** A TMDB key adds audience reviews; an MDBList key adds fresher scores, including Rotten Tomatoes audience, Letterboxd and Trakt. Paste them in dx.bi's settings. Each key is only sent to its own service.
+
+## 2.10.7
+- **Hover cards stay open after scrolling a row.** Once a row had been scrolled with the arrows or the wheel, pointing at a title made its card pop open and snap shut straight away.
+- Releases now ship just the plugin and the installers; the theme is built into the plugin.
+
+## 2.10.6
+- **Every player button says what it is.** Hover any of Stremio's own player buttons (speed, cast, subtitles, audio, episodes, statistics, more options, back) and it shows its name.
+- **No more giant arrow over the video on Windows.** The player's top-bar icons always stay small and let clicks through to the video.
+
 ## 2.10.5
 - **Rows fade softly into the screen edges.** Titles that slide aside for a hover card, or peek in from a scrolled row, now fade out at the edge of the screen instead of being sliced off.
 - **Continue Watching stays calm.** Its cards no longer open a hover card; they lift gently and show play and the remove tab.
