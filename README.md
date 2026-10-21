@@ -73,11 +73,11 @@ Updates are offered automatically inside the app.
 <summary>Prefer to install by hand?</summary>
 <br>
 
-1. Download [`dxbi.plugin.js`](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi.plugin.js) (and, if you like, [`dxbi.theme.css`](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi.theme.css)).
-2. In Stremio Enhanced, go to *Settings → Enhanced*. Put the `.js` file in the folder opened by *Open Plugins Folder*, and the `.css` file in *Open Themes Folder*.
+1. Download [`dxbi.plugin.js`](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi.plugin.js).
+2. In Stremio Enhanced, go to *Settings → Enhanced*, open *Open Plugins Folder* and put the file there.
 3. Restart and switch the plugin on.
 
-The theme file is optional, because the plugin carries the same look. Applying any other theme switches the built-in one off.
+The look is built into the plugin, so no theme file is needed. Applying any other theme switches the built-in one off.
 </details>
 
 <br>
