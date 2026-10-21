@@ -19,7 +19,8 @@ function Get-DxbiFile($name, $dest) {
     $file = Join-Path $tmp $name
     Invoke-WebRequest -Uri "$baseUrl/$name" -OutFile $file -UseBasicParsing
     # sanity check: the file must be the real dx.bi mod, not an error page
-    $head = Get-Content -Path $file -TotalCount 6 -Raw
+    # (-Raw can't be combined with -TotalCount in Windows PowerShell 5.1, so join the lines instead)
+    $head = (Get-Content -Path $file -TotalCount 6) -join "`n"
     if ($head -notmatch '@name dx\.bi') {
         Write-Host ''
         throw "Download of $name looks wrong - aborting, nothing was changed."
