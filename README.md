@@ -35,7 +35,7 @@
 
 To actually watch things you need a working Stremio setup first:
 
-1. [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced/releases), installed and signed in to a Stremio account.
+1. [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced/releases), installed and signed in to a Stremio account. DX.BI is made and tested on the latest full release, currently 1.2.0. Preview and test builds (such as 1.3.0-preview) aren't supported and can break the player.
 
 2. Catalog addons, for what shows up on Home and Discover. Cinemeta is built in; others (TMDB, anime catalogs, streaming-service catalogs) are optional. On a fresh account DX.BI offers to add the free ones its own Home uses.
 
@@ -366,6 +366,10 @@ No tracking and no accounts. It only asks public services about the titles you'r
 - fonts: Google Fonts and jsDelivr
 
 Watch stats and viewers stay on your computer. *Order & backup* talks to Stremio's own servers only when you press Save or Restore. Watch parties only connect while you're in one, and are end-to-end encrypted.
+
+### A giant black arrow covers the video and every click goes back
+
+That comes from a preview build of Stremio Enhanced. Install the latest full release (currently 1.2.0) from its [releases page](https://github.com/REVENGE977/stremio-enhanced/releases), skipping anything marked Pre-release. Since 2.10.6 DX.BI also keeps that arrow small on its own.
 
 ### Does it work on my phone or TV?
 
