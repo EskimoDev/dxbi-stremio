@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews with trailers, ratings on posters, skip intro and up next, anime filler guide, new episode badges, watch stats and viewers, stream sorting & filters, a Netflix-style player with black-bar removal, night mode and subtitle sync, watch parties with friends, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.10.6
+ * @version 2.10.7
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -17,7 +17,7 @@
   // Stremio Enhanced loads each plugin as <script id="<file name>">, which tells us our settings key
   const SCRIPT_ID = (document.currentScript && document.currentScript.id) || "dxbi.plugin.js";
   const PLUGIN_KEY = SCRIPT_ID.replace(/\.plugin\.js$/, "");
-  const PLUGIN_VERSION = "2.10.6"; // kept in step with @version by tools/bundle-theme.mjs
+  const PLUGIN_VERSION = "2.10.7"; // kept in step with @version by tools/bundle-theme.mjs
   const log = (...args) => console.log("[dx.bi]", ...args);
 
   // Stremio Web can drop window.core on some routes (Stremio Enhanced works around the same thing),
@@ -1565,6 +1565,14 @@
       for (const n of document.querySelectorAll("[data-dx-pushed]")) {
         if (n.parentElement !== row) this.release(n);
       }
+      // Rows snap to their titles. Pushing titles aside moves those snap points, so a row that had
+      // been scrolled would re-snap, and that scroll closed the card the moment it opened (a blip).
+      // Snapping waits while titles are pushed aside.
+      if (row && moves.length && !row.hasAttribute("data-dx-nosnap")) {
+        clearTimeout(row._dxSnapTimer);
+        row.setAttribute("data-dx-nosnap", "");
+        row.style.scrollSnapType = "none";
+      }
       for (const [n, dx] of moves) {
         if (!dx) { if (n.dataset.dxPushed) this.release(n); continue; }
         n.dataset.dxPushed = "1";
@@ -1576,8 +1584,17 @@
     release(n) {
       n.style.transform = "";
       delete n.dataset.dxPushed;
-      // drop the inline transition once they've glided back
+      // drop the inline transition once they've glided back, and let the row snap again
       setTimeout(() => { if (!n.dataset.dxPushed) n.style.transition = ""; }, 500);
+      const row = n.parentElement;
+      if (row && row.hasAttribute("data-dx-nosnap")) {
+        clearTimeout(row._dxSnapTimer);
+        row._dxSnapTimer = setTimeout(() => {
+          if (row.querySelector(":scope > [data-dx-pushed]")) return;
+          row.removeAttribute("data-dx-nosnap");
+          row.style.scrollSnapType = "";
+        }, 500);
+      }
     },
 
     unpush() {
