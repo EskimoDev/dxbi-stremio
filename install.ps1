@@ -7,9 +7,8 @@ $baseUrl = if ($env:DXBI_BASE_URL) { $env:DXBI_BASE_URL } else { 'https://github
 $data = Join-Path $env:APPDATA 'stremio-enhanced'
 
 Write-Host "DX.BI - installing into: $data" -ForegroundColor White
-$themes = Join-Path $data 'themes'
 $plugins = Join-Path $data 'plugins'
-New-Item -ItemType Directory -Force -Path $themes, $plugins | Out-Null
+New-Item -ItemType Directory -Force -Path $plugins | Out-Null
 
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("dxbi-" + [Guid]::NewGuid())
 New-Item -ItemType Directory -Path $tmp | Out-Null
@@ -30,7 +29,6 @@ function Get-DxbiFile($name, $dest) {
 }
 
 try {
-    Get-DxbiFile 'dxbi.theme.css' $themes
     Get-DxbiFile 'dxbi.plugin.js' $plugins
 } finally {
     Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue

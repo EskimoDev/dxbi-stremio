@@ -14,7 +14,7 @@ bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 red()  { printf '\033[1;31m%s\033[0m\n' "$*"; }
 
 bold "DX.BI — installing into: $DATA"
-mkdir -p "$DATA/themes" "$DATA/plugins"
+mkdir -p "$DATA/plugins"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -37,7 +37,6 @@ fetch() {
   echo " ok"
 }
 
-fetch dxbi.theme.css "$DATA/themes"
 fetch dxbi.plugin.js "$DATA/plugins"
 
 echo
