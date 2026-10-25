@@ -1,5 +1,6 @@
 import { ipcRenderer } from "electron";
 import Helpers from "../../../utils/Helpers";
+import Updater from "../../../core/Updater";
 import logger from "../../../utils/logger";
 import DiscordPresence from "../../../core/DiscordPresence";
 import { discordTracker } from "../discordTracker";
@@ -13,7 +14,9 @@ export function setupCheckUpdatesButton(): void {
         const btn = document.getElementById("checkforupdatesBtn");
         btn?.addEventListener("click", async () => {
             if (btn) btn.style.pointerEvents = "none";
-            ipcRenderer.send(IPC_CHANNELS.UPDATE_CHECK_USER);
+            // Checked here, in the page: the main process has no page to show the update popup on,
+            // so a check there failed with "check your internet connection" whenever an update existed
+            await Updater.checkForUpdates(true).catch(() => false);
             if (btn) btn.style.pointerEvents = "all";
         });
     }).catch(() => {});

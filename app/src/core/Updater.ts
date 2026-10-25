@@ -1,10 +1,10 @@
 import { homedir } from "os";
-import { shell } from "electron"
+import { shell, ipcRenderer } from "electron"
 import { readFileSync, writeFileSync } from "fs";
 import { getLogger } from "../utils/logger";
 import { join } from "path";
 import { getUpdateModalTemplate } from "../components/update-modal/updateModal";
-import { URLS } from "../constants";
+import { URLS, IPC_CHANNELS } from "../constants";
 import Helpers from "../utils/Helpers";
 
 const SKIPPED_VERSION_KEY = "dxbi.skippedUpdate";
@@ -50,7 +50,7 @@ class Updater {
                 }
                 return true;
             } else if (showNoUpdatePrompt) {
-                await Helpers.showAlert(
+                await this.alert(
                     "info", 
                     "No update available!", 
                     `You're running the latest version (v${currentVersion}).`, 
@@ -61,7 +61,7 @@ class Updater {
         } catch (error) {
             this.logger.error(`Failed to check for updates: ${(error as Error).message}`);
             if (showNoUpdatePrompt) {
-                await Helpers.showAlert(
+                await this.alert(
                     "error",
                     "Update check failed",
                     "Could not check for updates. Please check your internet connection.",
@@ -70,6 +70,12 @@ class Updater {
             }
             return false;
         }
+    }
+
+    // Runs in the page (the popup needs it); its alerts go through the main process
+    private static alert(type: "info" | "error", title: string, message: string, buttons: string[]): Promise<number> {
+        if (typeof document !== "undefined" && ipcRenderer) return ipcRenderer.invoke(IPC_CHANNELS.SHOW_ALERT, type, title, message, buttons);
+        return Helpers.showAlert(type, title, message, buttons);
     }
 
     private static getSkippedVersion(): string | null {
