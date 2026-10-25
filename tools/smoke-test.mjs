@@ -129,8 +129,10 @@ async function main() {
 
   // Switch the plugin on the same way Enhanced's toggle does, then reload so it loads at startup
   await waitFor("Stremio to finish loading", () => evaluate("document.readyState === 'complete'"));
-  await evaluate(`localStorage.setItem("enabledPlugins", ${JSON.stringify(JSON.stringify([PLUGIN]))});
-    localStorage.setItem("checkForUpdatesOnStartup", "false"); true`);
+  // Retried: on a first launch Enhanced can still be swapping the page out under us
+  await waitFor("the plugin to be switched on", () => evaluate(`localStorage.setItem("enabledPlugins", ${JSON.stringify(JSON.stringify([PLUGIN]))});
+    localStorage.setItem("checkForUpdatesOnStartup", "false");
+    localStorage.getItem("enabledPlugins").includes(${JSON.stringify(PLUGIN)})`), 30000);
   await send("Page.reload", { ignoreCache: true });
   await sleep(2000);
 
