@@ -132,6 +132,7 @@ async function main() {
   // Retried: on a first launch Enhanced can still be swapping the page out under us
   await waitFor("the plugin to be switched on", () => evaluate(`localStorage.setItem("enabledPlugins", ${JSON.stringify(JSON.stringify([PLUGIN]))});
     localStorage.setItem("checkForUpdatesOnStartup", "false");
+    localStorage.setItem("dxbi.packOffered", "1"); // the one-time Home rows offer is a native dialog on macOS and blocks the page
     localStorage.getItem("enabledPlugins").includes(${JSON.stringify(PLUGIN)})`), 30000);
   await send("Page.reload", { ignoreCache: true });
   await sleep(2000);
