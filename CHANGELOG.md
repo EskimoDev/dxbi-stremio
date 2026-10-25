@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.14.1
+- **No more double title bar in the dx.bi app.** On first launch, copying a Stremio Enhanced setup that had window transparency switched on gave the window its normal title bar plus a second one inside the page. The page now follows the window, and transparency isn't copied over (dx.bi's look isn't made for a see-through window).
+- **A simpler install guide.** One-click downloads for Windows, Mac, Linux and TVs, with each step a newcomer meets on the way, including the security prompts Windows and macOS show.
+- The app's downloads now have the same name in every release, so the links never change.
+
 ## 2.14.0
 - **dx.bi TV.** dx.bi for Android TV and Google TV, made for the remote: the arrows move around, OK opens, Back goes back. Streams play in a TV player that handles MKV, HEVC, HDR and surround sound, with your addons' subtitles, and your watch progress is shared with every other Stremio app. dx.bi's settings have their own remote-friendly screen under Settings. It updates itself, and offers new versions of the app.
 - With nothing selected yet, the first arrow press starts on what's actually showing, including a dialog over the page.

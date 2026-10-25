@@ -1,6 +1,6 @@
 {
 	"name": "dxbi",
-	"version": "2.14.0",
+	"version": "2.14.1",
 	"description": "dx.bi: a Netflix-style desktop app for Stremio, with the dx.bi experience built in.",
 	"main": "./dist/main.js",
 	"scripts": {
@@ -78,12 +78,12 @@
 			"category": "AudioVideo",
 			"executableName": "dxbi"
 		},
-		"artifactName": "dxbi-${version}-${os}-${arch}.${ext}",
+		"artifactName": "dxbi-${os}-${arch}.${ext}",
 		"nsis": {
-			"artifactName": "dxbi-${version}-Setup-${arch}.${ext}"
+			"artifactName": "dxbi-Setup-${arch}.${ext}"
 		},
 		"portable": {
-			"artifactName": "dxbi-${version}-portable-${arch}.${ext}"
+			"artifactName": "dxbi-portable-${arch}.${ext}"
 		},
 		"protocols": [
 			{

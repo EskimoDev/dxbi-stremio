@@ -37,8 +37,9 @@ export function seedBuiltInPlugin(): void {
 
 // What comes over from Stremio Enhanced: the Stremio sign-in, library and app settings (browser
 // storage), plugins and themes with their settings, and the streaming server it downloaded
+// (not window transparency: dx.bi's look isn't made for a see-through window)
 const IMPORT_ITEMS = ["Local Storage", "IndexedDB", "Session Storage", "plugins", "themes", "streamingserver",
-    "use_stremio_service_for_streaming", "use_server_js_for_streaming", "transparency"];
+    "use_stremio_service_for_streaming", "use_server_js_for_streaming"];
 
 /**
  * First launch only: offer to bring everything over from Stremio Enhanced, so dx.bi opens signed

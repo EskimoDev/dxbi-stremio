@@ -197,7 +197,7 @@ app.on("ready", async () => {
     createWindow();
     if(transparencyEnabled) setupWindowControls();
     setupUpdater();
-    setupWindowTransparency(transparencyFlagPath);
+    setupWindowTransparency(transparencyFlagPath, transparencyEnabled);
     gpuController.initIPC(userDataPath);
     externalPlayerController.initIPC();
 

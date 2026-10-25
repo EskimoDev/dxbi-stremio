@@ -3,13 +3,13 @@
 </p>
 
 <p align="center">
-  <b>A Netflix-style Stremio app for Windows, macOS, Linux and Android TV.</b><br>
+  <b>A Netflix-style Stremio app for Windows, macOS, Linux and TVs.</b><br>
   Download, sign in, done. Works with your existing addons. Nothing to configure.<br>
   <sub>Also available as a plugin for Stremio Enhanced.</sub>
 </p>
 
 <p align="center">
-  <a href="#install"><b>⬇ Download the dx.bi app</b></a>
+  <a href="#install"><b>⬇ Download dx.bi for Windows, Mac, Linux or your TV</b></a>
 </p>
 
 <p align="center">
@@ -31,6 +31,111 @@
 
 <br>
 
+## Install
+
+Pick your device below. It takes about two minutes.
+
+| Device | Download |
+|---|---|
+| Windows 10 and 11 | [**Download for Windows**](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi-Setup-x64.exe) |
+| Mac with an Apple chip (M1, M2, M3, M4…) | [**Download for Mac (Apple chip)**](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi-mac-arm64.dmg) |
+| Mac with an Intel chip | [**Download for Mac (Intel)**](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi-mac-x64.dmg) |
+| Linux | [**Download for Linux**](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi-linux-x86_64.AppImage) |
+| Android TV, Google TV, Fire TV | [**See the TV steps**](#on-a-tv) |
+
+Not sure which Mac you have? Click the Apple menu  → *About This Mac*. "Chip: Apple M…" means an Apple chip; "Processor: Intel" means Intel.
+
+> [!TIP]
+> You'll sign in with a Stremio account. If you don't have one yet, it's free: create it in the app when it asks, or at [stremio.com](https://www.stremio.com).
+
+### On Windows
+
+1. Open the file you downloaded (`dxbi-Setup-x64.exe`).
+2. Windows may show *"Windows protected your PC"*, because dx.bi is a small free project without a paid publisher certificate. Click **More info**, then **Run anyway**.
+3. dx.bi installs and opens by itself. It's then in your Start menu.
+4. Sign in with your Stremio account.
+
+The first time, dx.bi asks how to run Stremio's streaming server (it's what plays torrents and some video formats). Choose **Stremio Service** (recommended); dx.bi downloads it for you.
+
+<details>
+<summary>Prefer not to install anything?</summary>
+<br>
+
+Download [`dxbi-portable-x64.exe`](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi-portable-x64.exe) instead: it runs straight away, without installing.
+</details>
+
+### On a Mac
+
+1. Open the file you downloaded (`.dmg`) and drag **dx.bi** into **Applications**.
+2. Open dx.bi from Applications. macOS will say it can't check the app (dx.bi is a free project without a paid Apple certificate). Click **Done**.
+3. Open **System Settings → Privacy & Security**, scroll down to *"dx.bi" was blocked*, and click **Open Anyway**. Confirm with your password.
+4. dx.bi opens. Sign in with your Stremio account.
+
+You only need steps 2 and 3 once.
+
+<details>
+<summary>macOS says dx.bi "is damaged and can't be opened"?</summary>
+<br>
+
+That's macOS being extra careful with apps downloaded from the internet. Open *Terminal* (in Applications → Utilities), paste this, press Enter, and open dx.bi again:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/dx.bi.app
+```
+</details>
+
+### On Linux
+
+1. Right-click the downloaded `dxbi-linux-x86_64.AppImage` → *Properties* → *Permissions*, and tick **Allow executing file as program** (or run `chmod +x dxbi-linux-x86_64.AppImage`).
+2. Double-click it to open dx.bi, and sign in with your Stremio account.
+
+<details>
+<summary>It doesn't open?</summary>
+<br>
+
+Some distributions need *FUSE* for AppImages. On Ubuntu and Debian: `sudo apt install libfuse2`. On a Raspberry Pi or another ARM computer, download [`dxbi-linux-arm64.AppImage`](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi-linux-arm64.AppImage) instead.
+</details>
+
+### On a TV
+
+dx.bi TV runs on Android TV, Google TV and Fire TV (Fire TV Sticks, Cubes and Fire TV televisions). Everything works with the remote: the arrows move around, OK opens, Back goes back.
+
+**1. Install Downloader.** On the TV, search for *Downloader* (by AFTVnews) in the Play Store or Amazon's Appstore, and install it.
+
+**2. Let Downloader install apps.**
+- Fire TV: *Settings → My Fire TV → Developer options → Install unknown apps* → turn **Downloader** on. (No *Developer options*? Go to *Settings → My Fire TV → About*, click your device's name 7 times, then go back.)
+- Android TV and Google TV: Downloader asks for permission the first time you install something. Choose **Settings**, turn it on, and go back.
+
+**3. Download dx.bi.** Open Downloader, select the address box and type:
+
+```
+github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi-tv.apk
+```
+
+Select **Go**. When the download finishes, choose **Install**, then **Open**.
+
+**4. Sign in** with your Stremio account. dx.bi is now in your TV's apps.
+
+Good to know:
+
+- Your watch progress is shared with every other Stremio app, so you can start something on the TV and finish it on your computer.
+
+- Debrid streams play straight away. Torrents need Stremio's streaming server, which a TV doesn't have: keep Stremio (or the dx.bi app) running on a computer on the same network, and enter that computer's address under *Settings → Streaming* on the TV.
+
+- The 2025 *Fire TV Stick 4K Select* runs Amazon's Vega OS instead of Fire OS and can't install dx.bi.
+
+- If dx.bi says the TV needs an update, update *Android System WebView* from the Play Store (on Fire TV: *Settings → My Fire TV → About → Check for Updates*).
+
+### After installing
+
+dx.bi keeps itself up to date: it tells you when there's a new version.
+
+- **Already used Stremio Enhanced?** The first time the computer app opens, it offers to copy your sign-in, library, settings and plugins over. Stremio Enhanced itself isn't changed.
+
+- **New to Stremio?** dx.bi shows films and series from your *catalog addons*, and plays them from your *stream addons*. On a new account it offers to add free catalogs for a full Home. For streams, open *Addons* and add one you like from the community list; many people use them with a debrid service such as [Real-Debrid](https://real-debrid.com/). What you watch and where it comes from is your responsibility, so please follow the laws where you live.
+
+<br>
+
 ## Read this first
 
 > [!IMPORTANT]
@@ -38,85 +143,32 @@
 >
 > Titles play the way they do in Stremio. If nothing plays in your Stremio today, nothing will play in DX.BI either.
 
-To actually watch things you need:
-
-1. A Stremio account (free), to sign in to the dx.bi app.
-
-2. Catalog addons, for what shows up on Home and Discover. Cinemeta is built in; others (TMDB, anime catalogs, streaming-service catalogs) are optional. On a fresh account DX.BI offers to add the free ones its own Home uses.
-
-3. Stream addons, which provide the actual video. Many people link a debrid service such as [Real-Debrid](https://real-debrid.com/) to a stream addon; free and official sources exist too.
-
-Setting those up is outside this project, and Stremio's community has plenty of guides. What you watch and where it comes from is your responsibility, so please follow the laws where you live.
-
 <br>
 
-## Install
+## Already using Stremio Enhanced? Use the plugin
 
-### The dx.bi app
+You can add dx.bi to [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced/releases) as a plugin instead of installing the app. You get the same dx.bi. The plugin is made and tested on Stremio Enhanced's latest full release, currently 1.2.0; preview and test builds (such as 1.3.0-preview) aren't supported and can break the player.
 
-Download it, open it, sign in with your Stremio account. Everything is built in.
+1. Run one command. On Windows, open *PowerShell* and paste:
 
-| Computer | Download from the [latest release](https://github.com/notdxbi/dxbi-stremio/releases/latest) |
-|---|---|
-| Windows | `dxbi-…-Setup-x64.exe` (installer) or `dxbi-…-portable-x64.exe` |
-| macOS (Apple silicon) | `dxbi-…-mac-arm64.dmg` |
-| macOS (Intel) | `dxbi-…-mac-x64.dmg` |
-| Linux | `dxbi-…-linux-x86_64.AppImage` (or `arm64`) |
+   ```powershell
+   irm https://github.com/notdxbi/dxbi-stremio/releases/latest/download/install.ps1 | iex
+   ```
 
-- Already using Stremio Enhanced? The first time it opens, the app offers to copy your sign-in, library, settings and plugins over, so it starts just as you left it. Stremio Enhanced itself isn't changed.
+   On macOS or Linux, open *Terminal* and paste:
 
-- Stremio's streaming server (for torrents and files the built-in player can't open) is downloaded and kept up to date by the app. On Windows you can choose Stremio Service instead.
+   ```bash
+   curl -fsSL https://github.com/notdxbi/dxbi-stremio/releases/latest/download/install.sh | bash
+   ```
 
-- macOS: the app isn't signed with an Apple certificate. The first time, right-click dx.bi in Applications and choose Open.
+2. Restart Stremio Enhanced.
 
-- Linux: make the AppImage executable (`chmod +x`, or Properties → Permissions), then open it.
+3. Go to *Settings → Enhanced* and switch the dx.bi plugin on. The theme is built into the plugin, so that's all you need.
 
-dx.bi updates itself inside the app, and the app tells you when a new version of it is out.
-
-### dx.bi TV (Android TV, Google TV and Fire TV)
-
-The same dx.bi on your TV, made for the remote: the arrows move around, OK opens, Back goes back. Streams play in a TV player that handles MKV, HEVC, HDR and surround sound (as far as your TV's hardware can), with your addons' subtitles. Your watch progress is shared with every other Stremio app.
-
-1. On the TV, install *Downloader* (by AFTVnews) from the Play Store or Amazon's Appstore, and in the TV's settings allow it to install unknown apps (on Fire TV: *Settings → My Fire TV → Developer options*).
-2. In Downloader, enter `github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi-tv.apk` and install it.
-3. Open dx.bi and sign in with your Stremio account.
-
-dx.bi updates itself, and the TV app offers new versions when they're out.
-
-- It needs a recent *Android System WebView* (version 100 or newer). Most TVs update it from the Play Store by themselves, and Fire TVs with their system updates; dx.bi tells you if yours needs it.
-
-- Fire TV: works on Fire TV Sticks, Cubes and TVs running Fire OS. The 2025 Fire TV Stick 4K Select runs Amazon's Vega OS instead, which can't install apps from outside Amazon's store.
-
-- Debrid streams play straight away. Torrents need Stremio's streaming server, which a TV doesn't have: run Stremio (or the dx.bi app) on a computer on the same network, and set its address under *Settings → Streaming*.
-
-### Or: the plugin, for Stremio Enhanced
-
-Already happy with [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced/releases)? Add dx.bi to it as a plugin instead. You get the same dx.bi. The plugin is made and tested on Stremio Enhanced's latest full release, currently 1.2.0. Preview and test builds (such as 1.3.0-preview) aren't supported and can break the player.
-
-#### 1. Run one command
-
-On Windows, open PowerShell and paste:
-
-```powershell
-irm https://github.com/notdxbi/dxbi-stremio/releases/latest/download/install.ps1 | iex
-```
-
-On macOS or Linux, open Terminal and paste:
-
-```bash
-curl -fsSL https://github.com/notdxbi/dxbi-stremio/releases/latest/download/install.sh | bash
-```
-
-#### 2. Restart Stremio Enhanced
-
-#### 3. Turn it on
-
-Go to *Settings → Enhanced* and switch the dx.bi plugin on. The theme is built into the plugin, so that's all you need.
-
-Updates are offered automatically inside the app.
+Updates are offered automatically inside Stremio Enhanced.
 
 <details>
-<summary>Prefer to install by hand?</summary>
+<summary>Prefer to install the plugin by hand?</summary>
 <br>
 
 1. Download [`dxbi.plugin.js`](https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi.plugin.js).
@@ -447,7 +499,7 @@ With the plugin, that comes from a preview build of Stremio Enhanced (the dx.bi 
 
 ### Does it work on my phone or TV?
 
-On Android TV, Google TV and Fire TV, yes: see [dx.bi TV](#dxbi-tv-android-tv-google-tv-and-fire-tv). Phones and iPhones aren't supported.
+On Android TV, Google TV and Fire TV, yes: see [On a TV](#on-a-tv). Phones and iPhones aren't supported.
 
 ### A friend can't connect to a party
 
