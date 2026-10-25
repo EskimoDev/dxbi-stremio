@@ -143,7 +143,7 @@ export const MACOS_FFPROBE_URLS = {
 // web addresses (Discord fetches them), so nothing has to be uploaded to the Discord app.
 const PRESENCE_IMAGES = 'https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/app/images/presence';
 export const DISCORD = {
-    CLIENT_ID: 'DXBI_DISCORD_CLIENT_ID',
+    CLIENT_ID: '1563995396290777188',
     RECONNECT_INTERVAL: 10000,
     DEFAULT_IMAGE: `${PRESENCE_IMAGES}/logo.png`,
     PLAY_IMAGE: `${PRESENCE_IMAGES}/play.png`,
