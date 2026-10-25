@@ -5,7 +5,7 @@
 //   node tools/smoke-test.mjs "<path to the Stremio Enhanced executable>" [screenshot dir]
 //
 // The plugin must already be installed (run install.sh / install.ps1 first). Needs Node 22+.
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
@@ -104,6 +104,17 @@ async function main() {
         .then(({ scriptSource }) => { if (scriptSource.includes("@name dx.bi")) pluginScripts.add(msg.params.scriptId); })
         .catch(() => {}));
     }
+    // Anything that would freeze the page for the remaining checks: report it and carry on
+    if (msg.method === "Debugger.paused") {
+      const top = msg.params.callFrames?.[0];
+      console.log(`    debugger paused (${msg.params.reason})${top ? ` in ${top.functionName || "(anonymous)"} at line ${top.location.lineNumber + 1}` : ""}`);
+      send("Debugger.resume").catch(() => {});
+    }
+    if (msg.method === "Page.javascriptDialogOpening") {
+      console.log(`    ${msg.params.type} dialog: ${msg.params.message.slice(0, 200)}`);
+      send("Page.handleJavaScriptDialog", { accept: true }).catch(() => {});
+    }
+    if (msg.method === "Inspector.targetCrashed") fail("the page crashed");
     if (msg.method === "Runtime.exceptionThrown") errors.push(msg.params.exceptionDetails);
     if (msg.method === "Runtime.consoleAPICalled") {
       const text = msg.params.args.map((a) => a.value ?? a.description ?? "").join(" ");
@@ -114,6 +125,7 @@ async function main() {
   await send("Runtime.enable");
   await send("Page.enable");
   await send("Debugger.enable");
+  await send("Inspector.enable");
 
   // Switch the plugin on the same way Enhanced's toggle does, then reload so it loads at startup
   await waitFor("Stremio to finish loading", () => evaluate("document.readyState === 'complete'"));
@@ -188,13 +200,17 @@ if (failures.length) {
   exitCode = 1;
   console.log(`\n${failures.length} check(s) failed on ${process.platform}.`);
   console.log("--- app output (last 4000 chars) ---\n" + appLog.slice(-4000));
+  // What was really on screen (the page's own screenshot can hang along with it)
+  if (process.platform === "darwin") {
+    try { execFileSync("screencapture", ["-x", join(outDir, "darwin-screen-on-failure.png")], { timeout: 10000 }); } catch (_) { /* no screen access */ }
+  }
 } else {
   console.log(`\nAll checks passed on ${process.platform}.`);
 }
 try { ws?.close(); } catch (_) { /* already closed */ }
 // Quit through the browser target too: launchers such as an AppImage exit while the app keeps running
 try {
-  const { webSocketDebuggerUrl } = await (await fetch(`http://127.0.0.1:${PORT}/json/version`)).json();
+  const { webSocketDebuggerUrl } = await (await fetch(`http://127.0.0.1:${PORT}/json/version`, { signal: AbortSignal.timeout(3000) })).json();
   const browser = new WebSocket(webSocketDebuggerUrl);
   await new Promise((done) => {
     browser.onopen = () => browser.send(JSON.stringify({ id: 1, method: "Browser.close" }));
