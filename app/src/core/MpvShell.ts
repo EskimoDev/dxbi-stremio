@@ -137,6 +137,8 @@ export default class MpvShell {
             "--demuxer-max-bytes=300MiB",
             "--demuxer-readahead-secs=60",
             `--user-agent=dx.bi/${app.getVersion()}`,
+            // Kept for problem reports (replaced on every start)
+            `--log-file=${join(app.getPath("userData"), "mpv.log")}`,
         ];
         // Development: no window at all (tests on a machine without a display to embed in)
         if (process.env.DXBI_MPV_HEADLESS === "1") args.splice(0, args.length, ...args.filter((a) => !/^--(wid|force-window|vo)=/.test(a)), "--vo=null", "--force-window=no");
@@ -196,7 +198,7 @@ export default class MpvShell {
                 });
             } else if (msg.event === "file-loaded") {
                 this.setPlaying(true);
-            } else if (msg.error && msg.error !== "success" && msg.request_id) {
+            } else if (msg.error && msg.error !== "success" && msg.error !== "property unavailable" && msg.request_id) {
                 logger.warn(`mpv request ${msg.request_id}: ${msg.error}`);
             }
         }

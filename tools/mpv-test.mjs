@@ -5,7 +5,7 @@
 //
 // node tools/mpv-test.mjs <path to dx.bi.exe> [screenshot folder]
 import { spawn, execFileSync } from "node:child_process";
-import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -205,7 +205,11 @@ try {
 if (failures.length) {
   exitCode = 1;
   console.log(`\n${failures.length} check(s) failed.`);
-  console.log("--- app output (last 5000 chars) ---\n" + appLog.slice(-5000));
+  console.log("--- app output (last 3000 chars) ---\n" + appLog.slice(-3000));
+  try {
+    const log = readFileSync(join(userData, "mpv.log"), "utf8").split("\n");
+    console.log("--- mpv.log (errors, warnings and video output) ---\n" + log.filter((l) => /\]\[(e|w|f)\]|\[vo|\[d3d|\[gpu|\[libplacebo|\[cplayer\]/.test(l)).slice(-120).join("\n"));
+  } catch (e) { console.log(`no mpv.log: ${e.message}`); }
 } else {
   console.log("\nAll mpv checks passed.");
 }
