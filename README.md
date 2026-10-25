@@ -3,8 +3,13 @@
 </p>
 
 <p align="center">
-  <b>A Netflix-style Stremio, as its own desktop app or as a plugin for <a href="https://github.com/REVENGE977/stremio-enhanced">Stremio Enhanced</a>.</b><br>
-  Works with your existing addons. Nothing to configure.
+  <b>A Netflix-style Stremio app for Windows, macOS and Linux.</b><br>
+  Download, sign in, done. Works with your existing addons. Nothing to configure.<br>
+  <sub>Also available as a plugin for Stremio Enhanced.</sub>
+</p>
+
+<p align="center">
+  <a href="#install"><b>⬇ Download the dx.bi app</b></a>
 </p>
 
 <p align="center">
@@ -22,20 +27,20 @@
 </p>
 
 > [!NOTE]
-> DX.BI is a personal fan project I made for my own use and decided to share. It was built with the help of [Claude Code](https://www.anthropic.com/claude-code), Anthropic's AI coding assistant. It isn't affiliated with Netflix, Stremio or Stremio Enhanced.
+> DX.BI is a personal fan project I made for my own use and decided to share. It was built with the help of [Claude Code](https://www.anthropic.com/claude-code), Anthropic's AI coding assistant. It isn't affiliated with Netflix or Stremio.
 
 <br>
 
 ## Read this first
 
 > [!IMPORTANT]
-> DX.BI only changes how Stremio looks and feels. It doesn't add any movies, shows or streams, and it doesn't make anything play on its own.
+> DX.BI is a Stremio app: it uses your Stremio account and addons. It doesn't add any movies, shows or streams of its own, and it doesn't make anything play on its own.
 >
-> Titles play exactly the way they already do in your Stremio. If nothing plays in your Stremio today, nothing will play with DX.BI either.
+> Titles play the way they do in Stremio. If nothing plays in your Stremio today, nothing will play in DX.BI either.
 
-To actually watch things you need a working Stremio setup first:
+To actually watch things you need:
 
-1. A Stremio account, signed in to the dx.bi app, or to [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced/releases) if you use the plugin. The plugin is made and tested on Stremio Enhanced's latest full release, currently 1.2.0. Preview and test builds (such as 1.3.0-preview) aren't supported and can break the player.
+1. A Stremio account (free), to sign in to the dx.bi app.
 
 2. Catalog addons, for what shows up on Home and Discover. Cinemeta is built in; others (TMDB, anime catalogs, streaming-service catalogs) are optional. On a fresh account DX.BI offers to add the free ones its own Home uses.
 
@@ -47,11 +52,9 @@ Setting those up is outside this project, and Stremio's community has plenty of 
 
 ## Install
 
-There are two ways to get dx.bi. Both give you the same thing.
+### The dx.bi app
 
-### The dx.bi app (easiest)
-
-A desktop app with dx.bi built in: download it, open it, sign in. It's built on Stremio Enhanced, so it does everything Stremio Enhanced does.
+Download it, open it, sign in with your Stremio account. Everything is built in.
 
 | Computer | Download from the [latest release](https://github.com/notdxbi/dxbi-stremio/releases/latest) |
 |---|---|
@@ -70,7 +73,9 @@ A desktop app with dx.bi built in: download it, open it, sign in. It's built on 
 
 dx.bi updates itself inside the app, and the app tells you when a new version of it is out.
 
-### The plugin, for Stremio Enhanced
+### Or: the plugin, for Stremio Enhanced
+
+Already happy with [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced/releases)? Add dx.bi to it as a plugin instead. You get the same dx.bi. The plugin is made and tested on Stremio Enhanced's latest full release, currently 1.2.0. Preview and test builds (such as 1.3.0-preview) aren't supported and can break the player.
 
 #### 1. Run one command
 
@@ -243,7 +248,7 @@ Once you're watching:
 
 Stream links are never shared, because debrid links contain your API key. Friends only receive the title, the release's torrent hash and the playback position. Everything is end-to-end encrypted with the party code and passed through public relays that only see scrambled data. No account and no server to run.
 
-Each friend needs Stremio Enhanced on a computer with the dx.bi plugin, plus their own stream addon. If they don't have the exact release, the closest match is used.
+Each friend needs dx.bi on a computer (the app, or the plugin in Stremio Enhanced), plus their own stream addon. If they don't have the exact release, the closest match is used.
 
 <br clear="right">
 
@@ -322,7 +327,7 @@ It reads what your addons already show, so it works with any stream addon. Your 
 
 ## Settings
 
-Find them in *Settings → Enhanced → dx.bi → ⚙*. Changes apply instantly.
+Find them in *Settings → dx.bi → Plugins → dx.bi → ⚙* in the app (*Settings → Enhanced → …* with the plugin). Changes apply instantly.
 
 <img src="screenshots/settings.jpg" alt="DX.BI settings" width="380" align="right">
 
@@ -354,11 +359,9 @@ Everything else
 
 <br>
 
-## One plugin, nothing else needed
+## Everything built in
 
-Everything is in the dx.bi plugin, theme included, written from scratch so nothing clashes.
-
-These plugins do the same jobs, so turn them off or things will show twice:
+Everything is part of dx.bi, written from scratch so nothing clashes. The app and Stremio Enhanced can also load other people's plugins, but these do the same jobs as dx.bi, so leave them off or things will show twice:
 
 > TheIntroDB, IntroDB, Stremio Intro Skip, AniSkip, Stremio Addon Manager, Addon Organizer, Enhanced Video Player, Picture in Picture, Context Menu Fix, Dynamic Hero, Horizontal Navigation, EnhancedCovers, Enhanced Title Bar, and [Lumen](https://github.com/echodzns04/echo-stremio-plugins).
 
@@ -370,11 +373,11 @@ Plugins that do something DX.BI doesn't (for example library folders or random p
 
 ### I installed it but nothing plays
 
-DX.BI is only a reskin (see [Read this first](#read-this-first)). Playback comes from your stream addons.
+DX.BI doesn't provide any streams (see [Read this first](#read-this-first)). Playback comes from your stream addons.
 
 ### It looks half-styled
 
-Check that the plugin is on, that *dx.bi look built in* is on in its settings (or the dx.bi theme is applied), and that the plugins listed above are off.
+Check that *dx.bi look built in* is on in dx.bi's settings, that no other theme is applied, and that the plugins listed above are off. With Stremio Enhanced, also check that the dx.bi plugin is switched on.
 
 ### My Home has different rows from the screenshots
 
@@ -384,16 +387,16 @@ Home's rows come from the catalog addons on your account, not from DX.BI. On a f
 
 Stremio couldn't play that file, and DX.BI shows why underneath. Usually it's one of two things:
 
-- Stremio's streaming server isn't running. Torrents and formats like MKV, HEVC and Dolby Vision need it. Restart Stremio Enhanced and accept its streaming-server setup; on Windows, *Stremio Service* is easiest. *Settings → Streaming* shows whether it's online.
+- Stremio's streaming server isn't running. Torrents and formats like MKV, HEVC and Dolby Vision need it. Restart dx.bi (or Stremio Enhanced) and let it set the streaming server up; on Windows, *Stremio Service* is easiest. *Settings → Streaming* shows whether it's online.
 - The format doesn't play on that computer (common on Windows 10). DX.BI has the streaming server convert these automatically. If it still fails, pick an x264 or WEB-DL release, or use *Open in mpv / VLC*.
 
 ### Windows: "Probe process exited with code: 3221225781"
 
 Windows couldn't start the streaming server's video tool (ffprobe) because a file it needs is missing. To fix it, try these in order:
 
-- Switch to *Stremio Service*, which brings its own working copy. Install it and choose it when Stremio Enhanced starts.
-- Or close Stremio Enhanced and delete `ffmpeg.exe` and `ffprobe.exe` in `%APPDATA%\stremio-enhanced\streamingserver`. Fresh copies are downloaded on the next start.
-- If you've installed ffmpeg yourself, Stremio Enhanced uses that copy first when it's on your PATH. Update it or remove it from the PATH.
+- Switch to *Stremio Service*, which brings its own working copy. Install it and choose it when dx.bi starts.
+- Or close dx.bi and delete `ffmpeg.exe` and `ffprobe.exe` in `%APPDATA%\dxbi\streamingserver` (`%APPDATA%\stremio-enhanced\streamingserver` with the plugin). Fresh copies are downloaded on the next start.
+- If you've installed ffmpeg yourself, dx.bi uses that copy first when it's on your PATH. Update it or remove it from the PATH.
 
 ### A green screen says "Torrent is being downloaded to debrid…"
 
@@ -405,7 +408,9 @@ Not any more. *Subtitles when a video starts* is Off by default, like Netflix. T
 
 ### How do I remove it?
 
-Switch the plugin off and apply the *Default* theme. Nothing else is changed.
+The app: uninstall it like any other app (on Linux, delete the AppImage). Your data is in `%APPDATA%\dxbi`, `~/Library/Application Support/dxbi` or `~/.config/dxbi`.
+
+The plugin: switch it off and apply the *Default* theme. Nothing else is changed.
 
 ### Does it collect anything?
 
@@ -422,11 +427,11 @@ Watch stats and viewers stay on your computer. *Order & backup* talks to Stremio
 
 ### A giant black arrow covers the video and every click goes back
 
-That comes from a preview build of Stremio Enhanced. Install the latest full release (currently 1.2.0) from its [releases page](https://github.com/REVENGE977/stremio-enhanced/releases), skipping anything marked Pre-release. Since 2.10.6 DX.BI also keeps that arrow small on its own.
+With the plugin, that comes from a preview build of Stremio Enhanced (the dx.bi app isn't affected). Install the latest full release (currently 1.2.0) from its [releases page](https://github.com/REVENGE977/stremio-enhanced/releases), skipping anything marked Pre-release. Since 2.10.6 DX.BI also keeps that arrow small on its own.
 
 ### Does it work on my phone or TV?
 
-Not yet. dx.bi is a desktop app (and a Stremio Enhanced plugin) for Windows, macOS and Linux. The official Stremio apps for phones and TVs can't load plugins. A dx.bi app for Android TV is being worked on.
+Not yet. dx.bi is a desktop app for Windows, macOS and Linux. A dx.bi app for Android TV is being worked on.
 
 ### A friend can't connect to a party
 
@@ -441,7 +446,7 @@ Stremio changes its interface now and then. [Open an issue](https://github.com/n
 ## Credits
 
 - [Stremio](https://www.stremio.com/) ([stremio-web](https://github.com/Stremio/stremio-web)) — the app underneath everything.
-- [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced) by REVENGE977 — makes themes and plugins possible, and the dx.bi app is built on it (MIT, [app/LICENSE.md](app/LICENSE.md)).
+- [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced) by REVENGE977 — the open-source desktop client the dx.bi app is built on (MIT, [app/LICENSE.md](app/LICENSE.md)), and the home of the dx.bi plugin.
 - The plugin authors whose work showed what Stremio users want — TheIntroDB, Sul-404 (Addon Manager), Fxy and MrBlu03.
 - [Anime4K](https://github.com/bloc97/Anime4K) by bloc97 — the shaders behind Picture enhancement, included unmodified under the MIT licence ([LICENSE-ANIME4K](LICENSE-ANIME4K)).
 - Cinemeta and MetaHub for metadata and artwork; [Kitsu](https://kitsu.app) and [AniList](https://anilist.co) for anime scores; [TheIntroDB](https://theintrodb.org) and [AniSkip](https://aniskip.com) for skip times; [animefillerlist.com](https://www.animefillerlist.com) for the filler guide; [Wikidata](https://www.wikidata.org) (CC0) and [Wikipedia](https://en.wikipedia.org) (CC BY-SA) for review scores and critics' summaries; [MDBList](https://mdblist.com) for extra scores. Audience reviews come from [TMDB](https://www.themoviedb.org): this product uses the TMDB API but is not endorsed or certified by TMDB.
