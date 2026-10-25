@@ -120,17 +120,29 @@ async function main() {
 
   // Lay the window out on whatever screen the machine has; sample the middle of the video area
   const { width: sw, height: sh } = await evaluate("({ width: screen.width, height: screen.height })");
-  // Window placement lives on the browser connection, not the page's
-  const { webSocketDebuggerUrl } = await (await fetch(`http://127.0.0.1:${PORT}/json/version`)).json();
-  const browser = new WebSocket(webSocketDebuggerUrl);
-  await new Promise((r, j) => { browser.onopen = r; browser.onerror = j; });
-  const browserPending = new Map();
-  browser.onmessage = (m) => { const msg = JSON.parse(m.data); if (browserPending.has(msg.id)) { browserPending.get(msg.id)(msg); browserPending.delete(msg.id); } };
-  const browserSend = (method, params = {}) => new Promise((resolve) => { const id = ++nextId; browserPending.set(id, resolve); browser.send(JSON.stringify({ id, method, params })); });
-  const { windowId } = (await browserSend("Browser.getWindowForTarget", { targetId: target.id })).result;
+  // Move and size the dx.bi window with Windows' own calls (as dragging does), found by its title
+  const title = await evaluate("document.title");
   const place = async (left, top, width, height) => {
-    await browserSend("Browser.setWindowBounds", { windowId, bounds: { windowState: "normal" } });
-    await browserSend("Browser.setWindowBounds", { windowId, bounds: { left, top, width, height } });
+    const ps = `
+Add-Type @"
+using System; using System.Runtime.InteropServices; using System.Text;
+public class W {
+  public delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr l);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr h, int x, int y, int w, int hh, bool r);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
+}
+"@
+$script:target = [IntPtr]::Zero
+[W]::EnumWindows({ param($h, $l) $sb = New-Object Text.StringBuilder 512; [W]::GetWindowText($h, $sb, 512) | Out-Null; if ([W]::IsWindowVisible($h) -and $sb.ToString() -eq '${title.replace(/'/g, "''")}') { $script:target = $h }; $true }, [IntPtr]::Zero) | Out-Null
+if ($script:target -eq [IntPtr]::Zero) { 'not found'; exit }
+[W]::ShowWindow($script:target, 9) | Out-Null
+[W]::MoveWindow($script:target, ${left}, ${top}, ${width}, ${height}, $true) | Out-Null
+'moved'`;
+    const r = execFileSync("powershell", ["-NoProfile", "-Command", ps], { encoding: "utf8" }).trim();
+    if (r !== "moved") throw new Error(`couldn't find the window "${title}" to move it`);
     await sleep(2000);
     return { x: left + width * 0.3, y: top + height * 0.3, width: width * 0.4, height: height * 0.4 };
   };
