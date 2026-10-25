@@ -1,0 +1,166 @@
+import { contextBridge, ipcRenderer } from "electron";
+import { IPC_CHANNELS } from "../constants";
+
+// The page's half of dx.bi's mpv player (see core/MpvShell.ts).
+//
+// 1. A WebView2-style `chrome.webview` transport, so Stremio's web app uses its desktop-shell player
+//    (mpv) instead of the browser's <video>. It must exist before Stremio's scripts run.
+// 2. A stand-in <video> in the player screen that mirrors mpv (time, pause, volume, speed, size) and
+//    forwards play / pause / seek / volume to it, so plugins written for the browser player
+//    (dx.bi's skip intro, up next, watch party, remembered volume…) keep working unchanged.
+
+export function mpvShellEnabled(): boolean {
+    try { return ipcRenderer.sendSync(IPC_CHANNELS.MPV_ENABLED) === true; } catch { return false; }
+}
+
+export function installMpvShell(): void {
+    contextBridge.exposeInMainWorld("__dxbiShellBridge", {
+        post: (message: string) => ipcRenderer.send(IPC_CHANNELS.MPV_SHELL_SEND, message),
+        listen: (callback: (message: string) => void) => {
+            ipcRenderer.on(IPC_CHANNELS.MPV_SHELL_EVENT, (_, message: string) => callback(message));
+        },
+    });
+    contextBridge.executeInMainWorld({ func: mainWorld });
+}
+
+// Runs in the page itself (serialized: it can't use anything from this file)
+function mainWorld(): void {
+    const bridge = (window as any).__dxbiShellBridge;
+    const listeners = new Set<(e: { data: string }) => void>();
+    const send = (method: string, data: unknown) => bridge.post(JSON.stringify({ id: 0, type: 6, args: [method, data] }));
+
+    const webview = {
+        postMessage(message: unknown) { bridge.post(typeof message === "string" ? message : JSON.stringify(message)); },
+        addEventListener(type: string, fn: (e: { data: string }) => void) { if (type === "message") listeners.add(fn); },
+        removeEventListener(type: string, fn: (e: { data: string }) => void) { if (type === "message") listeners.delete(fn); },
+    };
+    const w = window as any;
+    if (!w.chrome) w.chrome = {};
+    Object.defineProperty(w.chrome, "webview", { value: webview, configurable: true });
+    w.__dxbiNativePlayer = "mpv";
+
+    // ---- mpv's state, as Stremio's player hears it ----
+    const mpv: Record<string, any> = { pause: true, volume: 100, mute: false, speed: 1, "time-pos": 0, duration: NaN };
+    let proxy: HTMLVideoElement | null = null;
+    let lastTimeEvent = 0;
+
+    const fire = (type: string) => { if (proxy) proxy.dispatchEvent(new Event(type)); };
+
+    const onProp = (name: string, data: any) => {
+        const before = mpv[name];
+        mpv[name] = data;
+        if (!proxy) return;
+        switch (name) {
+            case "time-pos": {
+                const now = performance.now();
+                if (now - lastTimeEvent > 240) { lastTimeEvent = now; fire("timeupdate"); }
+                break;
+            }
+            case "duration": if (data !== before) { fire("durationchange"); if (data) { fire("loadedmetadata"); fire("loadeddata"); fire("canplay"); } } break;
+            case "pause": if (data !== before) { if (data) fire("pause"); else { fire("play"); fire("playing"); } } break;
+            case "paused-for-cache": if (data) fire("waiting"); else if (before) { fire("canplay"); fire("playing"); } break;
+            case "seeking": if (data) fire("seeking"); else if (before) { fire("seeked"); fire("timeupdate"); } break;
+            case "volume": case "mute": fire("volumechange"); break;
+            case "speed": fire("ratechange"); break;
+            case "video-params": fire("resize"); break;
+            case "path": if (data && data !== before) { fire("loadstart"); fire("emptied"); } break;
+        }
+    };
+
+    bridge.listen((message: string) => {
+        try {
+            const msg = JSON.parse(message);
+            if (msg.type === 1 && Array.isArray(msg.args)) {
+                const [name, data] = msg.args;
+                if (name === "mpv-prop-change" && data) onProp(data.name, data.data);
+                else if (name === "mpv-event-ended" && data && data.reason === "eof") fire("ended");
+            }
+        } catch { /* not ours */ }
+        for (const fn of listeners) {
+            try { fn({ data: message }); } catch (err) { console.error("[dx.bi] shell listener", err); }
+        }
+    });
+
+    // ---- The stand-in <video> ----
+    const timeRanges = (end: () => number | null) => ({
+        get length() { return end() ? 1 : 0; },
+        start() { return 0; },
+        end() { return end() || 0; },
+    });
+
+    const makeProxy = (): HTMLVideoElement => {
+        const v = document.createElement("video");
+        v.className = "dx-mpv-video";
+        v.muted = true;
+        v.setAttribute("aria-hidden", "true");
+        v.style.cssText = "position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none;z-index:-1";
+        const define = (name: string, get: () => unknown, set?: (value: any) => void) =>
+            Object.defineProperty(v, name, { configurable: true, get, set: set || (() => { /* read-only */ }) });
+        define("currentTime", () => Number(mpv["time-pos"]) || 0, (t) => { if (isFinite(t)) { send("mpv-set-prop", ["time-pos", Math.max(0, +t)]); } });
+        define("duration", () => (typeof mpv.duration === "number" && mpv.duration > 0 ? mpv.duration : NaN));
+        define("paused", () => mpv.pause !== false);
+        define("ended", () => mpv["eof-reached"] === true);
+        define("seeking", () => mpv.seeking === true);
+        define("volume", () => Math.max(0, Math.min(1, (Number(mpv.volume) || 0) / 100)), (x) => { if (isFinite(x)) send("mpv-set-prop", ["volume", Math.round(Math.max(0, Math.min(1, +x)) * 100)]); });
+        define("muted", () => mpv.mute === true, (m) => send("mpv-set-prop", ["mute", m ? "yes" : "no"]));
+        define("playbackRate", () => Number(mpv.speed) || 1, (r) => { if (isFinite(r) && r > 0) send("mpv-set-prop", ["speed", +r]); });
+        define("defaultPlaybackRate", () => 1);
+        define("readyState", () => (mpv.duration > 0 ? (mpv["paused-for-cache"] ? 2 : 4) : 0));
+        define("networkState", () => 2);
+        define("videoWidth", () => (mpv["video-params"] && (mpv["video-params"].dw || mpv["video-params"].w)) || 0);
+        define("videoHeight", () => (mpv["video-params"] && (mpv["video-params"].dh || mpv["video-params"].h)) || 0);
+        define("currentSrc", () => mpv.path || "");
+        define("src", () => mpv.path || "");
+        define("buffered", () => timeRanges(() => (typeof mpv["demuxer-cache-time"] === "number" ? mpv["demuxer-cache-time"] : null)));
+        define("played", () => timeRanges(() => Number(mpv["time-pos"]) || null));
+        define("seekable", () => timeRanges(() => (mpv.duration > 0 ? mpv.duration : null)));
+        Object.assign(v, {
+            play: () => { send("mpv-set-prop", ["pause", false]); return Promise.resolve(); },
+            pause: () => { send("mpv-set-prop", ["pause", true]); },
+            load: () => { /* mpv loads through Stremio */ },
+            fastSeek: (t: number) => { send("mpv-set-prop", ["time-pos", t]); },
+            getVideoPlaybackQuality: () => ({ totalVideoFrames: 0, droppedVideoFrames: Number(mpv["frame-drop-count"]) || 0, corruptedVideoFrames: 0, creationTime: performance.now() }),
+            requestPictureInPicture: () => Promise.reject(new DOMException("Not available with mpv", "NotSupportedError")),
+            captureStream: () => { throw new DOMException("Not available with mpv", "NotSupportedError"); },
+        });
+        return v;
+    };
+
+    // Kept in the player screen while it's open (Stremio's mpv player has no <video> of its own)
+    const keepProxy = () => {
+        const container = location.hash.startsWith("#/player") ? document.querySelector('[class*="player-container"]') : null;
+        if (!container) {
+            if (proxy) { proxy.remove(); proxy = null; }
+            return;
+        }
+        if (container.querySelector("video:not(.dx-mpv-video)")) return; // a trailer in the browser player
+        if (!proxy) proxy = makeProxy();
+        if (proxy.parentElement !== container) {
+            container.prepend(proxy);
+            if (mpv.duration > 0) { fire("loadedmetadata"); fire("loadeddata"); fire("canplay"); if (!mpv.pause) fire("playing"); }
+        }
+    };
+    const start = () => {
+        document.documentElement.setAttribute("data-dx-native-player", "mpv");
+        // Pixel effects drawn from the browser video can't see mpv's picture: keep them from covering it
+        const style = document.createElement("style");
+        style.textContent = [
+            "html[data-dx-native-player] [class*=\"player-container\"] canvas.dx-enhance { display: none !important; }",
+            // Stremio clears the page background once mpv shows a picture; themes paint html/body too
+            "html[data-dx-mpv-showing], html[data-dx-mpv-showing] body { background: transparent !important; }",
+        ].join("\n");
+        document.head.appendChild(style);
+        // Stremio's mpv player marks that moment by making <body> transparent (and undoes it after)
+        const showing = () => {
+            const on = document.body.style.background === "transparent" || document.body.style.backgroundColor === "transparent";
+            document.documentElement.toggleAttribute("data-dx-mpv-showing", on);
+        };
+        new MutationObserver(showing).observe(document.body, { attributes: true, attributeFilter: ["style"] });
+        new MutationObserver(keepProxy).observe(document.body, { childList: true, subtree: true });
+        addEventListener("hashchange", keepProxy);
+        keepProxy();
+    };
+    if (document.body) start();
+    else document.addEventListener("DOMContentLoaded", start, { once: true });
+
+}

@@ -93,6 +93,9 @@ export const IPC_CHANNELS = {
     SHOW_ALERT: 'show-alert',
     LAUNCH_EXTERNAL_PLAYER: 'launch-external-player',
     GET_EXTERNAL_PLAYER_PATHS: 'get-external-player-paths',
+    MPV_ENABLED: 'dxbi-mpv-enabled',
+    MPV_SHELL_SEND: 'dxbi-mpv-shell-send',
+    MPV_SHELL_EVENT: 'dxbi-mpv-shell-event',
 } as const;
 
 // File extensions for mods
