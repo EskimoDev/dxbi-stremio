@@ -3,6 +3,7 @@ package com.notdxbi.dxbi.tv
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
@@ -178,21 +179,31 @@ class MainActivity : AppCompatActivity() {
     private fun chromeVersion(): String =
         WebViewCompat.getCurrentWebViewPackage(this)?.versionName?.substringBefore(" ") ?: "120.0.0.0"
 
-    /** Stremio's web app needs a modern WebView; old TVs that never updated it get told how. */
+    /**
+     * Stremio's web app needs a modern WebView; old TVs that never updated it get told how. Only a
+     * version we can actually read counts as too old (Fire TV's own WebView names itself differently).
+     */
     private fun webViewIsRecentEnough(): Boolean {
-        val major = WebViewCompat.getCurrentWebViewPackage(this)?.versionName?.substringBefore(".")?.toIntOrNull() ?: 0
+        val name = WebViewCompat.getCurrentWebViewPackage(this)?.versionName ?: return true
+        val major = Regex("""^(\d+)\.""").find(name)?.groupValues?.get(1)?.toIntOrNull() ?: return true
         if (major >= MIN_WEBVIEW) return true
+        val fireTv = Build.MANUFACTURER.equals("Amazon", ignoreCase = true)
         setContentView(View(this))
-        AlertDialog.Builder(this)
-            .setTitle("Update Android System WebView")
-            .setMessage("dx.bi needs Android System WebView $MIN_WEBVIEW or newer (this TV has ${if (major > 0) major else "none"}). Update it from the Play Store (search \"Android System WebView\"), then open dx.bi again.")
-            .setPositiveButton("Open Play Store") { _, _ ->
-                openExternal("market://details?id=com.google.android.webview")
-                finish()
-            }
-            .setNegativeButton("Close") { _, _ -> finish() }
+        val builder = AlertDialog.Builder(this)
+            .setTitle(if (fireTv) "Update your Fire TV" else "Update Android System WebView")
             .setCancelable(false)
-            .show()
+        if (fireTv) {
+            builder.setMessage("dx.bi needs a newer web engine than this Fire TV has ($major). Update it under Settings → My Fire TV → About → Check for Updates, then open dx.bi again.")
+                .setPositiveButton("Close") { _, _ -> finish() }
+        } else {
+            builder.setMessage("dx.bi needs Android System WebView $MIN_WEBVIEW or newer (this TV has $major). Update it from the Play Store (search \"Android System WebView\"), then open dx.bi again.")
+                .setPositiveButton("Open Play Store") { _, _ ->
+                    openExternal("market://details?id=com.google.android.webview")
+                    finish()
+                }
+                .setNegativeButton("Close") { _, _ -> finish() }
+        }
+        builder.show()
         return false
     }
 

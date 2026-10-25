@@ -1,6 +1,6 @@
 # dx.bi TV
 
-dx.bi for Android TV and Google TV. For what it does and how to install it, see the [main README](../README.md#dxbi-tv-android-tv-and-google-tv).
+dx.bi for Android TV, Google TV and Fire TV (Fire OS). For what it does and how to install it, see the [main README](../README.md#dxbi-tv-android-tv-google-tv-and-fire-tv).
 
 How it works:
 

@@ -73,17 +73,19 @@ Download it, open it, sign in with your Stremio account. Everything is built in.
 
 dx.bi updates itself inside the app, and the app tells you when a new version of it is out.
 
-### dx.bi TV (Android TV and Google TV)
+### dx.bi TV (Android TV, Google TV and Fire TV)
 
 The same dx.bi on your TV, made for the remote: the arrows move around, OK opens, Back goes back. Streams play in a TV player that handles MKV, HEVC, HDR and surround sound (as far as your TV's hardware can), with your addons' subtitles. Your watch progress is shared with every other Stremio app.
 
-1. On the TV, install *Downloader* (by AFTVnews) from the Play Store, and in the TV's settings allow it to install unknown apps.
+1. On the TV, install *Downloader* (by AFTVnews) from the Play Store or Amazon's Appstore, and in the TV's settings allow it to install unknown apps (on Fire TV: *Settings → My Fire TV → Developer options*).
 2. In Downloader, enter `github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi-tv.apk` and install it.
 3. Open dx.bi and sign in with your Stremio account.
 
 dx.bi updates itself, and the TV app offers new versions when they're out.
 
-- It needs a recent *Android System WebView* (version 100 or newer). Most TVs update it from the Play Store by themselves; dx.bi tells you if yours needs it.
+- It needs a recent *Android System WebView* (version 100 or newer). Most TVs update it from the Play Store by themselves, and Fire TVs with their system updates; dx.bi tells you if yours needs it.
+
+- Fire TV: works on Fire TV Sticks, Cubes and TVs running Fire OS. The 2025 Fire TV Stick 4K Select runs Amazon's Vega OS instead, which can't install apps from outside Amazon's store.
 
 - Debrid streams play straight away. Torrents need Stremio's streaming server, which a TV doesn't have: run Stremio (or the dx.bi app) on a computer on the same network, and set its address under *Settings → Streaming*.
 
@@ -445,7 +447,7 @@ With the plugin, that comes from a preview build of Stremio Enhanced (the dx.bi 
 
 ### Does it work on my phone or TV?
 
-On Android TV and Google TV, yes: see [dx.bi TV](#dxbi-tv-android-tv-and-google-tv). Phones and iPhones aren't supported.
+On Android TV, Google TV and Fire TV, yes: see [dx.bi TV](#dxbi-tv-android-tv-google-tv-and-fire-tv). Phones and iPhones aren't supported.
 
 ### A friend can't connect to a party
 
