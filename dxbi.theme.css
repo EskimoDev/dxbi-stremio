@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description Cinematic, Netflix-inspired interface for dx.bi. Pair it with the dx.bi plugin for the billboard, carousels, previews, ratings and player extras.
- * @version 2.14.2
+ * @version 2.14.3
  * @author dx.bi
  * @requirements ["dxbi.plugin.js"]
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.theme.css
@@ -2513,12 +2513,19 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     animation: dx-fade 0.2s both;
 }
 
-#app [class*="modal-dialog-container"],
-#app [class*="modal-dialog-content"] {
+#app [class*="modal-dialog-container"] {
     border-radius: var(--dx-radius-l) !important;
     background: var(--dx-surface) !important;
     border: 1px solid var(--dx-line) !important;
     box-shadow: var(--dx-shadow-2) !important;
+}
+
+/* The content sits inside the dialog: one card only, not a second inset one */
+#app [class*="modal-dialog-container"] [class*="modal-dialog-content"] {
+    border-radius: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
 }
 
 #app [class*="modal-dialog-container"] {

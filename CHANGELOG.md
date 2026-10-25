@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.14.3
+- **"Play in external player" works.** Choosing VLC (or mpv / IINA on a Mac) under Stremio's Settings → Player now opens streams straight in that player, including Play, Continue Watching and the next episode. Before, the video started in the built-in player instead, and you had to wait for it to fail and press VLC every time.
+- **Popups are a single card.** Every popup (updates, addons, plugin settings) drew a second, inset card inside the first, which looked cut off at the sides.
+- **The app's update popup stays away after Ignore.** It used to come back on every launch, whatever you clicked (#6). It also no longer offers an update before its download is ready, which made Download fetch the version you already had.
+
 ## 2.14.2
 - **Smoother playback on Macs.** When a Mac can't play a file as it is, Stremio's streaming server converts it while you watch. It checks that the Mac's hardware video encoder works, but then kept converting on the processor anyway, which can't keep up with 4K HEVC releases on many Macs, so the video stuttered and froze. dx.bi now switches the hardware encoder on, once (you can still change it under Settings → Streaming → Transcode profile).
 - After one HEVC release failed to play, dx.bi converted every HEVC release from then on, even when the failed file was simply broken. It now only does that once a converted copy has actually played.

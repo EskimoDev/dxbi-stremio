@@ -7,6 +7,8 @@ import { getUpdateModalTemplate } from "../components/update-modal/updateModal";
 import { URLS } from "../constants";
 import Helpers from "../utils/Helpers";
 
+const SKIPPED_VERSION_KEY = "dxbi.skippedUpdate";
+
 class Updater {
     private static logger = getLogger("Updater");
     private static versionCache: string | null = null;
@@ -17,18 +19,32 @@ class Updater {
      */
     public static async checkForUpdates(showNoUpdatePrompt: boolean): Promise<boolean> {
         try {
-            const latestVersion = await this.getLatestVersion();
+            const release = await this.getLatestRelease();
+            const latestVersion = release.version;
             const currentVersion = this.getCurrentVersion();
             
-            if (Helpers.isNewerVersion(latestVersion, currentVersion)) {
+            // Only offer a version once its download for this computer is up (the app builds
+            // finish a few minutes after the release is published)
+            if (Helpers.isNewerVersion(latestVersion, currentVersion) && this.findAsset(release.assets)) {
+                // A version the viewer dismissed isn't offered again at startup, only when they check themselves
+                if (!showNoUpdatePrompt && this.getSkippedVersion() === latestVersion) {
+                    this.logger.info(`Update v${latestVersion} was dismissed; not showing it again.`);
+                    return false;
+                }
                 this.logger.info(`Update available: v${latestVersion} (current: v${currentVersion})`);
                 
                 const modalsContainer = document.getElementsByClassName("modals-container")[0];
                 if (modalsContainer) {
-                    modalsContainer.innerHTML = await getUpdateModalTemplate(currentVersion, latestVersion);
+                    modalsContainer.innerHTML = await getUpdateModalTemplate(currentVersion, latestVersion, release.notes);
                     
+                    const modal = document.getElementById("updateModalContainer");
+                    modal?.querySelectorAll("[data-dismiss]").forEach((el) => {
+                        el.addEventListener("click", () => this.skipVersion(latestVersion));
+                    });
+
                     let downloadBtn = document.getElementById("download-update")
                     downloadBtn?.addEventListener("click", () => {
+                        this.skipVersion(latestVersion);
                         this.downloadAndExecuteUpdate(downloadBtn as HTMLElement);
                     })
                 }
@@ -56,19 +72,28 @@ class Updater {
         }
     }
 
+    private static getSkippedVersion(): string | null {
+        try { return localStorage.getItem(SKIPPED_VERSION_KEY); } catch { return null; }
+    }
+
+    private static skipVersion(version: string): void {
+        try { localStorage.setItem(SKIPPED_VERSION_KEY, version); } catch { /* not available */ }
+    }
+
     /**
-     * Fetch the latest version from GitHub
+     * The latest published release: its version, notes and downloads
      */
-    public static async getLatestVersion(): Promise<string> {
-        const response = await fetch(URLS.VERSION_CHECK);
+    public static async getLatestRelease(): Promise<{ version: string, notes: string, assets: { name: string, browser_download_url: string }[] }> {
+        const response = await fetch(URLS.RELEASES_API);
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
-        const version = (await response.text()).trim();
+        const data = await response.json();
+        const version = String(data.tag_name || "").replace(/^v/, "");
         this.logger.info(`Latest version available: v${version}`);
-        return version;
+        return { version, notes: data.body || "No release notes available.", assets: data.assets || [] };
     }
 
     /**
@@ -88,25 +113,6 @@ class Updater {
         } catch (error) {
             this.logger.error(`Failed to read version file: ${(error as Error).message}`);
             return "0.0.0";
-        }
-    }
-
-    /**
-     * Fetch release notes from GitHub API
-     */
-    public static async getReleaseNotes(): Promise<string> {
-        try {
-            const response = await fetch(URLS.RELEASES_API);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            return data.body || "No release notes available.";
-        } catch (error) {
-            this.logger.error(`Failed to fetch release notes: ${(error as Error).message}`);
-            return "Could not load release notes.";
         }
     }
 
@@ -154,45 +160,25 @@ class Updater {
 
     private static async getDownloadUrl(): Promise<{ url: string, name: string } | null> {
         try {
-            const response = await fetch(URLS.RELEASES_API);
-            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            
-            const data = await response.json();
-            const assets = data.assets;
-            
-            const currentPlatform = process.platform;
-            const currentArch = process.arch;
-            
-            let targetAsset;
-
-            if (currentPlatform === "win32") {
-                targetAsset = assets.find((a: any) => a.name.includes("Setup") && a.name.endsWith(".exe")) 
-                           || assets.find((a: any) => a.name.endsWith(".exe"));
-            } 
-            else if (currentPlatform === "darwin") {
-                if (currentArch === "arm64") {
-                    targetAsset = assets.find((a: any) => a.name.includes("arm64") && a.name.endsWith(".dmg"));
-                } else {
-                    targetAsset = assets.find((a: any) => !a.name.includes("arm64") && a.name.endsWith(".dmg"));
-                }
-            } 
-            else if (currentPlatform === "linux") {
-                if (currentArch === "arm64") {
-                    targetAsset = assets.find((a: any) => a.name.includes("arm64") && a.name.endsWith(".AppImage"));
-                } else {
-                    targetAsset = assets.find((a: any) => !a.name.includes("arm64") && a.name.endsWith(".AppImage"));
-                }
-            }
-
-            if (targetAsset) {
-                return { url: targetAsset.browser_download_url, name: targetAsset.name };
-            }
-            return null;
-
+            const release = await this.getLatestRelease();
+            const targetAsset = this.findAsset(release.assets);
+            return targetAsset ? { url: targetAsset.browser_download_url, name: targetAsset.name } : null;
         } catch (error) {
             this.logger.error(`Failed to fetch release assets: ${(error as Error).message}`);
             return null;
         }
+    }
+
+    // The download for this computer among a release's files
+    private static findAsset(assets: { name: string, browser_download_url: string }[]) {
+        const arm = process.arch === "arm64";
+        if (process.platform === "win32") {
+            return assets.find((a) => a.name.includes("Setup") && a.name.endsWith(".exe"))
+                || assets.find((a) => a.name.endsWith(".exe"));
+        }
+        if (process.platform === "darwin") return assets.find((a) => a.name.includes("arm64") === arm && a.name.endsWith(".dmg"));
+        if (process.platform === "linux") return assets.find((a) => a.name.includes("arm64") === arm && a.name.endsWith(".AppImage"));
+        return undefined;
     }
 }
 
