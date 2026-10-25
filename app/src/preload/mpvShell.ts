@@ -38,6 +38,11 @@ function mainWorld(): void {
     if (!w.chrome) w.chrome = {};
     Object.defineProperty(w.chrome, "webview", { value: webview, configurable: true });
     w.__dxbiNativePlayer = "mpv";
+    // Stremio skips its "can the browser play this?" check (which sends anything else through the
+    // streaming server's converter) when it runs in its Qt desktop app, which also plays with mpv.
+    // mpv plays every format, audio layout and embedded subtitle as it is, so skip it here too.
+    // (Stremio only reads window.qt for that and for qt.webChannelTransport, which stays absent.)
+    if (w.qt === undefined) w.qt = {};
 
     // ---- mpv's state, as Stremio's player hears it ----
     const mpv: Record<string, any> = { pause: true, volume: 100, mute: false, speed: 1, "time-pos": 0, duration: NaN };
