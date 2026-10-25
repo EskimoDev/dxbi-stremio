@@ -122,6 +122,8 @@ The look is built into the plugin, so no theme file is needed. Applying any othe
 
 - **Picture enhancement** — real-time upscaling on your graphics card. [Anime4K](https://github.com/bloc97/Anime4K) for anime, sharpening for movies.
 
+- **Stream stats** — press <kbd>D</kbd> or the chart button: resolution, codecs, HDR, bitrate, buffer, dropped frames and live download speed for every stream, with peers for torrents. Replaces Stremio's torrent-only statistics.
+
 - **Skip Intro and Next Episode** — buttons from community skip databases, for movies, series and anime.
 
 - **Up next** — a countdown to the next episode when the credits roll. The next episode is loaded in advance so it starts sooner.
@@ -305,7 +307,7 @@ Look
 
 Player
 - player extras, seek-bar previews, time remaining
-- picture enhancement and the Picture & sound panel
+- picture enhancement, the Picture & sound panel and stream stats
 - skip buttons and auto-skip, up next countdown
 - subtitle style and font, subtitles on HDR, whether subtitles start on
 - convert videos this PC can't play

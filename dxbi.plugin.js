@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews with trailers, ratings on posters, critic reviews, skip intro and up next, anime filler guide, new episode badges, watch stats and viewers, stream sorting & filters, a Netflix-style player with black-bar removal, night mode and subtitle sync, watch parties with friends, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.11.0
+ * @version 2.12.0
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -17,7 +17,7 @@
   // Stremio Enhanced loads each plugin as <script id="<file name>">, which tells us our settings key
   const SCRIPT_ID = (document.currentScript && document.currentScript.id) || "dxbi.plugin.js";
   const PLUGIN_KEY = SCRIPT_ID.replace(/\.plugin\.js$/, "");
-  const PLUGIN_VERSION = "2.11.0"; // kept in step with @version by tools/bundle-theme.mjs
+  const PLUGIN_VERSION = "2.12.0"; // kept in step with @version by tools/bundle-theme.mjs
   const log = (...args) => console.log("[dx.bi]", ...args);
 
   // Stremio Web can drop window.core on some routes (Stremio Enhanced works around the same thing),
@@ -76,6 +76,7 @@
     subtitlesStart: "off",
     hdrSubtitles: "same",
     pictureSound: true,
+    streamStats: true,
     preloadNext: true,
     watchedTitles: "show",
     librarySort: true,
@@ -243,6 +244,7 @@
       ],
     },
     { key: "pictureSound", type: "toggle", label: "Picture & sound panel", description: "A player button for removing black bars and zooming, Dialogue boost and Night mode for quiet speech and loud explosions, click-the-line subtitle sync, and a second subtitle language on top.", defaultValue: DEFAULTS.pictureSound },
+    { key: "streamStats", type: "toggle", label: "Stream stats", description: "A player button (or D) showing the video and audio format, buffer, dropped frames and live download speed for every stream, not only torrents.", defaultValue: DEFAULTS.streamStats },
     { key: "preloadNext", type: "toggle", label: "Get the next episode ready", description: "Near the end of an episode, quietly starts loading the next one from the same release so it begins sooner. Only uses cached debrid links or your own streaming server.", defaultValue: DEFAULTS.preloadNext },
     {
       key: "watchedTitles",
@@ -5538,7 +5540,7 @@
   }
 
   function sync() {
-    const steps = [updateRoute, brandTitle, () => player.ensure(), () => { convert.ensure().catch(() => { /* player state not ready */ }); }, () => placeholder.ensure(), () => playbackHelp.ensure(), () => scrub.ensure(), () => enhance.ensure(), () => watchParty.ensure(), () => skip.ensure(), () => tune.ensure(), () => addonTools.ensure(), communitySync];
+    const steps = [updateRoute, brandTitle, () => player.ensure(), () => { convert.ensure().catch(() => { /* player state not ready */ }); }, () => placeholder.ensure(), () => playbackHelp.ensure(), () => scrub.ensure(), () => enhance.ensure(), () => watchParty.ensure(), () => skip.ensure(), () => tune.ensure(), () => streamInfo.ensure(), () => addonTools.ensure(), communitySync];
     if (currentRoute() === "detail") steps.push(() => streamTools.ensure());
     steps.push(() => reviews.ensure());
     if (currentRoute() !== "player") {
@@ -5829,6 +5831,24 @@
   .dxt-opt:hover, .dxl-opt:hover { background: rgba(255,255,255,.08); color: #fff; }
   .dxt-opt.is-on, .dxl-opt.is-on { background: #fff; border-color: #fff; color: #000; }
   .dxt-note { margin: .5rem 0 0; color: rgba(255,255,255,.45); font: 500 .74rem/1.45 Inter, system-ui, sans-serif !important; }
+  .dxt-panel.is-stats { width: 23rem; gap: .95rem; }
+  .dxs-head { display: flex; align-items: center; justify-content: space-between; margin: -.2rem -.35rem -.3rem 0; }
+  .dxs-head b { font: 700 .98rem/1.2 Inter, system-ui, sans-serif !important; }
+  .dxs-close { display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; border: 0; border-radius: 50%; background: transparent; color: rgba(255,255,255,.6); cursor: pointer; transition: background-color .15s, color .15s; }
+  .dxs-close:hover { background: rgba(255,255,255,.08); color: #fff; }
+  .dxs-close svg { width: 1.05rem; height: 1.05rem; }
+  .dxs-row { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: .36rem 0; }
+  .dxs-row + .dxs-row { border-top: 1px solid rgba(255,255,255,.06); }
+  .dxs-row span { flex: none; color: rgba(255,255,255,.55); font: 500 .8rem/1.35 Inter, system-ui, sans-serif !important; }
+  .dxs-row b { min-width: 0; text-align: right; color: #fff; font: 600 .8rem/1.35 Inter, system-ui, sans-serif !important; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .dxs-row small { display: block; margin-top: .1rem; color: rgba(255,255,255,.42); font: 500 .7rem/1.35 Inter, system-ui, sans-serif !important; }
+  .dxt-panel.is-stats .dxt-label span { color: #fff; letter-spacing: 0; text-transform: none; font: 600 .8rem/1 Inter, system-ui, sans-serif !important; font-variant-numeric: tabular-nums; }
+  .dxs-graph { display: block; width: 100%; height: 2.75rem; margin-bottom: .35rem; }
+  .dxs-graph polygon { fill: var(--dx-accent, #e50914); opacity: .16; }
+  .dxs-graph polyline { fill: none; stroke: var(--dx-accent, #e50914); stroke-width: 1.6; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+  .dxs-graph.is-empty { border-bottom: 1px dashed rgba(255,255,255,.12); }
+  .dx-stats-btn.is-on svg { filter: drop-shadow(0 0 6px rgba(255,255,255,.5)); }
+  [data-dx-replaced] { display: none !important; }
   .dxt-lines { display: flex; flex-direction: column; gap: .15rem; }
   .dxt-line { display: block; width: 100%; padding: .45rem .65rem; border: 0; border-radius: .5rem; background: transparent; color: rgba(255,255,255,.55); text-align: left; font: 500 .82rem/1.35 Inter, system-ui, sans-serif !important; cursor: pointer; transition: background-color .12s, color .12s; }
   .dxt-line span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: inherit !important; }
@@ -7455,7 +7475,7 @@
       ["[ / ]", "Speed"],
       ["R", "Speed menu"],
       ["I", "Info"],
-      ["D", "Statistics"],
+      ["D", "Stream stats", true],
       ["V", "Video scale"],
       ["Esc", "Leave the player"],
     ]],
@@ -9050,6 +9070,7 @@
       const root = document.querySelector('[class*="player-container"]');
       if (!root) return;
       ensureExtrasStyle();
+      streamInfo.close();
       const el = document.createElement("div");
       el.className = "dxt-panel";
       el.setAttribute("role", "dialog");
@@ -9224,6 +9245,323 @@
         playerToast(ms ? `Subtitles ${formatDelay(Math.round(ms / 50) * 50)}` : "Subtitle delay reset");
         setTimeout(() => this.renderSync(), 250);
       }
+    },
+  };
+
+  // ---------------------------------------------------------------------------
+  // Stream stats: what's playing and how well it's arriving, for every kind of stream. Takes over
+  // Stremio's own Statistics menu (D), which only covers torrents. Never shows stream links, keys,
+  // file paths or peer addresses: only the source's site name.
+  // ---------------------------------------------------------------------------
+
+  const CODEC_NAMES = {
+    h264: "H.264", hevc: "HEVC", av1: "AV1", vp9: "VP9", vp8: "VP8", mpeg2video: "MPEG-2", mpeg4: "MPEG-4",
+    aac: "AAC", ac3: "Dolby Digital", eac3: "Dolby Digital Plus", truehd: "Dolby TrueHD", dts: "DTS",
+    flac: "FLAC", opus: "Opus", mp3: "MP3", vorbis: "Vorbis",
+  };
+  // Debrid services, found in the stream's host or in an addon's resolve link (".../resolve/realdebrid/...")
+  const DEBRID_SERVICES = /real-?debrid|all-?debrid|premiumize|debrid-?link|torbox|offcloud|easy-?debrid/i;
+  const DEBRID_NAMES = { realdebrid: "Real-Debrid", alldebrid: "AllDebrid", premiumize: "Premiumize", debridlink: "Debrid-Link", torbox: "TorBox", offcloud: "Offcloud", easydebrid: "EasyDebrid" };
+  const STATS_HISTORY = 60; // seconds of speed in the graph
+
+  function formatRate(bytesPerSec) {
+    if (!(bytesPerSec >= 0)) return "–";
+    if (bytesPerSec >= 1e6) return `${(bytesPerSec / 1e6).toFixed(bytesPerSec >= 1e8 ? 0 : 1)} MB/s`;
+    return `${Math.round(bytesPerSec / 1e3)} KB/s`;
+  }
+
+  function formatBytes(bytes) {
+    if (!(bytes >= 0)) return "–";
+    if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(2)} GB`;
+    return `${(bytes / 1e6).toFixed(bytes >= 1e8 ? 0 : 1)} MB`;
+  }
+
+  const streamInfo = {
+    el: null,
+    btn: null,
+    timer: null,
+    video: null,
+    videoAt: 0,
+    probes: new Map(),   // media URL -> probe (null while asking, false when it failed)
+    history: [],         // per second: { rate (bytes/s), estimated }
+    last: null,          // previous sample, for rates
+    bytes: 0,            // converter bytes seen since the last sample
+    observer: null,
+    busy: false,
+
+    // Always read the player's video from the page: switching streams in the player (next
+    // episode) swaps it, and a remembered element can be the old one for a moment
+    refresh() {
+      const video = currentRoute() === "player" ? document.querySelector('[class*="player-container"] video') : null;
+      if (video !== this.video) {
+        this.video = video;
+        this.videoAt = performance.now();
+        this.history = [];
+        this.last = null;
+        this.bytes = 0;
+      }
+      return video;
+    },
+
+    ensure() {
+      if (!this.refresh()) this.close();
+      this.ensureButton();
+    },
+
+    // Replaces Stremio's torrent-only Statistics button (tagged by player.labelButtons)
+    ensureButton() {
+      const row = document.querySelector('[class*="player-container"] [class*="control-bar-buttons-container"]');
+      if (!row) return;
+      const stock = row.querySelector('[data-dx-label="Statistics"]');
+      const existing = row.querySelector(":scope > .dx-stats-btn");
+      if (!settings.streamStats) {
+        if (existing) existing.remove();
+        if (stock) delete stock.dataset.dxReplaced;
+        this.close();
+        return;
+      }
+      if (stock) stock.dataset.dxReplaced = "";
+      if (existing) {
+        existing.classList.toggle("is-on", !!this.el);
+        return;
+      }
+      const b = document.createElement("div");
+      b.className = "dx-seek dx-stats-btn";
+      b.title = "Stream stats (D)";
+      b.setAttribute("role", "button");
+      b.innerHTML = ICONS.chart;
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.toggle();
+      });
+      row.insertBefore(b, row.querySelector(":scope > .dx-tune-btn") || row.querySelector(":scope > .dx-enh-btn") || row.querySelector(":scope > .dx-player-title") || null);
+      this.btn = b;
+    },
+
+    onKey: (e) => {
+      if (!settings.streamStats || currentRoute() !== "player" || e.code !== "KeyD" || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || keys.typing(e)) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      streamInfo.toggle();
+    },
+
+    toggle() {
+      if (this.el) this.close();
+      else this.open();
+    },
+
+    open() {
+      const root = document.querySelector('[class*="player-container"]');
+      if (!root || !this.refresh()) return;
+      ensureExtrasStyle();
+      tune.close();
+      const el = document.createElement("div");
+      el.className = "dxt-panel is-stats";
+      el.setAttribute("role", "dialog");
+      el.setAttribute("aria-label", "Stream stats");
+      for (const type of ["pointerdown", "mousedown", "mouseup", "dblclick", "wheel", "touchstart"]) el.addEventListener(type, (e) => e.stopPropagation(), { passive: true });
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (e.target.closest("[data-act=close]")) this.close();
+      });
+      root.append(el);
+      this.el = el;
+      // converter segments carry their size when the browser is allowed to see it
+      try {
+        this.observer = new PerformanceObserver((list) => {
+          for (const e of list.getEntries()) if (/\/hlsv2\//.test(e.name)) this.bytes += e.encodedBodySize || e.transferSize || 0;
+        });
+        this.observer.observe({ type: "resource" });
+      } catch (_) { /* rates fall back to the buffer */ }
+      this.tick();
+      this.timer = setInterval(() => this.tick(), 1000);
+      requestAnimationFrame(() => el.classList.add("is-open"));
+      this.ensureButton();
+      window.addEventListener("pointerdown", this.onOutside, true);
+    },
+
+    close() {
+      clearInterval(this.timer);
+      this.timer = null;
+      if (this.observer) this.observer.disconnect();
+      this.observer = null;
+      window.removeEventListener("pointerdown", this.onOutside, true);
+      if (this.el) this.el.remove();
+      this.el = null;
+      if (this.btn) this.btn.classList.remove("is-on");
+    },
+
+    onOutside: (e) => {
+      if (streamInfo.el && !streamInfo.el.contains(e.target) && !e.target.closest(".dx-stats-btn")) streamInfo.close();
+    },
+
+    // Where this stream comes from. `media` is the real stream address (only ever used for requests)
+    async source() {
+      let stream = null;
+      try {
+        const s = await core().getState("player");
+        stream = s && s.selected && s.selected.stream;
+      } catch (_) { /* player state not ready */ }
+      const v = this.video;
+      const src = (v && (v.currentSrc || v.src)) || "";
+      let media = null;
+      let direct = false;
+      try {
+        if (/\/hlsv2\//.test(src)) media = new URL(src).searchParams.get("mediaURL");
+        else if (/^https?:/i.test(src)) {
+          media = src;
+          direct = true;
+        } else if (lastConverter && lastConverter.at >= this.videoAt - 15000) media = new URL(lastConverter.url).searchParams.get("mediaURL");
+      } catch (_) { /* not a URL */ }
+      let host = "";
+      let path = "";
+      try {
+        if (media) ({ hostname: host, pathname: path } = new URL(media));
+      } catch (_) { /* ignore */ }
+      const debrid = (DEBRID_SERVICES.exec(`${host} ${path}`) || [""])[0].replace("-", "").toLowerCase();
+      const torrent = stream && typeof stream.infoHash === "string" && /^[0-9a-f]{40}$/i.test(stream.infoHash)
+        ? { ih: stream.infoHash.toLowerCase(), idx: Number.isInteger(stream.fileIdx) ? stream.fileIdx : null }
+        : null;
+      const kind = torrent ? "torrent" : debrid ? "debrid" : /^(127\.0\.0\.1|localhost|\[::1\])$/.test(host) ? "local" : media ? "direct" : "unknown";
+      const site = debrid ? DEBRID_NAMES[debrid] : host.split(".").slice(-2).join(".");
+      return { kind, torrent, media, direct, site, server: scrub.serverBase() };
+    },
+
+    probe(server, media) {
+      if (!media) return null;
+      if (!this.probes.has(media)) {
+        if (this.probes.size > 20) this.probes.clear();
+        this.probes.set(media, null);
+        fetch(`${server}/hlsv2/probe?${new URLSearchParams([["mediaURL", media]])}`, { signal: AbortSignal.timeout(20000) })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((j) => this.probes.set(media, j && Array.isArray(j.streams) ? j : false))
+          .catch(() => this.probes.set(media, false));
+      }
+      return this.probes.get(media);
+    },
+
+    // Torrent numbers from the streaming server (per file, which leaves out peer addresses)
+    async torrentStats(server, { ih, idx }) {
+      try {
+        const r = await fetch(`${server}/${ih}${idx === null ? "" : `/${idx}`}/stats.json`, { signal: AbortSignal.timeout(4000) });
+        if (!r.ok) return null;
+        const j = await r.json();
+        const n = (x) => (typeof x === "number" && isFinite(x) ? x : null);
+        return { peers: n(j.peers), swarm: n(j.swarmSize), down: n(j.downloadSpeed), downloaded: n(j.downloaded), progress: n(j.streamProgress), length: n(j.streamLen) };
+      } catch (_) {
+        return null;
+      }
+    },
+
+    async tick() {
+      if (!this.el || this.busy) return;
+      const v = this.refresh();
+      if (!v) {
+        this.close();
+        return;
+      }
+      this.busy = true;
+      try {
+        const src = await this.source();
+        const probe = this.probe(src.server, src.media);
+        const torrent = src.torrent ? await this.torrentStats(src.server, src.torrent) : null;
+        const now = performance.now();
+        const t = v.currentTime;
+        let ahead = 0;
+        for (let i = 0; i < v.buffered.length; i++) {
+          if (v.buffered.start(i) <= t + 0.5 && v.buffered.end(i) > t) ahead = v.buffered.end(i) - t;
+        }
+        const q = v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : null;
+        const bitrate = probe && probe.format ? (probe.streams.find((s) => s.track === "video") || {}).formatBitRate || 0 : 0;
+        // Speed: the server's own figure for torrents, measured bytes when the browser shows them,
+        // otherwise how fast the buffer grows (in seconds of video) times the bitrate
+        let rate = null;
+        let estimated = false;
+        if (torrent && torrent.down !== null) rate = torrent.down;
+        else if (this.last) {
+          const dt = (now - this.last.at) / 1000;
+          if (this.bytes > 0) rate = this.bytes / dt;
+          else if (bitrate && dt > 0) {
+            const loaded = Math.max(0, ahead - this.last.ahead + (t - this.last.t));
+            rate = (loaded / dt) * (bitrate / 8);
+            estimated = true;
+          }
+        }
+        this.bytes = 0;
+        if (rate !== null) {
+          this.history.push({ rate, estimated });
+          if (this.history.length > STATS_HISTORY) this.history.shift();
+        }
+        const dropped = q ? q.droppedVideoFrames : 0;
+        const recent = this.last && q ? dropped - this.last.dropped : 0;
+        this.last = { at: now, ahead, t, dropped };
+        this.render({ v, src, probe, torrent, ahead, q, recent, rate, estimated, bitrate });
+      } finally {
+        this.busy = false;
+      }
+    },
+
+    graph() {
+      const h = this.history;
+      if (h.length < 2) return '<div class="dxs-graph is-empty"></div>';
+      const peak = Math.max(...h.map((x) => x.rate), 1);
+      const pts = h.map((x, i) => `${((i + STATS_HISTORY - h.length) / (STATS_HISTORY - 1)) * 100},${(40 - (x.rate / peak) * 36).toFixed(1)}`);
+      const first = pts[0].split(",")[0];
+      return `<svg class="dxs-graph" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+          <polygon points="${first},40 ${pts.join(" ")} 100,40"/>
+          <polyline points="${pts.join(" ")}"/>
+        </svg>`;
+    },
+
+    render(s) {
+      if (!this.el) return;
+      const row = (label, value, note) => (value ? `<div class="dxs-row"><span>${esc(label)}</span><b>${esc(value)}${note ? `<small>${esc(note)}</small>` : ""}</b></div>` : "");
+      const { v, src, probe, torrent, q } = s;
+      const video = probe ? probe.streams.find((x) => x.track === "video") : null;
+      const audio = probe ? probe.streams.filter((x) => x.track === "audio") : [];
+      const codec = (c) => CODEC_NAMES[c] || (c ? c.toUpperCase() : "");
+      const container = probe && probe.format ? ([[/matroska|webm/, "Matroska"], [/mp4|mov/, "MP4"], [/mpegts/, "MPEG-TS"], [/avi/, "AVI"]].find(([re]) => re.test(probe.format.name)) || [null, probe.format.name])[1] : "";
+      const hdr = video ? (video.isDoVi ? "Dolby Vision" : video.isHdr ? "HDR" : "SDR") : "";
+      const resolution = video && video.width ? `${video.width} × ${video.height}${video.frameRate ? ` · ${Math.round(video.frameRate * 100) / 100} fps` : ""}` : "";
+      const decoded = v.videoWidth ? `${v.videoWidth} × ${v.videoHeight}` : "";
+      const mode = src.direct ? "Direct play" : convert.active() ? "Converted to H.264" : "Through the streaming server";
+      const modeNote = src.direct ? "" : convert.active() ? "by the streaming server, for this PC" : "repackaged so the player can open it";
+      const upscale = enhance.video === v && enhance.mode !== "off" ? ENHANCE_LABEL[enhance.mode] || "" : "";
+      const dropped = q ? `${q.droppedVideoFrames.toLocaleString()} of ${q.totalVideoFrames.toLocaleString()}` : "";
+      const source = { torrent: "Torrent", debrid: `Debrid (${src.site})`, local: "This computer", direct: src.site, unknown: "" }[src.kind];
+      const speed = s.rate === null ? (probe === null ? "Measuring…" : "") : `${s.estimated ? "≈ " : ""}${formatRate(s.rate)}`;
+      const speedNote = s.rate === null ? "" : torrent && torrent.progress >= 1 ? "the whole file is already here" : s.ahead >= 25 && !torrent ? "buffer full, loading as needed" : s.estimated ? "from how fast the buffer fills" : "";
+      const info = probe === null ? '<p class="dxt-note">Reading the file…</p>' : probe === false ? '<p class="dxt-note">The streaming server couldn\'t read this file\'s details.</p>' : "";
+      this.el.innerHTML = `
+        <div class="dxs-head"><b>Stream stats</b><button class="dxs-close" data-act="close" aria-label="Close">${ICONS.close}</button></div>
+        <div class="dxt-sec">
+          <div class="dxt-label">Video</div>
+          ${info}
+          ${row("Resolution", resolution, decoded && video && decoded !== `${video.width} × ${video.height}` ? `playing at ${decoded}` : "")}
+          ${row("Codec", video ? `${codec(video.codec)} · ${hdr}` : "")}
+          ${row("Bitrate", s.bitrate ? `${(s.bitrate / 1e6).toFixed(1)} Mb/s` : "")}
+          ${row("Container", container)}
+        </div>
+        ${audio.length ? `<div class="dxt-sec">
+          <div class="dxt-label">Audio</div>
+          ${audio.slice(0, 3).map((a, i) => row(a.language && a.language !== "und" ? languageName(a.language) : `Track ${i + 1}`, `${codec(a.codec)}${a.channelLayout ? ` · ${a.channelLayout.replace(/\(.*\)/, "")}` : a.channels ? ` · ${a.channels} ch` : ""}`)).join("")}
+          ${audio.length > 3 ? `<p class="dxt-note">+${audio.length - 3} more tracks</p>` : ""}
+        </div>` : ""}
+        <div class="dxt-sec">
+          <div class="dxt-label">Playback</div>
+          ${row("Mode", mode, modeNote)}
+          ${row("Upscaling", upscale)}
+          ${row("Buffered", `${s.ahead.toFixed(1)} s ahead`)}
+          ${row("Dropped frames", dropped, s.recent > 0 ? `${s.recent} just now` : "")}
+        </div>
+        <div class="dxt-sec">
+          <div class="dxt-label">Network<span>${esc(speed)}</span></div>
+          ${this.graph()}
+          ${speedNote ? `<p class="dxt-note">${esc(speedNote)}</p>` : ""}
+          ${row("Source", source)}
+          ${torrent ? row("Peers", torrent.peers !== null ? `${torrent.peers} connected${torrent.swarm ? ` of ${torrent.swarm} found` : ""}` : "") : ""}
+          ${torrent && torrent.progress !== null ? row("Ready", `${Math.floor(torrent.progress * 100)}% of the file`, torrent.downloaded ? `${formatBytes(torrent.downloaded)} downloaded this time` : "") : ""}
+        </div>`;
     },
   };
 
@@ -9591,6 +9929,7 @@
       scheduleSync();
     });
     window.addEventListener("keydown", keys.onKey, true);
+    window.addEventListener("keydown", streamInfo.onKey, true);
     window.addEventListener("message", trailer.onMessage);
     window.addEventListener("beforeunload", onLeave);
     fixThemeLink();
@@ -9608,25 +9947,29 @@
     sync,
     sfx,
     convert,
+    streamInfo,
     destroy() {
       mo.disconnect();
       io.disconnect();
       themeLinkWatch.disconnect();
       onLeave();
       window.removeEventListener("keydown", keys.onKey, true);
+      window.removeEventListener("keydown", streamInfo.onKey, true);
       window.removeEventListener("message", trailer.onMessage);
       window.removeEventListener("beforeunload", onLeave);
       trailer.stop();
       theatre.close();
       upNext.hide();
       tune.close();
+      streamInfo.close();
       sub2.stop();
       frame.ensure(null);
       document.documentElement.classList.remove("dx-hdr-subs");
       document.body.classList.remove("dx-watched-dim", "dx-watched-hide");
       librarySort.reset(document.querySelector('#app [class*="library-container"]'));
       document.removeEventListener("click", librarySort.onStremioSort, true);
-      document.querySelectorAll(".dx-tune-btn, .dxl-tools").forEach((el) => el.remove());
+      document.querySelectorAll(".dx-tune-btn, .dx-stats-btn, .dxl-tools").forEach((el) => el.remove());
+      document.querySelectorAll("[data-dx-replaced]").forEach((el) => delete el.dataset.dxReplaced);
       keys.close();
       statsPanel.close();
       reviews.close();
