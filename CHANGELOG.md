@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.13.0
+- **The dx.bi app.** dx.bi now also comes as its own desktop app for Windows, macOS and Linux, with everything built in: download, open, sign in. It's built on Stremio Enhanced, so it does everything Stremio Enhanced does. The first time it opens, it offers to copy your Stremio Enhanced sign-in, library, settings and plugins over. It downloads and updates Stremio's streaming server by itself, and its Discord status says "Watching dx.bi" with a link to get it.
+- **Keyboard browsing.** Get around everything with the arrow keys. The pointer hides while you do, the title you land on previews just like a hovered one, and rows turn to their next page at the edge. Press ↓ on a preview to reach its buttons. Stremio's top bar, settings switches and player buttons, which the keyboard couldn't reach before, now can. Moving the mouse hands control straight back.
+- **Keyboard in the player.** Enter steps into the controls and menus (speed, subtitles, audio and the rest), the arrows move between them, and Esc steps back out.
+- **No more square outlines.** Whatever the keyboard selects looks the same as when the mouse points at it.
+- The billboard no longer slides up when you move between Play and More Info, and holds still while one of them is selected.
+- Every player button and icon is the same size.
+- Hover cards open with corners that match the posters exactly.
+
 ## 2.11.0
 - **Reviews on title pages.** Rotten Tomatoes and Metacritic scores now sit beside the IMDb rating, and a new *Reviews* button opens the critics' summary from Wikipedia, with a link to read more. No account or setup needed.
 - **Optional free keys add more.** A TMDB key adds audience reviews; an MDBList key adds fresher scores, including Rotten Tomatoes audience, Letterboxd and Trakt. Paste them in dx.bi's settings. Each key is only sent to its own service.

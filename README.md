@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-  <b>A Netflix-style look for <a href="https://github.com/REVENGE977/stremio-enhanced">Stremio Enhanced</a>.</b><br>
-  One plugin, theme included. Works with your existing addons. Nothing to configure.
+  <b>A Netflix-style Stremio, as its own desktop app or as a plugin for <a href="https://github.com/REVENGE977/stremio-enhanced">Stremio Enhanced</a>.</b><br>
+  Works with your existing addons. Nothing to configure.
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@
 
 To actually watch things you need a working Stremio setup first:
 
-1. [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced/releases), installed and signed in to a Stremio account. DX.BI is made and tested on the latest full release, currently 1.2.0. Preview and test builds (such as 1.3.0-preview) aren't supported and can break the player.
+1. A Stremio account, signed in to the dx.bi app, or to [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced/releases) if you use the plugin. The plugin is made and tested on Stremio Enhanced's latest full release, currently 1.2.0. Preview and test builds (such as 1.3.0-preview) aren't supported and can break the player.
 
 2. Catalog addons, for what shows up on Home and Discover. Cinemeta is built in; others (TMDB, anime catalogs, streaming-service catalogs) are optional. On a fresh account DX.BI offers to add the free ones its own Home uses.
 
@@ -47,7 +47,32 @@ Setting those up is outside this project, and Stremio's community has plenty of 
 
 ## Install
 
-### 1. Run one command
+There are two ways to get dx.bi. Both give you the same thing.
+
+### The dx.bi app (easiest)
+
+A desktop app with dx.bi built in: download it, open it, sign in. It's built on Stremio Enhanced, so it does everything Stremio Enhanced does.
+
+| Computer | Download from the [latest release](https://github.com/notdxbi/dxbi-stremio/releases/latest) |
+|---|---|
+| Windows | `dxbi-…-Setup-x64.exe` (installer) or `dxbi-…-portable-x64.exe` |
+| macOS (Apple silicon) | `dxbi-…-mac-arm64.dmg` |
+| macOS (Intel) | `dxbi-…-mac-x64.dmg` |
+| Linux | `dxbi-…-linux-x86_64.AppImage` (or `arm64`) |
+
+- Already using Stremio Enhanced? The first time it opens, the app offers to copy your sign-in, library, settings and plugins over, so it starts just as you left it. Stremio Enhanced itself isn't changed.
+
+- Stremio's streaming server (for torrents and files the built-in player can't open) is downloaded and kept up to date by the app. On Windows you can choose Stremio Service instead.
+
+- macOS: the app isn't signed with an Apple certificate. The first time, right-click dx.bi in Applications and choose Open.
+
+- Linux: make the AppImage executable (`chmod +x`, or Properties → Permissions), then open it.
+
+dx.bi updates itself inside the app, and the app tells you when a new version of it is out.
+
+### The plugin, for Stremio Enhanced
+
+#### 1. Run one command
 
 On Windows, open PowerShell and paste:
 
@@ -61,9 +86,9 @@ On macOS or Linux, open Terminal and paste:
 curl -fsSL https://github.com/notdxbi/dxbi-stremio/releases/latest/download/install.sh | bash
 ```
 
-### 2. Restart Stremio Enhanced
+#### 2. Restart Stremio Enhanced
 
-### 3. Turn it on
+#### 3. Turn it on
 
 Go to *Settings → Enhanced* and switch the dx.bi plugin on. The theme is built into the plugin, so that's all you need.
 
@@ -102,6 +127,8 @@ The look is built into the plugin, so no theme file is needed. Applying any othe
 
 - **Hover previews** — rest on a title and its card unfolds with a soft glow while the row makes room, showing its rating, genres and trailer. One click takes the trailer full screen.
 
+- **Keyboard browsing** — get around everything with the arrow keys. The pointer hides while you do, the title you land on previews just like a hovered one, rows turn to their next page at the edge, and moving the mouse hands control straight back.
+
 - **Ratings on posters** — IMDb scores from your own addons. Anime gets its Kitsu or AniList score.
 
 - **Reviews on title pages** — Rotten Tomatoes and Metacritic scores beside the IMDb rating, and a Reviews button with what critics said. Works without an account; free keys add audience reviews and more scores.
@@ -131,6 +158,8 @@ The look is built into the plugin, so no theme file is needed. Applying any othe
 - **Open in mpv or VLC** — for files that won't play or stutter here.
 
 - **Picture-in-picture** — keep watching in a small window.
+
+- **Keyboard controls** — press <kbd>Enter</kbd> to step into the player's buttons and menus, move with the arrows, and press <kbd>Esc</kbd> to step back out.
 
 - **Remembers volume and speed** — and keys <kbd>0</kbd>–<kbd>9</kbd> jump through a video. Press <kbd>?</kbd> for every shortcut.
 
@@ -397,7 +426,7 @@ That comes from a preview build of Stremio Enhanced. Install the latest full rel
 
 ### Does it work on my phone or TV?
 
-No. DX.BI runs inside Stremio Enhanced, which is a desktop app for Windows, macOS and Linux. The official Stremio apps for phones and TVs can't load plugins.
+Not yet. dx.bi is a desktop app (and a Stremio Enhanced plugin) for Windows, macOS and Linux. The official Stremio apps for phones and TVs can't load plugins. A dx.bi app for Android TV is being worked on.
 
 ### A friend can't connect to a party
 
@@ -412,7 +441,7 @@ Stremio changes its interface now and then. [Open an issue](https://github.com/n
 ## Credits
 
 - [Stremio](https://www.stremio.com/) ([stremio-web](https://github.com/Stremio/stremio-web)) — the app underneath everything.
-- [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced) by REVENGE977 — makes themes and plugins possible.
+- [Stremio Enhanced](https://github.com/REVENGE977/stremio-enhanced) by REVENGE977 — makes themes and plugins possible, and the dx.bi app is built on it (MIT, [app/LICENSE.md](app/LICENSE.md)).
 - The plugin authors whose work showed what Stremio users want — TheIntroDB, Sul-404 (Addon Manager), Fxy and MrBlu03.
 - [Anime4K](https://github.com/bloc97/Anime4K) by bloc97 — the shaders behind Picture enhancement, included unmodified under the MIT licence ([LICENSE-ANIME4K](LICENSE-ANIME4K)).
 - Cinemeta and MetaHub for metadata and artwork; [Kitsu](https://kitsu.app) and [AniList](https://anilist.co) for anime scores; [TheIntroDB](https://theintrodb.org) and [AniSkip](https://aniskip.com) for skip times; [animefillerlist.com](https://www.animefillerlist.com) for the filler guide; [Wikidata](https://www.wikidata.org) (CC0) and [Wikipedia](https://en.wikipedia.org) (CC BY-SA) for review scores and critics' summaries; [MDBList](https://mdblist.com) for extra scores. Audience reviews come from [TMDB](https://www.themoviedb.org): this product uses the TMDB API but is not endorsed or certified by TMDB.

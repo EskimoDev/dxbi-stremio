@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description Cinematic, Netflix-inspired interface for dx.bi. Pair it with the dx.bi plugin for the billboard, carousels, previews, ratings and player extras.
- * @version 2.10.6
+ * @version 2.13.0
  * @author dx.bi
  * @requirements ["dxbi.plugin.js"]
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.theme.css
@@ -231,7 +231,8 @@ body.dx-scrolled #app [class*="main-nav-bars-container"] > nav[class*="horizonta
 
 /* Hover effects below set a variable on the hovered element itself, never "hovered [class*=x]":
    that shape makes the browser restyle the whole page on every hover change. */
-#app nav[class*="vertical-nav-bar"] a[class*="nav-tab-button"]:hover {
+#app nav[class*="vertical-nav-bar"] a[class*="nav-tab-button"]:hover,
+#app nav[class*="vertical-nav-bar"] a[class*="nav-tab-button"]:focus-visible {
     --dx-nav-label: var(--dx-text);
 }
 
@@ -281,7 +282,8 @@ body.dx-scrolled #app [class*="main-nav-bars-container"] > nav[class*="horizonta
     transition: width 0.4s var(--dx-ease-out), background-color 0.25s, border-color 0.25s;
 }
 
-#app [class*="main-nav-bars-container"] nav[class*="horizontal-nav-bar"] [class*="search-bar-container"]:hover {
+#app [class*="main-nav-bars-container"] nav[class*="horizontal-nav-bar"] [class*="search-bar-container"]:hover,
+#app [class*="main-nav-bars-container"] nav[class*="horizontal-nav-bar"] [class*="search-bar-container"]:focus-visible {
     background: rgba(255, 255, 255, 0.09);
 }
 
@@ -333,7 +335,8 @@ body.dx-scrolled #app [class*="main-nav-bars-container"] > nav[class*="horizonta
     transition: background-color 0.2s;
 }
 
-#app nav[class*="horizontal-nav-bar"] [class*="buttons-container"] > [class*="button-container"]:hover {
+#app nav[class*="horizontal-nav-bar"] [class*="buttons-container"] > [class*="button-container"]:hover,
+#app nav[class*="horizontal-nav-bar"] [class*="buttons-container"] > [class*="button-container"]:focus-visible {
     background: rgba(255, 255, 255, 0.08);
 }
 
@@ -464,11 +467,13 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: opacity 0.3s, transform 0.3s var(--dx-ease-out), background-color 0.2s;
 }
 
-#app [class*="meta-row"]:hover {
+#app [class*="meta-row"]:hover,
+#app [class*="meta-row"]:focus-visible {
     --dx-row-hot: 1;
 }
 
-#app [class*="meta-row"] [class*="see-all-container"]:hover {
+#app [class*="meta-row"] [class*="see-all-container"]:hover,
+#app [class*="meta-row"] [class*="see-all-container"]:focus-visible {
     background: rgba(255, 255, 255, 0.07);
 }
 
@@ -547,7 +552,7 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     background: var(--dx-surface);
     box-shadow: none !important;
     overflow: hidden;
-    transform: translateZ(0);
+    transform: translate3d(0, calc(-4px * var(--dx-card-focus, 0)), 0) scale(calc(1 + 0.035 * var(--dx-card-focus, 0)));
     transition: transform 0.35s var(--dx-ease-out), box-shadow 0.35s var(--dx-ease-out) !important;
 }
 
@@ -567,17 +572,15 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transform: translateY(-4px) scale(1.035);
 }
 
-#app [class*="meta-item-container"]:focus-within {
+/* keyboard highlight: the poster lifts like it does under the mouse, and the hover card shows
+   what's selected: no outline or ring around the card */
+#app [class*="meta-item-link"]:focus-visible {
     --dx-card-focus: 1;
+    outline: none !important;
 }
 
 #app [class*="meta-item-container"]:active:not(.active) {
     --dx-card-press: 1;
-}
-
-/* keyboard focus: the same ring as hover */
-#app [class*="meta-item-container"] [class*="poster-container"]::after {
-    box-shadow: inset 0 0 0 calc(2px * var(--dx-card-focus, 0)) rgba(255, 255, 255, 0.85);
 }
 
 #app [class*="meta-item-container"] [class*="poster-container"] {
@@ -757,12 +760,14 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: max-width 0.22s ease, margin 0.22s ease;
 }
 
-#app [class*="meta-item-container"] [class*="dismiss-icon-layer"]:hover {
+#app [class*="meta-item-container"] [class*="dismiss-icon-layer"]:hover,
+#app [class*="meta-item-container"] [class*="dismiss-icon-layer"]:focus-visible {
     background: var(--dx-accent);
     box-shadow: 0 4px 16px color-mix(in srgb, var(--dx-accent) 45%, transparent);
 }
 
-#app [class*="meta-item-container"] [class*="dismiss-icon-layer"]:hover::before {
+#app [class*="meta-item-container"] [class*="dismiss-icon-layer"]:hover::before,
+#app [class*="meta-item-container"] [class*="dismiss-icon-layer"]:focus-visible::before {
     max-width: 4.5rem;
     margin-right: 0.4rem;
 }
@@ -1018,6 +1023,24 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     background: rgba(109, 109, 118, 0.38);
 }
 
+/* Keyboard: the selected button comes forward in white, like a TV menu (dimming it the way the
+   mouse hover does read as "off" when nothing points at it) */
+.dx-btn:focus-visible {
+    background: #fff;
+    color: #000;
+    transform: scale(1.06);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
+}
+
+.dx-btn:focus-visible svg {
+    fill: #000;
+}
+
+.dx-btn-secondary:focus-visible svg {
+    fill: none;
+    stroke: #000;
+}
+
 .dx-hero-dots {
     position: absolute;
     z-index: 3;
@@ -1038,7 +1061,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: width 0.4s var(--dx-ease-out), background-color 0.2s;
 }
 
-.dx-hero-dot:hover {
+.dx-hero-dot:hover,
+.dx-hero-dot:focus-visible {
     background: rgba(255, 255, 255, 0.45);
 }
 
@@ -1155,7 +1179,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     opacity: 1;
 }
 
-.dx-arrow:hover {
+.dx-arrow:hover,
+.dx-arrow:focus-visible {
     --dx-arrow-scale: 1.25;
 }
 
@@ -1174,7 +1199,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: opacity 0.3s;
 }
 
-[class*="meta-row"]:hover > .dx-row-pages {
+[class*="meta-row"]:hover > .dx-row-pages,
+[class*="meta-row"]:focus-visible > .dx-row-pages {
     opacity: 1;
 }
 
@@ -1389,7 +1415,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
 .dx-preview-ghost {
     position: absolute;
     z-index: 5;
-    border-radius: 6px;
+    /* the same corners as the poster it grows out of */
+    border-radius: var(--dx-radius);
     background: #222 center / cover no-repeat;
     pointer-events: none;
     opacity: 1;
@@ -1421,8 +1448,11 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     cursor: pointer;
 }
 
+/* its own rounded top as well: the zooming artwork and the trailer are layers of their own, and
+   the panel's rounded clip alone can let their corners show square while the card unfolds */
 .dx-preview-media {
     overflow: hidden;
+    border-radius: var(--dx-radius) var(--dx-radius) 0 0;
 }
 
 .dx-preview-media::before {
@@ -1509,7 +1539,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: border-color 0.15s, background-color 0.15s;
 }
 
-.dx-round:hover {
+.dx-round:hover,
+.dx-round:focus-visible {
     border-color: #fff;
     background: rgba(255, 255, 255, 0.1);
 }
@@ -1525,7 +1556,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     color: #000;
 }
 
-.dx-round.is-primary:hover {
+.dx-round.is-primary:hover,
+.dx-round.is-primary:focus-visible {
     background: rgba(255, 255, 255, 0.8);
 }
 
@@ -1543,7 +1575,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     color: rgba(255, 255, 255, 0.8);
 }
 
-.dx-round.dx-remove:hover {
+.dx-round.dx-remove:hover,
+.dx-round.dx-remove:focus-visible {
     border-color: var(--dx-accent);
     background: color-mix(in srgb, var(--dx-accent) 22%, transparent);
     color: #fff;
@@ -1560,7 +1593,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transform: translate(0, 4px);
 }
 
-.dx-preview-actions .dx-round:last-child[data-tip]:hover::after {
+.dx-preview-actions .dx-round:last-child[data-tip]:hover::after,
+.dx-preview-actions .dx-round:last-child[data-tip]:focus-visible::after {
     transform: none;
 }
 
@@ -1591,7 +1625,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: opacity 0.15s, transform 0.15s;
 }
 
-.dx-round[data-tip]:hover::after {
+.dx-round[data-tip]:hover::after,
+.dx-round[data-tip]:focus-visible::after {
     opacity: 1;
     transform: translate(-50%, 0);
 }
@@ -1602,7 +1637,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transform: translate(0, 4px);
 }
 
-.dx-round.is-end[data-tip]:hover::after {
+.dx-round.is-end[data-tip]:hover::after,
+.dx-round.is-end[data-tip]:focus-visible::after {
     transform: none;
 }
 
@@ -1735,7 +1771,9 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
 }
 
 #app [class*="metadetails-container"] > nav [class*="back-button-container"]:hover,
-#app [class*="player-container"] nav [class*="back-button-container"]:hover {
+#app [class*="player-container"] nav [class*="back-button-container"]:hover,
+#app [class*="metadetails-container"] > nav [class*="back-button-container"]:focus-visible,
+#app [class*="player-container"] nav [class*="back-button-container"]:focus-visible {
     background: rgba(255, 255, 255, 0.16);
     transform: translateX(-2px);
 }
@@ -1798,7 +1836,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: background-color 0.2s;
 }
 
-#app [class*="meta-preview-container"] [class*="imdb-button-container"]:hover {
+#app [class*="meta-preview-container"] [class*="imdb-button-container"]:hover,
+#app [class*="meta-preview-container"] [class*="imdb-button-container"]:focus-visible {
     background: rgba(245, 197, 24, 0.22);
 }
 
@@ -1838,7 +1877,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: background-color 0.2s, border-color 0.2s;
 }
 
-#app [class*="meta-preview-container"] [class*="link-container"]:hover {
+#app [class*="meta-preview-container"] [class*="link-container"]:hover,
+#app [class*="meta-preview-container"] [class*="link-container"]:focus-visible {
     background: rgba(255, 255, 255, 0.14);
     border-color: var(--dx-line-strong);
 }
@@ -1871,7 +1911,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: background-color 0.2s, border-color 0.2s, transform 0.2s var(--dx-ease-out);
 }
 
-#app [class*="meta-preview-container"] [class*="action-button-container"]:hover {
+#app [class*="meta-preview-container"] [class*="action-button-container"]:hover,
+#app [class*="meta-preview-container"] [class*="action-button-container"]:focus-visible {
     border-color: #fff;
     background: rgba(255, 255, 255, 0.12);
     transform: translateY(-1px);
@@ -1882,7 +1923,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: background-color 0.2s;
 }
 
-#app [class*="meta-preview-container"] [class*="group-container"] [class*="icon-container"]:hover {
+#app [class*="meta-preview-container"] [class*="group-container"] [class*="icon-container"]:hover,
+#app [class*="meta-preview-container"] [class*="group-container"] [class*="icon-container"]:focus-visible {
     background: rgba(255, 255, 255, 0.12);
 }
 
@@ -1903,7 +1945,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     font-size: 1rem;
 }
 
-#app [class*="meta-preview-container"] [class*="action-button-container"][class*="wide"]:hover {
+#app [class*="meta-preview-container"] [class*="action-button-container"][class*="wide"]:hover,
+#app [class*="meta-preview-container"] [class*="action-button-container"][class*="wide"]:focus-visible {
     background: rgba(255, 255, 255, 0.84);
 }
 
@@ -1935,7 +1978,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     border-radius: var(--dx-radius);
 }
 
-#app [class*="seasons-bar-container"] [class*="button-container"]:hover {
+#app [class*="seasons-bar-container"] [class*="button-container"]:hover,
+#app [class*="seasons-bar-container"] [class*="button-container"]:focus-visible {
     background: rgba(255, 255, 255, 0.07);
 }
 
@@ -1958,7 +2002,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: background-color 0.2s;
 }
 
-#app [class*="video-container"]:hover {
+#app [class*="video-container"]:hover,
+#app [class*="video-container"]:focus-visible {
     background: rgba(255, 255, 255, 0.06);
 }
 
@@ -2001,7 +2046,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: background-color 0.2s, transform 0.2s var(--dx-ease-out);
 }
 
-#app [class*="streams-list-container"] [class*="stream-container"]:hover {
+#app [class*="streams-list-container"] [class*="stream-container"]:hover,
+#app [class*="streams-list-container"] [class*="stream-container"]:focus-visible {
     background: rgba(255, 255, 255, 0.07);
     transform: translateX(3px);
 }
@@ -2089,7 +2135,9 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
 }
 
 #app [class*="multiselect-menu"] > [class*="button-container"]:hover,
-#app [class*="filter-button"]:hover {
+#app [class*="filter-button"]:hover,
+#app [class*="multiselect-menu"] > [class*="button-container"]:focus-visible,
+#app [class*="filter-button"]:focus-visible {
     background: var(--dx-surface-2);
     border-color: var(--dx-line-strong);
 }
@@ -2111,7 +2159,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: background-color 0.2s, color 0.2s, border-color 0.2s;
 }
 
-#app [class*="chips"] [class*="chip"]:hover {
+#app [class*="chips"] [class*="chip"]:hover,
+#app [class*="chips"] [class*="chip"]:focus-visible {
     color: var(--dx-text);
     border-color: var(--dx-line-strong);
 }
@@ -2176,7 +2225,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: background-color 0.2s, border-color 0.2s;
 }
 
-#app [class*="calendar"] [class*="cell"]:hover {
+#app [class*="calendar"] [class*="cell"]:hover,
+#app [class*="calendar"] [class*="cell"]:focus-visible {
     background: var(--dx-surface);
     border-color: var(--dx-line-strong);
 }
@@ -2200,7 +2250,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: background-color 0.2s;
 }
 
-#app [class*="calendar"] [class*="episode-"]:hover {
+#app [class*="calendar"] [class*="episode-"]:hover,
+#app [class*="calendar"] [class*="episode-"]:focus-visible {
     background: rgba(255, 255, 255, 0.06);
 }
 
@@ -2225,7 +2276,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: background-color 0.2s;
 }
 
-#app [class*="addons-content"] [class*="add-button-container"]:hover {
+#app [class*="addons-content"] [class*="add-button-container"]:hover,
+#app [class*="addons-content"] [class*="add-button-container"]:focus-visible {
     background: var(--dx-accent-hover);
 }
 
@@ -2255,7 +2307,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: background-color 0.25s, border-color 0.25s, transform 0.25s var(--dx-ease-out);
 }
 
-#app [class*="addons-list-container"] [class*="addon-container"]:hover {
+#app [class*="addons-list-container"] [class*="addon-container"]:hover,
+#app [class*="addons-list-container"] [class*="addon-container"]:focus-visible {
     background: var(--dx-surface);
     border-color: var(--dx-line-strong);
 }
@@ -2289,7 +2342,9 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
 }
 
 #app [class*="install-button-container"]:hover,
-#app [class*="configure-button-container"]:hover {
+#app [class*="configure-button-container"]:hover,
+#app [class*="install-button-container"]:focus-visible,
+#app [class*="configure-button-container"]:focus-visible {
     background: var(--dx-accent-hover) !important;
 }
 
@@ -2307,7 +2362,9 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
 }
 
 #app [class*="uninstall-button-container"]:hover,
-#app [class*="share-button-container"]:hover {
+#app [class*="share-button-container"]:hover,
+#app [class*="uninstall-button-container"]:focus-visible,
+#app [class*="share-button-container"]:focus-visible {
     background: var(--dx-surface-3) !important;
 }
 
@@ -2343,7 +2400,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: background-color 0.2s, color 0.2s;
 }
 
-#app [class*="settings-content"] > [class*="menu-"] [class*="button"]:hover {
+#app [class*="settings-content"] > [class*="menu-"] [class*="button"]:hover,
+#app [class*="settings-content"] > [class*="menu-"] [class*="button"]:focus-visible {
     background: rgba(255, 255, 255, 0.06);
     color: var(--dx-text);
 }
@@ -2388,6 +2446,16 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     border-color: var(--dx-accent) !important;
 }
 
+/* Keyboard: a selected switch or choice glows softly and grows a touch (they have no hover look
+   to borrow) */
+#app [class*="toggle-container"]:focus-visible,
+#app [class*="radio-container"]:focus-visible,
+#app [class*="checkbox-container"]:focus-visible {
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
+    transform: scale(1.08);
+    transition: transform 0.2s var(--dx-ease-out), filter 0.2s;
+}
+
 /* Text inputs */
 #app input[class*="text-input"],
 #app [class*="text-input"] input {
@@ -2425,7 +2493,9 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
 }
 
 #app [class*="nav-menu-container"] [class*="nav-menu-option-container"]:hover,
-#app [class*="menu-container"] [class*="option-container"]:hover {
+#app [class*="menu-container"] [class*="option-container"]:hover,
+#app [class*="nav-menu-container"] [class*="nav-menu-option-container"]:focus-visible,
+#app [class*="menu-container"] [class*="option-container"]:focus-visible {
     background: rgba(255, 255, 255, 0.08) !important;
 }
 
@@ -2508,7 +2578,8 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     transition: transform 0.2s var(--dx-ease-out);
 }
 
-#app [class*="player-container"] [class*="player-nav"] [class*="player-button"]:hover {
+#app [class*="player-container"] [class*="player-nav"] [class*="player-button"]:hover,
+#app [class*="player-container"] [class*="player-nav"] [class*="player-button"]:focus-visible {
     transform: scale(1.15);
 }
 
@@ -2585,7 +2656,8 @@ body[data-dx-ptitle] #app [class*="player-container"] [class*="player-title-cont
     --thumb-size: 16px;
 }
 
-#app [class*="player-container"] [class*="seek-bar-container"]:hover {
+#app [class*="player-container"] [class*="seek-bar-container"]:hover,
+#app [class*="player-container"] [class*="seek-bar-container"]:focus-visible {
     --dx-seek-hot: 1;
 }
 
@@ -2632,6 +2704,7 @@ html[class*="active-slider-within"] #app [class*="player-container"] [class*="se
 
 #app [class*="player-container"] [class*="control-bar-button-"],
 #app [class*="player-container"] [class*="control-bar-buttons-menu-button"],
+#app [class*="player-container"] .dxp-player-btn,
 .dx-seek {
     width: 3.5rem !important;
     height: 3.5rem !important;
@@ -2642,6 +2715,7 @@ html[class*="active-slider-within"] #app [class*="player-container"] [class*="se
 
 #app [class*="player-container"] [class*="control-bar-button-"] svg,
 #app [class*="player-container"] [class*="control-bar-buttons-menu-button"] svg,
+#app [class*="player-container"] .dxp-player-btn svg,
 .dx-seek svg {
     width: 2.15rem !important;
     height: 2.15rem !important;
@@ -2653,7 +2727,12 @@ html[class*="active-slider-within"] #app [class*="player-container"] [class*="se
 
 #app [class*="player-container"] [class*="control-bar-button-"]:hover:not(.disabled),
 #app [class*="player-container"] [class*="control-bar-buttons-menu-button"]:hover,
-.dx-seek:hover {
+.dx-seek:hover,
+#app [class*="player-container"] [class*="control-bar-button-"]:focus-visible,
+#app [class*="player-container"] [class*="control-bar-buttons-menu-button"]:focus-visible,
+#app [class*="player-container"] .dxp-player-btn:hover,
+#app [class*="player-container"] .dxp-player-btn:focus-visible,
+.dx-seek:focus-visible {
     --dx-btn-scale: 1.22;
 }
 
@@ -2689,7 +2768,9 @@ html[class*="active-slider-within"] #app [class*="player-container"] [class*="se
 
 #app [class*="player-container"] [class*="control-bar-button-"]:hover + [class*="volume-slider"],
 #app [class*="player-container"] [class*="control-bar-buttons-container"] > [class*="volume-slider"]:hover,
-html[class*="active-slider-within"] #app [class*="player-container"] [class*="control-bar-buttons-container"] > [class*="volume-slider"] {
+html[class*="active-slider-within"] #app [class*="player-container"] [class*="control-bar-buttons-container"] > [class*="volume-slider"],
+#app [class*="player-container"] [class*="control-bar-button-"]:focus-visible + [class*="volume-slider"],
+#app [class*="player-container"] [class*="control-bar-buttons-container"] > [class*="volume-slider"]:focus-visible {
     flex-basis: 8rem !important;
     margin: 0 0.75rem 0 0.25rem !important;
     opacity: 1;
@@ -2905,7 +2986,10 @@ html[class*="active-slider-within"] #app [class*="player-container"] [class*="co
 
 #app [class*="player-container"] [class*="language-option"]:hover,
 #app [class*="player-container"] [class*="variant-option"]:hover,
-#app [class*="player-container"] [class*="menu-layer"] [class*="option-container"]:hover {
+#app [class*="player-container"] [class*="menu-layer"] [class*="option-container"]:hover,
+#app [class*="player-container"] [class*="language-option"]:focus-visible,
+#app [class*="player-container"] [class*="variant-option"]:focus-visible,
+#app [class*="player-container"] [class*="menu-layer"] [class*="option-container"]:focus-visible {
     background: rgba(255, 255, 255, 0.06) !important;
 }
 
@@ -2981,7 +3065,8 @@ html[class*="active-slider-within"] #app [class*="player-container"] [class*="co
     background: transparent !important;
 }
 
-#app [class*="player-container"] [class*="stepper"] [class*="button"]:hover {
+#app [class*="player-container"] [class*="stepper"] [class*="button"]:hover,
+#app [class*="player-container"] [class*="stepper"] [class*="button"]:focus-visible {
     background: rgba(255, 255, 255, 0.1) !important;
 }
 
@@ -3045,7 +3130,8 @@ html[class*="active-slider-within"] #app [class*="player-container"] [class*="co
     transition: transform 0.2s var(--dx-ease-out), background-color 0.2s;
 }
 
-#app [class*="speed-menu-container"] [class*="speed-button"]:hover::before {
+#app [class*="speed-menu-container"] [class*="speed-button"]:hover::before,
+#app [class*="speed-menu-container"] [class*="speed-button"]:focus-visible::before {
     transform: scale(1.3);
     background: #fff;
 }
@@ -3126,7 +3212,8 @@ html[class*="active-slider-within"] #app [class*="player-container"] [class*="co
     transition: background-color 0.2s, width 0.2s;
 }
 
-#app [class*="player-container"] [class*="side-drawer-button-layer"]:hover {
+#app [class*="player-container"] [class*="side-drawer-button-layer"]:hover,
+#app [class*="player-container"] [class*="side-drawer-button-layer"]:focus-visible {
     width: 3rem !important;
     background: rgba(60, 60, 60, 0.95) !important;
 }
@@ -3213,13 +3300,10 @@ html[class*="active-slider-within"] #app [class*="player-container"] [class*="co
    14. ACCESSIBILITY
    ===================================================================== */
 
-#app [class*="button-container"]:focus-visible,
-#app a:focus-visible,
-.dx-btn:focus-visible,
-.dx-round:focus-visible,
-.dx-arrow:focus-visible {
-    outline: 2px solid #fff !important;
-    outline-offset: 2px;
+/* Keyboard focus looks the same as pointing with the mouse (every hover style above also answers
+   to :focus-visible), never a square outline drawn around things */
+:focus-visible {
+    outline: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3290,7 +3374,8 @@ html[class*="active-slider-within"] #app [class*="player-container"] [class*="co
     border: 1px solid var(--dx-line) !important;
 }
 
-#app [class*="addon-container"] [class*="configure-button-container"]:hover {
+#app [class*="addon-container"] [class*="configure-button-container"]:hover,
+#app [class*="addon-container"] [class*="configure-button-container"]:focus-visible {
     background: var(--dx-surface-3) !important;
 }
 
@@ -3306,7 +3391,9 @@ html[class*="active-slider-within"] #app [class*="player-container"] [class*="co
 }
 
 #app [class*="settings-content"] [class*="link-"]:hover,
-#app [class*="settings-content"] a:hover {
+#app [class*="settings-content"] a:hover,
+#app [class*="settings-content"] [class*="link-"]:focus-visible,
+#app [class*="settings-content"] a:focus-visible {
     color: #fff !important;
     text-decoration: underline;
     text-underline-offset: 3px;
@@ -3336,7 +3423,8 @@ body .am-header-btn {
     font-size: 0.9rem;
 }
 
-body .am-header-btn:hover {
+body .am-header-btn:hover,
+body .am-header-btn:focus-visible {
     background: var(--dx-surface-2);
     transform: none;
 }
@@ -3371,7 +3459,10 @@ body #skiprange-upgrade-btn {
 
 body #tidb-active-btn:hover,
 body #skiprange-active-btn:hover,
-body #skiprange-upgrade-btn:hover {
+body #skiprange-upgrade-btn:hover,
+body #tidb-active-btn:focus-visible,
+body #skiprange-active-btn:focus-visible,
+body #skiprange-upgrade-btn:focus-visible {
     background: #fff !important;
     color: #000 !important;
     border-color: #fff !important;
@@ -3514,7 +3605,8 @@ body #skiprange-upgrade-btn:hover {
     transition: background-color 0.15s;
 }
 
-[class*="nav-menu-container"] [class*="nav-menu-option-container"]:hover {
+[class*="nav-menu-container"] [class*="nav-menu-option-container"]:hover,
+[class*="nav-menu-container"] [class*="nav-menu-option-container"]:focus-visible {
     background: rgba(255, 255, 255, 0.08) !important;
 }
 
@@ -3581,7 +3673,8 @@ body[data-dx-ptitle] #app .custom-episode-title {
     transition: background-color 0.15s, color 0.15s;
 }
 
-#app .enhanced-subtitle-preset-btn:hover {
+#app .enhanced-subtitle-preset-btn:hover,
+#app .enhanced-subtitle-preset-btn:focus-visible {
     background: rgba(255, 255, 255, 0.12);
     color: #fff;
 }
@@ -3655,7 +3748,8 @@ body[data-dx-ptitle] #app .custom-episode-title {
     cursor: pointer;
 }
 
-#app .enhanced-stepper-button:hover {
+#app .enhanced-stepper-button:hover,
+#app .enhanced-stepper-button:focus-visible {
     background: rgba(255, 255, 255, 0.1);
 }
 
@@ -3851,7 +3945,8 @@ body[data-dx-ptitle] #app .custom-episode-title {
     transition: background-color 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.dx-sb-btn:hover {
+.dx-sb-btn:hover,
+.dx-sb-btn:focus-visible {
     background: rgba(255, 255, 255, 0.12);
     color: #fff;
 }
@@ -3917,7 +4012,8 @@ body[data-dx-ptitle] #app .custom-episode-title {
     text-underline-offset: 3px;
 }
 
-.dx-sb-reset:hover {
+.dx-sb-reset:hover,
+.dx-sb-reset:focus-visible {
     color: #fff;
 }
 
@@ -3951,7 +4047,8 @@ body[data-dx-ptitle] #app .custom-episode-title {
     transition: background-color 0.15s, color 0.15s;
 }
 
-.dx-sb-opt:hover {
+.dx-sb-opt:hover,
+.dx-sb-opt:focus-visible {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
@@ -4123,13 +4220,6 @@ body[data-dx-ptitle] #app .custom-episode-title {
 #app [class*="player-container"] [class*="control-bar-buttons-container"] > .dx-pip,
 #app [class*="player-container"] [class*="control-bar-buttons-container"] > .dx-external {
     order: 4;
-}
-
-/* Open in mpv / VLC: a lighter line icon, so it sits quietly next to the menus */
-.dx-pip svg,
-.dx-external svg {
-    width: 1.85rem !important;
-    height: 1.85rem !important;
 }
 
 #app [class*="player-container"] [class*="control-bar-buttons-container"] > [class*="control-bar-buttons-menu-container"],
