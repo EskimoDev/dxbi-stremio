@@ -120,10 +120,17 @@ async function main() {
 
   // Lay the window out on whatever screen the machine has; sample the middle of the video area
   const { width: sw, height: sh } = await evaluate("({ width: screen.width, height: screen.height })");
-  const { windowId } = (await send("Browser.getWindowForTarget")).result;
+  // Window placement lives on the browser connection, not the page's
+  const { webSocketDebuggerUrl } = await (await fetch(`http://127.0.0.1:${PORT}/json/version`)).json();
+  const browser = new WebSocket(webSocketDebuggerUrl);
+  await new Promise((r, j) => { browser.onopen = r; browser.onerror = j; });
+  const browserPending = new Map();
+  browser.onmessage = (m) => { const msg = JSON.parse(m.data); if (browserPending.has(msg.id)) { browserPending.get(msg.id)(msg); browserPending.delete(msg.id); } };
+  const browserSend = (method, params = {}) => new Promise((resolve) => { const id = ++nextId; browserPending.set(id, resolve); browser.send(JSON.stringify({ id, method, params })); });
+  const { windowId } = (await browserSend("Browser.getWindowForTarget", { targetId: target.id })).result;
   const place = async (left, top, width, height) => {
-    await send("Browser.setWindowBounds", { windowId, bounds: { windowState: "normal" } });
-    await send("Browser.setWindowBounds", { windowId, bounds: { left, top, width, height } });
+    await browserSend("Browser.setWindowBounds", { windowId, bounds: { windowState: "normal" } });
+    await browserSend("Browser.setWindowBounds", { windowId, bounds: { left, top, width, height } });
     await sleep(2000);
     return { x: left + width * 0.3, y: top + height * 0.3, width: width * 0.4, height: height * 0.4 };
   };
