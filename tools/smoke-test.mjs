@@ -192,6 +192,16 @@ if (failures.length) {
   console.log(`\nAll checks passed on ${process.platform}.`);
 }
 try { ws?.close(); } catch (_) { /* already closed */ }
+// Quit through the browser target too: launchers such as an AppImage exit while the app keeps running
+try {
+  const { webSocketDebuggerUrl } = await (await fetch(`http://127.0.0.1:${PORT}/json/version`)).json();
+  const browser = new WebSocket(webSocketDebuggerUrl);
+  await new Promise((done) => {
+    browser.onopen = () => browser.send(JSON.stringify({ id: 1, method: "Browser.close" }));
+    browser.onclose = browser.onerror = done;
+    setTimeout(done, 3000);
+  });
+} catch (_) { /* already gone */ }
 app.kill();
 await sleep(1000);
 process.exit(exitCode);
