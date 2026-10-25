@@ -6599,7 +6599,8 @@
         this.retried.clear();
         return;
       }
-      if (settings.convertVideo === "off" || this.active()) return;
+      // The dx.bi app's mpv player plays these formats itself: converting would only make them worse
+      if (settings.convertVideo === "off" || this.active() || window.__dxbiNativePlayer) return;
       const key = location.hash;
       if (this.checkedFor === key) return;
       this.checkedFor = key;
@@ -6618,7 +6619,7 @@
 
     // A stream failed: try once more with conversion
     async retry() {
-      if (settings.convertVideo === "off" || this.active()) return false;
+      if (settings.convertVideo === "off" || this.active() || window.__dxbiNativePlayer) return false;
       const key = location.hash;
       if (this.retried.has(key)) return false;
       this.retried.add(key);
