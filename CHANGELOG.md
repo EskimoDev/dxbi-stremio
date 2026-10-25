@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.14.0
+- **dx.bi TV.** dx.bi for Android TV and Google TV, made for the remote: the arrows move around, OK opens, Back goes back. Streams play in a TV player that handles MKV, HEVC, HDR and surround sound, with your addons' subtitles, and your watch progress is shared with every other Stremio app. dx.bi's settings have their own remote-friendly screen under Settings. It updates itself, and offers new versions of the app.
+- With nothing selected yet, the first arrow press starts on what's actually showing, including a dialog over the page.
+
 ## 2.13.0
 - **The dx.bi app.** dx.bi now also comes as its own desktop app for Windows, macOS and Linux, with everything built in: download, open, sign in. It's built on Stremio Enhanced, so it does everything Stremio Enhanced does. The first time it opens, it offers to copy your Stremio Enhanced sign-in, library, settings and plugins over. It downloads and updates Stremio's streaming server by itself, and its Discord status says "Watching dx.bi" with a link to get it.
 - **Keyboard browsing.** Get around everything with the arrow keys. The pointer hides while you do, the title you land on previews just like a hovered one, and rows turn to their next page at the edge. Press ↓ on a preview to reach its buttons. Stremio's top bar, settings switches and player buttons, which the keyboard couldn't reach before, now can. Moving the mouse hands control straight back.

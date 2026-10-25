@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description Cinematic, Netflix-inspired interface for dx.bi. Pair it with the dx.bi plugin for the billboard, carousels, previews, ratings and player extras.
- * @version 2.13.0
+ * @version 2.14.0
  * @author dx.bi
  * @requirements ["dxbi.plugin.js"]
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.theme.css
@@ -4304,22 +4304,33 @@ body[data-dx-route="player"] > [class*="seek-tooltip"] {
 }
 
 /* =====================================================================
-   WINDOWS: no blurred glass behind scrolling panels
+   WINDOWS AND TV: no blurred glass behind scrolling panels
    ===================================================================== */
 
 /* Chromium on Windows can leave stale copies of a scrolled panel on screen when it has a blurred
    (backdrop-filter) background: the streams list then looks like rows drawn over each other.
-   Solid backgrounds instead (dx.bi's plugin adds .dx-win on Windows). */
+   Solid backgrounds instead (dx.bi's plugin adds .dx-win on Windows). TVs (.dx-tv, dx.bi TV) get the
+   same, since their graphics are far weaker than a computer's. */
 .dx-win #app *,
-.dx-win body > * {
+.dx-win body > *,
+.dx-tv #app *,
+.dx-tv body > * {
     backdrop-filter: none !important;
 }
 
-.dx-win #app [class*="metadetails-content"] [class*="streams-list-container"] {
+.dx-win #app [class*="metadetails-content"] [class*="streams-list-container"],
+.dx-tv #app [class*="metadetails-content"] [class*="streams-list-container"] {
     background: rgb(19, 19, 23) !important;
 }
 
 .dx-win #app [class*="menu-container"],
-.dx-win .context-menu-portal [class*="menu-container"] {
+.dx-win .context-menu-portal [class*="menu-container"],
+.dx-tv #app [class*="menu-container"] {
     background: rgb(22, 22, 27) !important;
+}
+
+/* TV: the hover card's glow and soft shadow are big blurred layers redrawn as it opens */
+.dx-tv .dx-preview-aura,
+.dx-tv .dx-preview::before {
+    display: none;
 }

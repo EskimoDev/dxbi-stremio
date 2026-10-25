@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <b>A Netflix-style Stremio app for Windows, macOS and Linux.</b><br>
+  <b>A Netflix-style Stremio app for Windows, macOS, Linux and Android TV.</b><br>
   Download, sign in, done. Works with your existing addons. Nothing to configure.<br>
   <sub>Also available as a plugin for Stremio Enhanced.</sub>
 </p>
@@ -14,7 +14,7 @@
 
 <p align="center">
   <a href="https://github.com/notdxbi/dxbi-stremio/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/notdxbi/dxbi-stremio?label=release&color=e50914&style=flat-square"></a>
-  <img alt="Windows · macOS · Linux" src="https://img.shields.io/badge/Windows%20·%20macOS%20·%20Linux-222?style=flat-square">
+  <img alt="Windows · macOS · Linux · Android TV" src="https://img.shields.io/badge/Windows%20·%20macOS%20·%20Linux%20·%20Android%20TV-222?style=flat-square">
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-222?style=flat-square"></a>
 </p>
 
@@ -72,6 +72,20 @@ Download it, open it, sign in with your Stremio account. Everything is built in.
 - Linux: make the AppImage executable (`chmod +x`, or Properties → Permissions), then open it.
 
 dx.bi updates itself inside the app, and the app tells you when a new version of it is out.
+
+### dx.bi TV (Android TV and Google TV)
+
+The same dx.bi on your TV, made for the remote: the arrows move around, OK opens, Back goes back. Streams play in a TV player that handles MKV, HEVC, HDR and surround sound (as far as your TV's hardware can), with your addons' subtitles. Your watch progress is shared with every other Stremio app.
+
+1. On the TV, install *Downloader* (by AFTVnews) from the Play Store, and in the TV's settings allow it to install unknown apps.
+2. In Downloader, enter `github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi-tv.apk` and install it.
+3. Open dx.bi and sign in with your Stremio account.
+
+dx.bi updates itself, and the TV app offers new versions when they're out.
+
+- It needs a recent *Android System WebView* (version 100 or newer). Most TVs update it from the Play Store by themselves; dx.bi tells you if yours needs it.
+
+- Debrid streams play straight away. Torrents need Stremio's streaming server, which a TV doesn't have: run Stremio (or the dx.bi app) on a computer on the same network, and set its address under *Settings → Streaming*.
 
 ### Or: the plugin, for Stremio Enhanced
 
@@ -431,7 +445,7 @@ With the plugin, that comes from a preview build of Stremio Enhanced (the dx.bi 
 
 ### Does it work on my phone or TV?
 
-Not yet. dx.bi is a desktop app for Windows, macOS and Linux. A dx.bi app for Android TV is being worked on.
+On Android TV and Google TV, yes: see [dx.bi TV](#dxbi-tv-android-tv-and-google-tv). Phones and iPhones aren't supported.
 
 ### A friend can't connect to a party
 
