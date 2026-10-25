@@ -110,6 +110,19 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq xvfb libgtk-3-0t64 libnss3 libgbm1 libasound2t64 libxss1 >/dev/null
 
+      # The streaming server Stremio Enhanced runs on a Mac, with the same ffmpeg build, so the
+      # smoke test can check dx.bi turns on hardware conversion (VideoToolbox works on Apple silicon runners)
+      - name: Streaming server (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p "$RUNNER_TEMP/ss/home" && cd "$RUNNER_TEMP/ss"
+          for b in ffmpeg ffprobe; do curl -fsSL -o $b.zip "https://ffmpeg.martin-riedl.de/download/macos/arm64/1766430132_8.0.1/$b.zip" && unzip -o -q $b.zip && chmod +x $b; done
+          curl -fsSL -o server.js https://dl.strem.io/server/v4.20.17/desktop/server.js
+          HOME=$PWD/home APP_PATH=$PWD/home FFMPEG_BIN=$PWD/ffmpeg FFPROBE_BIN=$PWD/ffprobe nohup node server.js > server.log 2>&1 &
+          for i in $(seq 1 60); do grep -q "Tests for hardware accelerated transcoding finished" server.log && break; sleep 2; done
+          grep "hls-converter - Tests for hardware" server.log
+          echo "DXBI_EXPECT_HW_PROFILE=videotoolbox" >> "$GITHUB_ENV"
+
       - name: Smoke test
         shell: bash
         run: |

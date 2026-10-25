@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description The dx.bi experience: cinematic billboard, Netflix-style carousels, hover previews with trailers, ratings on posters, critic reviews, skip intro and up next, anime filler guide, new episode badges, watch stats and viewers, stream sorting & filters, a Netflix-style player with black-bar removal, night mode and subtitle sync, watch parties with friends, a cinematic intro and interface sounds. Use with the dx.bi theme.
- * @version 2.14.1
+ * @version 2.14.2
  * @author dx.bi
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js
  */
@@ -17,7 +17,7 @@
   // Stremio Enhanced loads each plugin as <script id="<file name>">, which tells us our settings key
   const SCRIPT_ID = (document.currentScript && document.currentScript.id) || "dxbi.plugin.js";
   const PLUGIN_KEY = SCRIPT_ID.replace(/\.plugin\.js$/, "");
-  const PLUGIN_VERSION = "2.14.1"; // kept in step with @version by tools/bundle-theme.mjs
+  const PLUGIN_VERSION = "2.14.2"; // kept in step with @version by tools/bundle-theme.mjs
   const log = (...args) => console.log("[dx.bi]", ...args);
   // dx.bi also comes as its own desktop app (built on Stremio Enhanced): messages name the app
   // you're in, and the folder its streaming server lives in
@@ -6094,7 +6094,7 @@
   function sync() {
     const steps = IN_TV
       ? [updateRoute, brandTitle, () => addonTools.ensure(), communitySync]
-      : [updateRoute, brandTitle, () => player.ensure(), () => { convert.ensure().catch(() => { /* player state not ready */ }); }, () => placeholder.ensure(), () => playbackHelp.ensure(), () => scrub.ensure(), () => enhance.ensure(), () => watchParty.ensure(), () => skip.ensure(), () => tune.ensure(), () => streamInfo.ensure(), () => addonTools.ensure(), communitySync];
+      : [updateRoute, brandTitle, () => player.ensure(), () => { convert.ensure().catch(() => { /* player state not ready */ }); }, () => convert.confirmHevc(), () => placeholder.ensure(), () => playbackHelp.ensure(), () => scrub.ensure(), () => enhance.ensure(), () => watchParty.ensure(), () => skip.ensure(), () => tune.ensure(), () => streamInfo.ensure(), () => addonTools.ensure(), communitySync];
     if (currentRoute() === "detail") steps.push(() => streamTools.ensure());
     steps.push(() => reviews.ensure());
     if (currentRoute() !== "player") {
@@ -6611,19 +6611,74 @@
       }
     },
 
-    // A stream failed: try once more with conversion, and remember HEVC fails here
+    // A stream failed: try once more with conversion
     async retry() {
       if (settings.convertVideo === "off" || this.active()) return false;
       const key = location.hash;
       if (this.retried.has(key)) return false;
       this.retried.add(key);
       const text = await this.streamText();
-      if (HEVC_HINT.test(text)) {
-        try { localStorage.setItem("dxbi.hevcFailed", "1"); } catch (_) { /* ignore */ }
-        this.hevc = false;
-      }
       if (location.hash !== key) return false;
+      this.hevcPending = HEVC_HINT.test(text);
       this.reopen();
+      return true;
+    },
+
+    // Remember that HEVC fails here only once the converted copy actually plays. A broken release
+    // fails converted too, and must not make every later HEVC release convert (slow on weak CPUs).
+    confirmHevc() {
+      if (!this.hevcPending) return;
+      if (currentRoute() !== "player" || !this.active()) {
+        this.hevcPending = false;
+        return;
+      }
+      const v = document.querySelector('[class*="player-container"] video');
+      if (!v || v.currentTime < 3) return;
+      this.hevcPending = false;
+      try { localStorage.setItem("dxbi.hevcFailed", "1"); } catch (_) { /* ignore */ }
+      this.hevc = false;
+    },
+  };
+
+  // The streaming server tests the Mac's hardware video encoder (VideoToolbox) on its first start
+  // and notes that it works, but keeps converting in software until a Transcode profile is picked in
+  // Settings → Streaming, which almost nobody does. In software, a 4K HEVC release converts slower
+  // than real time on many Macs (0.75× on an 8th-gen Core i7), so the video stutters and freezes.
+  // Pick the tested profile once; choosing another one (or Disabled) afterwards is left alone.
+  const hwConvert = {
+    started: false,
+
+    start() {
+      if (this.started || IN_TV || !/^Mac/.test(navigator.platform || "")) return;
+      this.started = true;
+      try { if (localStorage.getItem("dxbi.hwProfileSet")) return; } catch (_) { return; }
+      // The server's test runs a few seconds after it starts: look a few times
+      let tries = 0;
+      const attempt = () => {
+        this.apply()
+          .then((done) => { if (!done && ++tries < 8) setTimeout(attempt, 15000); })
+          .catch(() => { if (++tries < 8) setTimeout(attempt, 15000); });
+      };
+      setTimeout(attempt, 5000);
+    },
+
+    async apply() {
+      const r = await fetch(streamingServerUrl() + "/settings", { signal: AbortSignal.timeout(5000) });
+      const values = (await r.json()).values || {};
+      const profiles = values.allTranscodeProfiles || [];
+      if (values.transcodeProfile) return this.finish(); // already chosen by the viewer
+      if (!profiles.includes("videotoolbox")) return false;
+      const { getState, dispatch } = core();
+      const server = getState && (await getState("streaming_server").catch(() => null));
+      const current = server && server.settings && server.settings.type === "Ready" ? server.settings.content : null;
+      if (!dispatch || !current) return false;
+      dispatch({ action: "StreamingServer", args: { action: "UpdateSettings", args: { ...current, transcodeProfile: "videotoolbox" } } });
+      log("hardware conversion on (videotoolbox)");
+      return this.finish();
+    },
+
+    finish() {
+      try { localStorage.setItem("dxbi.hwProfileSet", "1"); } catch (_) { /* ignore */ }
       return true;
     },
   };
@@ -10497,6 +10552,7 @@
     window.addEventListener("beforeunload", onLeave);
     fixThemeLink();
     builtInTheme.ensure();
+    hwConvert.start();
     // Offer the Home pack after the intro (and the viewer picker), never on top of them
     setTimeout(() => { if (currentRoute() === "board" && !document.querySelector(".dxe-who")) addonTools.offerPack().catch(() => { /* core not ready */ }); }, 7000);
     // Prepare the sounds after the intro so they never compete with it

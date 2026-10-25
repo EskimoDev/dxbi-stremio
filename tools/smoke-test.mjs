@@ -178,6 +178,18 @@ async function main() {
   await sleep(4000);
   await screenshot("settings");
 
+  // macOS CI runs a real streaming server: dx.bi should switch on the hardware converter it tested
+  const hwProfile = process.env.DXBI_EXPECT_HW_PROFILE;
+  if (hwProfile) {
+    const profile = () => fetch("http://127.0.0.1:11470/settings").then((r) => r.json()).then((j) => j.values.transcodeProfile, () => null);
+    try {
+      await waitFor(`transcode profile ${hwProfile}`, async () => (await profile()) === hwProfile, 150000, 3000);
+      pass(`hardware conversion switched on (${hwProfile})`);
+    } catch (_) {
+      fail(`hardware conversion not switched on (transcodeProfile = ${await profile()})`);
+    }
+  }
+
   await Promise.all(scriptChecks);
   if (!pluginScripts.size) fail("couldn't find the dx.bi script among the page's scripts");
   const fromPlugin = (d) => d.console

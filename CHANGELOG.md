@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.14.2
+- **Smoother playback on Macs.** When a Mac can't play a file as it is, Stremio's streaming server converts it while you watch. It checks that the Mac's hardware video encoder works, but then kept converting on the processor anyway, which can't keep up with 4K HEVC releases on many Macs, so the video stuttered and froze. dx.bi now switches the hardware encoder on, once (you can still change it under Settings → Streaming → Transcode profile).
+- After one HEVC release failed to play, dx.bi converted every HEVC release from then on, even when the failed file was simply broken. It now only does that once a converted copy has actually played.
+
 ## 2.14.1
 - **No more double title bar in the dx.bi app.** On first launch, copying a Stremio Enhanced setup that had window transparency switched on gave the window its normal title bar plus a second one inside the page. The page now follows the window, and transparency isn't copied over (dx.bi's look isn't made for a see-through window).
 - **A simpler install guide.** One-click downloads for Windows, Mac, Linux and TVs, with each step a newcomer meets on the way, including the security prompts Windows and macOS show.
