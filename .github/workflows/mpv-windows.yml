@@ -8,6 +8,7 @@ on:
     paths:
       - "app/**"
       - "tools/mpv-test.mjs"
+      - "dxbi.plugin.js"
       - ".github/workflows/mpv-windows.yml"
   workflow_dispatch:
 
