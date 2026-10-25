@@ -42,13 +42,11 @@ jobs:
           java-version: 21
           cache: gradle
 
-      - uses: android-actions/setup-android@v3
-        if: env.HAS_KEY == 'true'
-
       - name: Signing key
         if: env.HAS_KEY == 'true'
         run: echo "${{ secrets.DXBI_TV_KEYSTORE_B64 }}" | base64 -d > "$RUNNER_TEMP/dxbi-tv.jks"
 
+      # GitHub's Ubuntu runners come with the Android SDK (ANDROID_HOME); Gradle fetches what's missing
       - name: Build
         if: env.HAS_KEY == 'true'
         run: ./gradlew assembleRelease --no-daemon && cp app/build/outputs/apk/release/app-release.apk dxbi-tv.apk
