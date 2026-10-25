@@ -127,6 +127,7 @@ export default class MpvShell {
             "--keep-open=no",
             "--background-color=#000000",
             "--hwdec=auto-safe",
+            "--audio-fallback-to-null=yes", // no sound device (headset unplugged, broken driver): keep playing
             "--vo=gpu-next",
             "--sub-auto=no",
             "--audio-file-auto=no",

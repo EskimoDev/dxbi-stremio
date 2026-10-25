@@ -53,25 +53,25 @@ async function evaluate(expression) {
   return r.result?.result?.value;
 }
 
-// Screenshot of the whole screen, and how many different colours a grid inside `box` has
+// Two screenshots of the whole screen a moment apart: how many sampled points inside `box` changed.
+// The clip's pattern moves, so a playing video changes; Stremio's still background art doesn't.
 function screen(name, box) {
   const png = join(outDir, `${name}.png`);
   const ps = `
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-$bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
-$g = [System.Drawing.Graphics]::FromImage($bmp)
-$g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
-$bmp.Save('${png.replace(/'/g, "''")}', [System.Drawing.Imaging.ImageFormat]::Png)
-$seen = @{}
-for ($i = 1; $i -le 12; $i++) { for ($j = 1; $j -le 8; $j++) {
-  $x = [int](${box.x} + ${box.width} * $i / 13); $y = [int](${box.y} + ${box.height} * $j / 9)
-  if ($x -lt $b.Width -and $y -lt $b.Height) { $c = $bmp.GetPixel($x, $y); $seen["$([int]($c.R/32))-$([int]($c.G/32))-$([int]($c.B/32))"] = 1 }
+function Shot { $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height; $g = [System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size); $bmp }
+$one = Shot; Start-Sleep -Milliseconds 700; $two = Shot
+$two.Save('${png.replace(/'/g, "''")}', [System.Drawing.Imaging.ImageFormat]::Png)
+$changed = 0; $total = 0
+for ($i = 1; $i -le 24; $i++) { for ($j = 1; $j -le 16; $j++) {
+  $x = [int](${box.x} + ${box.width} * $i / 25); $y = [int](${box.y} + ${box.height} * $j / 17)
+  if ($x -lt $b.Width -and $y -lt $b.Height) { $total++; $p = $one.GetPixel($x, $y); $q = $two.GetPixel($x, $y); if ([math]::Abs($p.R - $q.R) + [math]::Abs($p.G - $q.G) + [math]::Abs($p.B - $q.B) -gt 40) { $changed++ } }
 } }
-$seen.Count`;
-  const count = parseInt(execFileSync("powershell", ["-NoProfile", "-Command", ps], { encoding: "utf8" }).trim(), 10);
-  console.log(`  (${name}: ${count} colours in the sampled area)`);
-  return count;
+"$changed/$total"`;
+  const [changed, total] = execFileSync("powershell", ["-NoProfile", "-Command", ps], { encoding: "utf8" }).trim().split("/").map(Number);
+  console.log(`  (${name}: ${changed} of ${total} sampled points changed)`);
+  return changed;
 }
 
 async function main() {
@@ -170,21 +170,21 @@ if ($script:target -eq [IntPtr]::Zero) { 'not found'; exit }
   await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 5, y: 5 });
   await sleep(4000);
   const playing = screen("2-playing", area);
-  if (playing >= 8 && playing > home + 3) pass("the video shows on screen behind the page");
-  else fail(`the video doesn't show on screen (${playing} colours vs ${home} on Home)`);
+  if (playing >= 10 && home < 10) pass("the video shows on screen behind the page (moving picture)");
+  else fail(`the video doesn't show on screen (${playing} points changed while playing, ${home} on Home)`);
 
   // Moving and resizing the window: the video window follows
   area = await place(Math.round(sw * 0.25), Math.round(sh * 0.2), Math.round(sw * 0.7), Math.round(sh * 0.75));
   const moved = screen("3-moved", area);
-  if (moved >= 8) pass("the video follows the window when it moves");
-  else fail(`the video didn't follow the window (${moved} colours)`);
+  if (moved >= 10) pass("the video follows the window when it moves and resizes");
+  else fail(`the video didn't follow the window (${moved} points changed)`);
 
   // Fullscreen through Stremio's own button path
   await evaluate(`window.chrome.webview.postMessage(JSON.stringify({ id: 0, type: 6, args: ["win-set-visibility", { fullscreen: true }] })); true`);
   await sleep(2500);
   const full = screen("4-fullscreen", { x: sw * 0.2, y: sh * 0.2, width: sw * 0.6, height: sh * 0.6 });
-  if (full >= 8) pass("fullscreen shows the video");
-  else fail(`fullscreen doesn't show the video (${full} colours)`);
+  if (full >= 10) pass("fullscreen shows the video");
+  else fail(`fullscreen doesn't show the video (${full} points changed)`);
   await evaluate(`window.chrome.webview.postMessage(JSON.stringify({ id: 0, type: 6, args: ["win-set-visibility", { fullscreen: false }] })); true`);
   await sleep(1500);
 
