@@ -105,11 +105,13 @@ async function main() {
   const ffmpeg = join(userData, "streamingserver", "ffmpeg.exe");
   await waitFor("ffmpeg", () => existsSync(ffmpeg), 240000, 2000);
 
+  const srt = join(tmpdir(), "dxbi-test.srt");
+  writeFileSync(srt, Array.from({ length: 60 }, (_, i) => `${i + 1}\n00:${String(Math.floor(i * 3 / 60)).padStart(2, "0")}:${String(i * 3 % 60).padStart(2, "0")},000 --> 00:${String(Math.floor((i * 3 + 3) / 60)).padStart(2, "0")}:${String((i * 3 + 3) % 60).padStart(2, "0")},000\nEmbedded subtitle line ${i + 1}\n`).join("\n"));
   const clip = join(tmpdir(), "dxbi-hevc10.mkv");
   execFileSync(ffmpeg, ["-hide_banner", "-loglevel", "error", "-y",
-    "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=24", "-f", "lavfi", "-i", "sine=f=440:sample_rate=48000",
+    "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=24", "-f", "lavfi", "-i", "sine=f=440:sample_rate=48000", "-i", srt,
     "-t", "180", "-c:v", "libx265", "-preset", "ultrafast", "-pix_fmt", "yuv420p10le", "-x265-params", "log-level=error",
-    "-c:a", "ac3", "-b:a", "192k", clip]);
+    "-c:a", "ac3", "-b:a", "192k", "-c:s", "srt", "-map", "0:v", "-map", "1:a", "-map", "2:s", clip]);
   const size = statSync(clip).size;
   http.createServer((req, res) => {
     const m = /bytes=(\d+)-(\d*)/.exec(req.headers.range || "");
@@ -123,7 +125,7 @@ async function main() {
       createReadStream(clip).pipe(res);
     }
   }).listen(CLIP_PORT, "127.0.0.1");
-  pass(`test clip ready (10-bit HEVC + AC3 in MKV, ${(size / 1e6).toFixed(1)} MB)`);
+  pass(`test clip ready (10-bit HEVC + AC3 + SRT subtitles in MKV, ${(size / 1e6).toFixed(1)} MB)`);
 
   // Lay the window out on whatever screen the machine has; sample the middle of the video area
   const { width: sw, height: sh } = await evaluate("({ width: screen.width, height: screen.height })");
@@ -211,6 +213,38 @@ if ($script:target -eq [IntPtr]::Zero) { 'not found'; exit }
   const moved = screen("3-moved", area);
   if (moved >= 10) pass("the video follows the window when it moves and resizes");
   else fail(`the video didn't follow the window (${moved} points changed)`);
+
+  // Stremio's controls draw over the video when the mouse moves
+  await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 400, y: 300 });
+  await sleep(600);
+  screen("3b-controls", area);
+  if (await evaluate(`!!document.querySelector('[class*="control-bar-container"]') && getComputedStyle(document.querySelector('[class*="control-bar-container"]')).opacity !== "0"`)) pass("Stremio's controls show over the video");
+  else fail("Stremio's controls aren't showing");
+
+  // The file's own subtitle track, drawn by mpv
+  await evaluate(`window.__dxbiMpv.observe("sub-text"); window.__dxbiMpv.set("sid", 1); true`);
+  await sleep(4000);
+  const subText = await evaluate(`window.__dxbiMpv.get("sub-text") || ""`);
+  if (/Embedded subtitle line/.test(subText)) pass(`embedded subtitles play in mpv ("${subText}")`);
+  else fail(`embedded subtitles: mpv shows "${subText}"`);
+  screen("3c-subtitles", area);
+  await evaluate(`window.__dxbiMpv.set("sid", "no"); true`);
+
+  // Black bars are measured from mpv's frame (the test picture has none)
+  const bars = await evaluate(`window.__dxbiMpv.measureBars().then((b) => JSON.stringify(b))`);
+  if (bars && bars !== "null" && JSON.parse(bars).t < 0.02) pass(`black bars measured from mpv's frame (${bars})`);
+  else fail(`black bar measuring: ${bars}`);
+
+  // Picture-in-picture: the video in a corner, dx.bi minimized; then back
+  await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 5, y: 5 });
+  await evaluate(`window.__dxbiMpv.pip(); true`);
+  await sleep(2500);
+  const corner = screen("3d-pip", { x: sw * 0.72, y: sh * 0.62, width: sw * 0.25, height: sh * 0.25 });
+  if (corner >= 10) pass("picture-in-picture shows the video in the corner");
+  else fail(`picture-in-picture: ${corner} points changed in the corner`);
+  await evaluate(`window.__dxbiMpv.pip(); true`);
+  await sleep(2500);
+  area = await place(Math.round(sw * 0.25), Math.round(sh * 0.2), Math.round(sw * 0.7), Math.round(sh * 0.75));
 
   // Fullscreen through Stremio's own button path
   await evaluate(`window.chrome.webview.postMessage(JSON.stringify({ id: 0, type: 6, args: ["win-set-visibility", { fullscreen: true }] })); true`);
