@@ -182,6 +182,23 @@ if ($script:target -eq [IntPtr]::Zero) { 'not found'; exit }
   if (await evaluate("document.documentElement.hasAttribute('data-dx-mpv-showing')")) pass("page is see-through over the video");
   else fail("page didn't turn see-through");
 
+  // dx.bi's picture enhancement runs as mpv shaders: Anime4K, then Sharpen, then off
+  await evaluate(`window.__dxbiMpv.observe("glsl-shaders"); true`);
+  for (const mode of ["anime", "sharpen", "off"]) {
+    await evaluate(`window.__dxbi.settings.enhance = ${JSON.stringify(mode)}; window.__dxbi.sync(); true`);
+    await sleep(2500);
+    const shaders = await evaluate(`JSON.stringify(window.__dxbiMpv.get("glsl-shaders") || [])`);
+    const count = JSON.parse(shaders).length;
+    const expected = { anime: 2, sharpen: 1, off: 0 }[mode];
+    if (count === expected) pass(`picture enhancement "${mode}" loaded in mpv (${count} shader${count === 1 ? "" : "s"})`);
+    else fail(`picture enhancement "${mode}": mpv has ${shaders}`);
+  }
+  try {
+    const shaderErrors = readFileSync(join(userData, "mpv.log"), "utf8").split("\n").filter((l) => /\]\[(e|f)\]\[vo/.test(l) && /shader|glsl|hook|compile/i.test(l));
+    if (shaderErrors.length) fail(`mpv shader errors:\n${shaderErrors.slice(0, 8).join("\n")}`);
+    else pass("no shader errors in mpv's log");
+  } catch (_) { /* no log */ }
+
   // Hide Stremio's controls so the sample area is only video
   await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 5, y: 5 });
   await sleep(4000);
