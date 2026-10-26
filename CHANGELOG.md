@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.15.4
+- **dx.bi is no longer listed twice under Settings → Plugins** after turning on Discord Rich Presence.
+- **Discord shows one dx.bi activity**, not two identical ones, after Discord restarts or presence is switched off and on quickly.
+
 ## 2.15.3
 - **Windows: dx.bi is back in the taskbar and Alt+Tab** while the mpv player is on (the window was left out of both).
 - **Windows: no more "Streaming server is not available"** after the first-run question. The app now runs Stremio's streaming server by itself, like on macOS and Linux, so there's nothing to choose or install. If you picked Stremio Service before, it's still used while installed.
