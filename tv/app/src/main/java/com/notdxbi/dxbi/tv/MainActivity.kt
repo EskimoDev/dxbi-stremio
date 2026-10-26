@@ -36,6 +36,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
     private var injectedAtStart = false
     private var lastBack = 0L
+    private var playbackListener: PlaybackBus.Listener? = null
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,7 +71,7 @@ class MainActivity : AppCompatActivity() {
         CookieManager.getInstance().setAcceptThirdPartyCookies(web, true)
 
         web.addJavascriptInterface(Bridge(this), "DxbiTV")
-        val startScript = assets.open("dxbi-tv.js").bufferedReader().use { it.readText() }
+        val startScript = assets.open("dxbi-tv.js").bufferedReader().use { it.readText() }.replace(Bridge.PLACEHOLDER, Bridge.TOKEN)
         if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
             WebViewCompat.addDocumentStartJavaScript(web, startScript, setOf(STREMIO_ORIGIN))
             injectedAtStart = true
@@ -103,16 +104,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        PlaybackBus.listener = object : PlaybackBus.Listener {
+        playbackListener = object : PlaybackBus.Listener {
             override fun onProgress(positionMs: Long, durationMs: Long, paused: Boolean) {
                 js("window.__dxbiTv && window.__dxbiTv.onProgress($positionMs, $durationMs, $paused)")
             }
 
-            override fun onClosed(positionMs: Long, durationMs: Long, ended: Boolean, error: String?) {
-                val err = if (error == null) "null" else org.json.JSONObject.quote(error)
-                js("window.__dxbiTv && window.__dxbiTv.onClosed($positionMs, $durationMs, $ended, $err)")
+            // The page takes the details from PlaybackBus (a restarted page picks them up as it loads)
+            override fun onClosed() {
+                js("window.__dxbiTv && window.__dxbiTv.playerClosed && window.__dxbiTv.playerClosed()")
             }
         }
+
+        PlaybackBus.listener = playbackListener
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() = goBack()
@@ -128,6 +131,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // The "update your web engine" message is showing instead of the page
+        if (!::web.isInitialized) return
         intent.data?.takeIf { it.scheme == "stremio" }?.let { openStremioLink(it) }
     }
 
@@ -189,6 +194,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun play(json: String) {
+        PlaybackBus.started(json)
         startActivity(Intent(this, PlayerActivity::class.java).putExtra(PlayerActivity.EXTRA_STREAM, json))
     }
 
@@ -250,7 +256,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        PlaybackBus.listener = null
+        // recreate() can bring up the new screen before this one is gone: leave its listener alone
+        if (PlaybackBus.listener === playbackListener) PlaybackBus.listener = null
         if (::web.isInitialized) web.destroy()
         super.onDestroy()
     }
