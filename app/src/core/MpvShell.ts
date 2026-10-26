@@ -39,8 +39,17 @@ export default class MpvShell {
     private static queue: string[] = [];
     private static playing = false;
 
+    // Settings → dx.bi → "Play videos with mpv" switched off: the browser player instead
+    private static offFlag = () => join(app.getPath("userData"), "use_browser_player");
+
     /** mpv to use, if dx.bi should play through mpv on this computer */
     public static mpvPath(): string | null {
+        if (existsSync(this.offFlag())) return null;
+        return this.bundledPath();
+    }
+
+    /** mpv dx.bi could play with here, whether or not it's switched on */
+    public static bundledPath(): string | null {
         if (process.env.DXBI_MPV === "0") return null;
         const custom = process.env.DXBI_MPV_PATH;
         if (custom) return existsSync(custom) ? custom : null;
@@ -59,6 +68,20 @@ export default class MpvShell {
 
     public static isEnabled(): boolean {
         return this.mpvPath() !== null;
+    }
+
+    /** The settings switch: on/off take effect at the next start */
+    public static setupSetting(): void {
+        ipcMain.on(IPC_CHANNELS.MPV_STATUS, (event) => {
+            event.returnValue = { available: this.bundledPath() !== null, enabled: this.isEnabled() };
+        });
+        ipcMain.on(IPC_CHANNELS.MPV_SET_ENABLED, (_, enabled: boolean) => {
+            try {
+                if (enabled) unlinkSync(this.offFlag());
+                else writeFileSync(this.offFlag(), "1");
+            } catch { /* already that way */ }
+            logger.info(`mpv player ${enabled ? "on" : "off"} from the next start`);
+        });
     }
 
     /** Call once the main window exists */

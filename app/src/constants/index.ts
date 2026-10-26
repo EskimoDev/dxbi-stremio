@@ -96,6 +96,8 @@ export const IPC_CHANNELS = {
     MPV_ENABLED: 'dxbi-mpv-enabled',
     MPV_SHELL_SEND: 'dxbi-mpv-shell-send',
     MPV_SHELL_EVENT: 'dxbi-mpv-shell-event',
+    MPV_STATUS: 'dxbi-mpv-status',
+    MPV_SET_ENABLED: 'dxbi-mpv-set-enabled',
 } as const;
 
 // File extensions for mods

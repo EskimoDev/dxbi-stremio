@@ -162,7 +162,12 @@ function mainWorld(): void {
             return;
         }
         if (container.querySelector("video:not(.dx-mpv-video)")) return; // a trailer in the browser player
-        if (!proxy) proxy = makeProxy();
+        if (!proxy) {
+            proxy = makeProxy();
+            // For dx.bi's stream stats (Stremio's player doesn't watch these)
+            send("mpv-observe-prop", "hwdec-current");
+            send("mpv-observe-prop", "frame-drop-count");
+        }
         if (proxy.parentElement !== container) {
             container.prepend(proxy);
             if (mpv.duration > 0) { fire("loadedmetadata"); fire("loadeddata"); fire("canplay"); if (!mpv.pause) fire("playing"); }

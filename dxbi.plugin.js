@@ -10301,9 +10301,11 @@
       const hdr = video ? (video.isDoVi ? "Dolby Vision" : video.isHdr ? "HDR" : "SDR") : "";
       const resolution = video && video.width ? `${video.width} × ${video.height}${video.frameRate ? ` · ${Math.round(video.frameRate * 100) / 100} fps` : ""}` : "";
       const decoded = v.videoWidth ? `${v.videoWidth} × ${v.videoHeight}` : "";
-      const mode = src.direct ? "Direct play" : convert.active() ? "Converted to H.264" : "Through the streaming server";
-      const modeNote = src.direct ? "" : convert.active() ? "by the streaming server, for this PC" : "repackaged so the player can open it";
-      const upscale = enhance.video === v && enhance.mode !== "off" ? ENHANCE_LABEL[enhance.mode] || "" : "";
+      const mpvHw = window.__dxbiMpv ? window.__dxbiMpv.get("hwdec-current") : null;
+      const mode = window.__dxbiMpv ? "Played by mpv" : src.direct ? "Direct play" : convert.active() ? "Converted to H.264" : "Through the streaming server";
+      const modeNote = window.__dxbiMpv ? (mpvHw && mpvHw !== "no" ? `hardware decoding (${mpvHw})` : "software decoding")
+        : src.direct ? "" : convert.active() ? "by the streaming server, for this PC" : "repackaged so the player can open it";
+      const upscale = (enhance.video === v || window.__dxbiMpv) && enhance.mode !== "off" ? ENHANCE_LABEL[enhance.mode] || "" : "";
       const dropped = q ? `${q.droppedVideoFrames.toLocaleString()} of ${q.totalVideoFrames.toLocaleString()}` : "";
       const source = { torrent: "Torrent", debrid: `Debrid (${src.site})`, local: "This computer", direct: src.site, unknown: "" }[src.kind];
       const speed = s.rate === null ? (probe === null ? "Measuring…" : "") : `${s.estimated ? "≈ " : ""}${formatRate(s.rate)}`;

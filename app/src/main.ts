@@ -37,6 +37,7 @@ const useServerJSFlagPath = join(app.getPath("userData"), "use_server_js_for_str
 const mpvEnabled = MpvShell.isEnabled();
 const transparencyEnabled = existsSync(transparencyFlagPath) || mpvEnabled;
 ipcMain.on(IPC_CHANNELS.MPV_ENABLED, (event) => { event.returnValue = mpvEnabled; });
+MpvShell.setupSetting();
 
 app.commandLine.appendSwitch('disable-features', 'BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights');
 app.commandLine.appendSwitch('ignore-connections-limit', 'localhost,127.0.0.1');

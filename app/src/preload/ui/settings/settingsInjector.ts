@@ -19,7 +19,8 @@ import {
     setupTransparencyToggle,
     setupGpuDropdown,
     setupExternalPlayerDropdown,
-    setupExternalPlayerPathInputs
+    setupExternalPlayerPathInputs,
+    setupMpvPlayerToggle
 } from "./settingsToggles";
 import { type ExternalPlayer } from "../../../interfaces/ExternalPlayerTypes";
 import { modController } from "../mod/modController";
@@ -67,6 +68,7 @@ export function checkSettings() {
     setupCheckUpdatesOnStartupToggle();
     setupDiscordRpcToggle();
     setupTransparencyToggle();
+    setupMpvPlayerToggle();
 
     if(process.platform != "darwin") setupGpuDropdown();
     setupExternalPlayerDropdown();
