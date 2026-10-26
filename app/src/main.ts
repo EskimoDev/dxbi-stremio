@@ -38,6 +38,8 @@ const mpvEnabled = MpvShell.isEnabled();
 const transparencyEnabled = existsSync(transparencyFlagPath) || mpvEnabled;
 ipcMain.on(IPC_CHANNELS.MPV_ENABLED, (event) => { event.returnValue = mpvEnabled; });
 MpvShell.setupSetting();
+const MIN_ZOOM = 0.3;
+const MAX_ZOOM = 3;
 
 app.commandLine.appendSwitch('disable-features', 'BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights');
 app.commandLine.appendSwitch('ignore-connections-limit', 'localhost,127.0.0.1');
@@ -194,6 +196,7 @@ app.on("ready", async () => {
             }
         } else {
             logger.info("Stremio Service is already running.");
+            StremioService.repairFFmpeg();
         }
     } else logger.info("Launching without Stremio streaming server.");
     
@@ -356,12 +359,13 @@ app.on('browser-window-created', (_, window) => {
             break;
             
             // Implements zooming in/out using shortcuts (Ctrl + =, Ctrl + -)
+            // (Electron throws for a zoom factor of 0 or less)
             case input.control && input.key === '=':
-            if (mainWindow) mainWindow.webContents.zoomFactor += 0.1;
+            if (mainWindow) mainWindow.webContents.zoomFactor = Math.min(MAX_ZOOM, mainWindow.webContents.zoomFactor + 0.1);
             event.preventDefault();
             break;
             case input.control && input.key === '-':
-            if (mainWindow) mainWindow.webContents.zoomFactor -= 0.1;
+            if (mainWindow) mainWindow.webContents.zoomFactor = Math.max(MIN_ZOOM, mainWindow.webContents.zoomFactor - 0.1);
             event.preventDefault();
             break;
             
