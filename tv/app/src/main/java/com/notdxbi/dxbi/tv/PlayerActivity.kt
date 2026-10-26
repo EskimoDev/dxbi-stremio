@@ -114,11 +114,15 @@ class PlayerActivity : AppCompatActivity() {
             if (visibility == View.VISIBLE) playerView.findViewById<View>(androidx.media3.ui.R.id.exo_play_pause)?.requestFocus()
         })
 
-        // Subtitles start off, like Netflix (and dx.bi's default): pick one from the subtitles button
+        // Subtitles start off, like Netflix (and dx.bi's default): pick one from the subtitles button.
+        // Files with several audio tracks (dual-audio releases) start in Stremio's audio language
+        // (Settings → Player), when they have it
+        val audioLanguage = stream.optString("audioLanguage").ifEmpty { null }
         exo.trackSelectionParameters = exo.trackSelectionParameters.buildUpon()
             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
             .setPreferredTextLanguage(null)
             .setSelectUndeterminedTextLanguage(false)
+            .apply { if (audioLanguage != null) setPreferredAudioLanguage(audioLanguage) }
             .build()
 
         val subtitles = mutableListOf<MediaItem.SubtitleConfiguration>()
@@ -220,7 +224,7 @@ class PlayerActivity : AppCompatActivity() {
         val exo = player
         val duration = exo?.duration?.takeIf { it != C.TIME_UNSET } ?: 0L
         val position = if (ended) duration else exo?.currentPosition ?: 0L
-        PlaybackBus.listener?.onClosed(position, duration, ended, error)
+        PlaybackBus.closed(position, duration, ended, error)
         finish()
     }
 
@@ -255,7 +259,10 @@ class PlayerActivity : AppCompatActivity() {
         PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> "the connection failed"
         PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
         PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
-        PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES -> "this TV can't decode its video or audio format"
+        PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES ->
+            // No software decoders are bundled: DTS and TrueHD audio (common in BluRay rips) only play
+            // on TVs that decode them
+            "this TV can't decode its video or audio format (DTS and TrueHD audio often can't play: pick a release with AAC, AC3 or DD+ audio)"
         PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED -> "its file format isn't supported"
         else -> error.errorCodeName.removePrefix("ERROR_CODE_").lowercase().replace('_', ' ')
     }

@@ -4,8 +4,20 @@
 (function () {
   "use strict";
   if (window.__dxbiTv) return;
-  const native = window.DxbiTV;
-  if (!native) return;
+  // Every call to the app carries this launch's token (the app writes it in here): the app's
+  // bridge is visible to every frame, embedded trailers included, but only this page knows it
+  const TOKEN = "__DXBI_TV_TOKEN__";
+  const bridge = window.DxbiTV;
+  if (!bridge) return;
+  const native = {
+    pluginSource: () => bridge.pluginSource(TOKEN),
+    getSettings: (plugin) => bridge.getSettings(TOKEN, plugin),
+    saveSetting: (plugin, key, valueJson) => bridge.saveSetting(TOKEN, plugin, key, valueJson),
+    play: (json) => bridge.play(TOKEN, json),
+    activePlayback: () => bridge.activePlayback(TOKEN),
+    takePendingClose: () => bridge.takePendingClose(TOKEN),
+    openExternal: (url) => bridge.openExternal(TOKEN, url),
+  };
 
   const PLUGIN = "dxbi.plugin.js";
   const tv = (window.__dxbiTv = {});
@@ -93,7 +105,7 @@
       .then((r) => (r && r.button === 0 ? r.value : null)),
     // dx.bi's "Open in mpv / VLC" goes to the app's own player here
     launchExternalPlayer: async (player, url) => {
-      native.play(JSON.stringify({ url, title: document.title || "dx.bi" }));
+      native.play(JSON.stringify({ url, title: document.title || "dx.bi", hash: location.hash }));
       return { success: true };
     },
     getExternalPlayerPaths: async () => ({ vlc: null, mpv: null }),
@@ -294,14 +306,20 @@
     try { return new Intl.DisplayNames(["en"], { type: "language" }).of(lang) || lang; } catch (_) { return lang; }
   }
 
+  // Stremio's own settings (Settings → Player): the languages to start a video in
+  async function profileSettings() {
+    try {
+      const ctx = await core().getState("ctx");
+      return (ctx && ctx.profile && ctx.profile.settings) || {};
+    } catch (_) {
+      return {};
+    }
+  }
+
   // Addons can offer dozens of subtitle files: keep up to three per language, with the Stremio
   // subtitle language (and English) first, so the TV's subtitle menu stays short
   async function pickSubtitles(list) {
-    let preferred = "";
-    try {
-      const ctx = await core().getState("ctx");
-      preferred = (ctx && ctx.profile && ctx.profile.settings && ctx.profile.settings.subtitlesLanguage) || "";
-    } catch (_) { /* no preference */ }
+    const preferred = (await profileSettings()).subtitlesLanguage || "";
     const rank = (lang) => (lang === preferred ? 0 : /^(eng|en)$/.test(lang) ? 1 : 2);
     const count = {};
     const out = [];
@@ -331,7 +349,10 @@
       if (streamKnown) {
         known++;
         const metaReady = state.metaItem && state.metaItem.type !== "Loading";
-        if ((metaReady && state.libraryItem !== undefined) || known >= 12) break;
+        // A torrent's address comes from the streaming server, which can take a while to answer:
+        // wait for it (up to ~10 s) before saying there's no server
+        const waitingForServer = !stream.url && stream.infoHash && !(state.stream && /^(Ready|Err)$/.test(state.stream.type));
+        if ((metaReady && state.libraryItem !== undefined && !waitingForServer) || known >= (waitingForServer ? 40 : 12)) break;
       }
       await new Promise((r) => setTimeout(r, 250));
     }
@@ -367,6 +388,9 @@
 
     handoff = { hash, videoId, started: Date.now() };
     native.play(JSON.stringify({
+      hash,
+      videoId,
+      audioLanguage: (await profileSettings()).audioLanguage || "",
       url,
       title: meta.name || state.title || stream.title || "dx.bi",
       subtitle: episode,
@@ -385,7 +409,7 @@
     dispatch({ action: "Player", args: { action: "PausedChanged", args: { paused: !!paused } } });
   };
 
-  tv.onClosed = (timeMs, durationMs, ended, error) => {
+  function closeHandoff(timeMs, durationMs, ended, error) {
     if (handoff && /^#\/player\//.test(location.hash)) {
       if (timeMs > 0) tv.onProgress(timeMs, durationMs, true);
       if (ended) dispatch({ action: "Player", args: { action: "Ended" } });
@@ -395,7 +419,51 @@
       handoff = null;
     }
     if (error) toast(`This stream couldn't play: ${error}. Try another one.`, 7000);
+  }
+
+  // The native player closed: the app keeps how (see PlaybackBus) until the page takes it
+  let resuming = false;
+  tv.playerClosed = () => {
+    if (resuming) return; // picked up once the restarted page is back on the player screen
+    const raw = native.takePendingClose();
+    if (!raw) return;
+    try {
+      const c = JSON.parse(raw);
+      closeHandoff(c.timeMs, c.durationMs, c.ended, c.error);
+    } catch (err) {
+      console.warn("[dx.bi TV] couldn't read how the player closed", err);
+    }
   };
+
+  // Android restarted the page while a video played (TVs short of memory): go back to that video's
+  // player screen, silently, so its watch progress is still recorded, and finish up if it has closed
+  async function resumePlayback() {
+    let target = null;
+    try {
+      const active = native.activePlayback();
+      const closed = active ? null : native.takePendingClose();
+      const info = JSON.parse(active || closed || "null");
+      if (info && /^#\/player\//.test(info.hash || "")) target = { info, closed };
+    } catch (_) { /* nothing to pick up */ }
+    if (!target) return;
+    const { info, closed } = target;
+    resuming = true;
+    handoff = { hash: info.hash, videoId: info.videoId || null, started: Date.now(), resumed: true };
+    if (location.hash !== info.hash) location.hash = info.hash;
+    // Stremio needs a moment to load the player screen before it takes progress
+    for (let i = 0; i < 60 && location.hash === info.hash; i++) {
+      const state = await playerState();
+      if (state && state.selected) break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    silenceWebPlayer();
+    resuming = false;
+    if (closed) {
+      closeHandoff(info.timeMs, info.durationMs, info.ended, info.error);
+    } else {
+      tv.playerClosed(); // it may have closed while we waited
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // The remote's Back button: closes what's open, otherwise goes back a screen.
@@ -469,6 +537,7 @@
   const start = () => {
     ensureStyle();
     loadPlugin();
+    resumePlayback();
     onRoute();
     new MutationObserver(ensureSettingsEntry).observe(document.body, { childList: true, subtree: true });
   };

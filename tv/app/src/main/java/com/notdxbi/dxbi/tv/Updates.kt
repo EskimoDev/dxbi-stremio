@@ -22,7 +22,8 @@ import kotlin.concurrent.thread
  *  - a new dx.bi TV release is offered once, and downloaded and installed when wanted
  */
 object Updates {
-    private const val PLUGIN_URL = "https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.plugin.js"
+    // The plugin from the latest release, not the main branch: unreleased work never reaches TVs
+    private const val PLUGIN_URL = "https://github.com/notdxbi/dxbi-stremio/releases/latest/download/dxbi.plugin.js"
     private const val RELEASES_URL = "https://api.github.com/repos/notdxbi/dxbi-stremio/releases/latest"
     private const val APK_ASSET = "dxbi-tv.apk"
     private const val UPDATED_PLUGIN = "dxbi.plugin.js"
@@ -47,7 +48,13 @@ object Updates {
         try {
             val text = get(PLUGIN_URL) ?: return@thread
             if (!text.contains("@name dx.bi")) return@thread
-            if (isNewer(version(text), version(pluginSource(context)))) File(context.filesDir, UPDATED_PLUGIN).writeText(text)
+            if (isNewer(version(text), version(pluginSource(context)))) {
+                // Written next to it and swapped in whole: a half-written copy (power cut, app closed)
+                // would otherwise keep its new version number and be loaded, and never fetched again
+                val partial = File(context.filesDir, "$UPDATED_PLUGIN.download")
+                partial.writeText(text)
+                if (!partial.renameTo(File(context.filesDir, UPDATED_PLUGIN))) partial.delete()
+            }
         } catch (_: Exception) { /* offline: try again next launch */ }
     }
 
@@ -78,8 +85,13 @@ object Updates {
     private fun download(activity: MainActivity, url: String) {
         // Android only installs apps from dx.bi once it's allowed to ("Install unknown apps")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !activity.packageManager.canRequestPackageInstalls()) {
-            Toast.makeText(activity, "Allow dx.bi to install apps, then choose Update again", Toast.LENGTH_LONG).show()
-            activity.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${activity.packageName}")))
+            try {
+                activity.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${activity.packageName}")))
+                Toast.makeText(activity, "Allow dx.bi to install apps, then choose Update again", Toast.LENGTH_LONG).show()
+            } catch (_: Exception) {
+                // Some TVs (Fire OS among them) have no such screen to open directly
+                Toast.makeText(activity, "Allow dx.bi to install apps in the TV's settings (on Fire TV: My Fire TV → Developer options → Install unknown apps), then choose Update again", Toast.LENGTH_LONG).show()
+            }
             return
         }
         Toast.makeText(activity, "Downloading the update…", Toast.LENGTH_SHORT).show()
