@@ -206,7 +206,7 @@ try {
 if (failures.length) {
   exitCode = 1;
   console.log(`\n${failures.length} check(s) failed.`);
-  console.log("--- app output (mpv lines) ---\n" + appLog.split("\n").filter((l) => /MpvShell/.test(l)).slice(0, 80).join("\n"));
+  console.log("--- app output (mpv lines) ---\n" + appLog.split("\n").filter((l) => /MpvShell/.test(l) && !/"request_id"/.test(l)).slice(0, 160).join("\n"));
   try {
     const log = readFileSync(join(userData, "mpv.log"), "utf8").split("\n");
     console.log("--- mpv.log (errors, warnings and video output) ---\n" + log.filter((l) => /\]\[(e|w|f)\]|\]\[[vi]\]\[(cplayer|vo\/gpu-next)\]/.test(l) && !/libplacebo/.test(l)).slice(-120).join("\n"));

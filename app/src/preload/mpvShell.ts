@@ -47,6 +47,15 @@ function mainWorld(): void {
     // ---- mpv's state, as Stremio's player hears it ----
     const mpv: Record<string, any> = { pause: true, volume: 100, mute: false, speed: 1, "time-pos": 0, duration: NaN };
     w.__dxbiMpvState = mpv; // for problem reports
+    // For dx.bi's picture and sound features, which use mpv's own filters and shaders here
+    w.__dxbiMpv = Object.freeze({
+        get: (name: string) => mpv[name],
+        set: (name: string, value: unknown) => send("mpv-set-prop", [name, value]),
+        command: (...args: unknown[]) => send("mpv-command", args),
+        observe: (name: string) => send("mpv-observe-prop", name),
+        // [{ name, source }] of mpv GLSL user shaders; [] removes them
+        shaders: (list: { name: string; source: string }[]) => send("dxbi-shaders", list),
+    });
     let proxy: HTMLVideoElement | null = null;
     let lastTimeEvent = 0;
 

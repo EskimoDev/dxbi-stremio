@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import { spawn, execSync, type ChildProcess } from "child_process";
-import { existsSync } from "fs";
+import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { connect, type Socket } from "net";
 import { join } from "path";
 import { IPC_CHANNELS } from "../constants";
@@ -274,6 +274,19 @@ export default class MpvShell {
                 const id = this.observed.size + 1;
                 this.observed.set(name, id);
                 if (this.socket) this.socket.write(JSON.stringify({ command: ["observe_property", id, name] }) + "\n");
+                break;
+            }
+            case "dxbi-shaders": {
+                // dx.bi's picture enhancement: mpv user shaders (GLSL hooks) sent as text, loaded from files
+                const shaders = Array.isArray(data) ? data as { name: string; source: string }[] : [];
+                const dir = join(app.getPath("userData"), "shaders");
+                mkdirSync(dir, { recursive: true });
+                const paths = shaders.map(({ name, source }) => {
+                    const file = join(dir, `${String(name).replace(/[^\w.-]/g, "_")}.glsl`);
+                    writeFileSync(file, String(source));
+                    return file;
+                });
+                this.command(["set_property", "glsl-shaders", paths]);
                 break;
             }
             case "win-set-visibility":
