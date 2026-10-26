@@ -7,14 +7,17 @@ import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.CookieManager
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import org.json.JSONObject
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -80,6 +83,13 @@ class MainActivity : AppCompatActivity() {
                 if (!injectedAtStart && url != null && url.startsWith(STREMIO_ORIGIN)) view.evaluateJavascript(startScript, null)
             }
 
+            // The page's engine crashed, or Android took its memory back (TVs with 1.5–2 GB): without
+            // this, Android closes dx.bi straight back to the home screen
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                recoverFromCrash(detail.didCrash())
+                return true
+            }
+
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val url = request.url
                 if (url.host == "web.stremio.com") return false
@@ -143,6 +153,38 @@ class MainActivity : AppCompatActivity() {
                 lastBack = now
                 Toast.makeText(this, "Press Back again to leave dx.bi", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    /**
+     * Start the page again in a lighter way: the intro film is the heaviest moment of a start, so it's
+     * switched off (it can be switched back on in dx.bi's settings). A second crash soon after says so.
+     */
+    private fun recoverFromCrash(crashed: Boolean) {
+        val state = getSharedPreferences("app", MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val again = now - state.getLong("lastPageCrash", 0) < 3 * 60_000
+        state.edit().putLong("lastPageCrash", now).apply()
+        android.util.Log.w("dxbi", "page engine gone (crashed=$crashed, again=$again)")
+
+        val settings = getSharedPreferences("plugin-settings", MODE_PRIVATE)
+        val dxbi = try { JSONObject(settings.getString("dxbi", "{}") ?: "{}") } catch (_: Exception) { JSONObject() }
+        dxbi.put("splash", false)
+        settings.edit().putString("dxbi", dxbi.toString()).commit()
+
+        (web.parent as? ViewGroup)?.removeView(web)
+        web.destroy()
+        if (again) {
+            setContentView(View(this))
+            AlertDialog.Builder(this)
+                .setTitle("dx.bi keeps stopping")
+                .setMessage("dx.bi's screen stopped twice in a row on this TV, usually because the TV is short of memory. Closing other apps (or restarting the TV) helps. Try again?")
+                .setCancelable(false)
+                .setPositiveButton("Try again") { _, _ -> recreate() }
+                .setNegativeButton("Close") { _, _ -> finish() }
+                .show()
+        } else {
+            recreate()
         }
     }
 
