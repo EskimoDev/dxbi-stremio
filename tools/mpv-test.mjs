@@ -89,6 +89,13 @@ async function main() {
   await waitFor("Stremio", () => evaluate("document.readyState === 'complete' && !!document.querySelector('#app')"));
   await evaluate(`localStorage.setItem("dxbi.packOffered","1"); localStorage.setItem("checkForUpdatesOnStartup","false"); true`);
 
+  // First launch opens maximized, and the state is remembered
+  try {
+    const state = JSON.parse(readFileSync(join(userData, "window-state.json"), "utf8"));
+    if (state.maximized === true) pass("first launch opens maximized (window-state.json saved)");
+    else fail(`first launch isn't maximized: ${JSON.stringify(state)}`);
+  } catch (e) { fail(`no window-state.json: ${e.message}`); }
+
   if (await evaluate("window.__dxbiNativePlayer === 'mpv' && typeof window.chrome?.webview?.postMessage === 'function'")) pass("mpv player switched on (Stremio's desktop-shell transport is present)");
   else fail("mpv player not switched on");
 

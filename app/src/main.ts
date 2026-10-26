@@ -23,6 +23,7 @@ import { externalPlayerController } from "./controllers/externalPlayerController
 import { offerEnhancedImport, seedBuiltInPlugin } from "./core/BuiltIn";
 import MpvShell from "./core/MpvShell";
 import { ipcMain } from "electron";
+import { restoreWindowState } from "./core/WindowState";
 
 app.setName("dxbi");
 const userDataPath = app.getPath('userData');
@@ -82,6 +83,7 @@ async function createWindow() {
         },
         width: 1500,
         height: 850,
+        show: false, // shown once its saved size and state are applied
         resizable: true,
         maximizable: true,
         fullscreenable: true,
@@ -95,6 +97,7 @@ async function createWindow() {
     });
     
     mainWindow.setMenu(null);
+    restoreWindowState(mainWindow);
     mainWindow.loadURL(URLS.STREMIO_WEB);
         
     if (transparencyEnabled) {
