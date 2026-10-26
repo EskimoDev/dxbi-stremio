@@ -368,6 +368,7 @@ export default class MpvShell {
             main.minimize();
         } else {
             video.setAlwaysOnTop(false);
+            if (main.isMinimized()) main.restore();
             main.setParentWindow(video);
             this.followMainWindow();
             if (this.playing) video.showInactive();
