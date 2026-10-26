@@ -292,7 +292,8 @@ $ex = [S]::GetWindowLongPtr($script:target, -20).ToInt64()
   await evaluate(`window.__dxbiMpv.pip(); true`);
   await sleep(2500);
   const corner = screen("3d-pip", { x: sw * 0.72, y: sh * 0.62, width: sw * 0.25, height: sh * 0.25 });
-  if (corner >= 10) pass("picture-in-picture shows the video in the corner");
+  // (the clip is mostly solid colour bars: only its moving line and dots change, 9 to 40 points)
+  if (corner >= 5) pass("picture-in-picture shows the video in the corner");
   else fail(`picture-in-picture: ${corner} points changed in the corner`);
   await evaluate(`window.__dxbiMpv.pip(); true`);
   await sleep(2500);
@@ -305,9 +306,35 @@ $ex = [S]::GetWindowLongPtr($script:target, -20).ToInt64()
   const full = screen("4-fullscreen", { x: sw * 0.2, y: sh * 0.2, width: sw * 0.6, height: sh * 0.6 });
   if (full >= 10) pass("fullscreen shows the video");
   else fail(`fullscreen doesn't show the video (${full} points changed)`);
-  await evaluate(`window.chrome.webview.postMessage(JSON.stringify({ id: 0, type: 6, args: ["win-set-visibility", { fullscreen: false }] })); true`);
+  const cover = await evaluate(`[outerWidth, outerHeight, screen.width, screen.height]`);
+  if (Math.abs(cover[0] - cover[2]) <= 2 && Math.abs(cover[1] - cover[3]) <= 2) pass(`fullscreen covers the screen (${cover[0]}×${cover[1]})`);
+  else fail(`fullscreen doesn't cover the screen: window ${cover[0]}×${cover[1]}, screen ${cover[2]}×${cover[3]}`);
+  // Escape leaves full screen and stays in the player when Stremio's "Esc exits full screen" is on (issue #13)
+  const escExits = await evaluate(`window.core.getState("ctx").then((c) => c.profile.settings.escExitFullscreen)`);
+  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await sleep(1500);
+  const afterEsc = await evaluate(`[location.hash.startsWith("#/player"), outerWidth < screen.width - 2 || outerHeight < screen.height - 2]`);
+  if (escExits !== false) {
+    if (afterEsc[0] && afterEsc[1]) pass("Escape leaves full screen and keeps playing");
+    else fail(`Escape with "Esc exits full screen" on: still in player ${afterEsc[0]}, left full screen ${afterEsc[1]}`);
+  } else console.log("  (Esc exits full screen is off in this profile: Escape check skipped)");
+  if (afterEsc[0]) await evaluate(`window.chrome.webview.postMessage(JSON.stringify({ id: 0, type: 6, args: ["win-set-visibility", { fullscreen: false }] })); true`);
   await sleep(1500);
   switcher("after fullscreen");
+
+  // Maximize and restore from the title bar (a transparent window can't use Windows' own, issue #6):
+  // pressed twice, one press fills the work area and the other gives back a smaller window
+  const sizes = [];
+  for (let i = 0; i < 2; i++) {
+    await evaluate(`document.querySelector("#maximizeApp-btn").click(); true`);
+    await sleep(1500);
+    sizes.push(await evaluate(`[outerWidth, outerHeight, screen.availWidth, screen.availHeight]`));
+  }
+  const fills = (s) => Math.abs(s[0] - s[2]) <= 2 && Math.abs(s[1] - s[3]) <= 2;
+  const smaller = (s) => s[0] < s[2] - 20 && s[1] < s[3] - 20;
+  if ((fills(sizes[0]) && smaller(sizes[1])) || (smaller(sizes[0]) && fills(sizes[1]))) pass(`maximize and restore: ${sizes.map((s) => `${s[0]}×${s[1]}`).join(" ↔ ")} (work area ${sizes[0][2]}×${sizes[0][3]})`);
+  else fail(`maximize and restore: ${sizes.map((s) => `${s[0]}×${s[1]}`).join(", ")}, work area ${sizes[0][2]}×${sizes[0][3]}`);
 
   // Leaving the player puts the page back
   await evaluate("history.back(); true");
