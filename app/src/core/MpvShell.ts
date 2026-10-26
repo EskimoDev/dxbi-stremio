@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain, nativeImage, screen } from "electron";
-import { spawn, execSync, type ChildProcess } from "child_process";
+import { spawn, execSync, execFileSync, type ChildProcess } from "child_process";
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "fs";
 import { connect, type Socket } from "net";
 import { join } from "path";
@@ -66,8 +66,21 @@ export default class MpvShell {
         return null;
     }
 
+    // mpv that won't run here (missing system files, blocked by antivirus…) means the browser player
+    private static works: boolean | null = null;
     public static isEnabled(): boolean {
-        return this.mpvPath() !== null;
+        const path = this.mpvPath();
+        if (!path) return false;
+        if (this.works === null) {
+            try {
+                execFileSync(path, ["--no-config", "--version"], { timeout: 8000, windowsHide: true, stdio: "pipe" });
+                this.works = true;
+            } catch (err) {
+                logger.error(`mpv won't start here, using the browser player: ${err}`);
+                this.works = false;
+            }
+        }
+        return this.works;
     }
 
     /** The settings switch: on/off take effect at the next start */
