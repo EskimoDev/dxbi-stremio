@@ -101,7 +101,7 @@ async function main() {
   const clip = join(tmpdir(), "dxbi-hevc10.mkv");
   execFileSync(ffmpeg, ["-hide_banner", "-loglevel", "error", "-y",
     "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=24", "-f", "lavfi", "-i", "sine=f=440:sample_rate=48000",
-    "-t", "40", "-c:v", "libx265", "-preset", "ultrafast", "-pix_fmt", "yuv420p10le", "-x265-params", "log-level=error",
+    "-t", "180", "-c:v", "libx265", "-preset", "ultrafast", "-pix_fmt", "yuv420p10le", "-x265-params", "log-level=error",
     "-c:a", "ac3", "-b:a", "192k", clip]);
   const size = statSync(clip).size;
   http.createServer((req, res) => {
@@ -155,6 +155,13 @@ if ($script:target -eq [IntPtr]::Zero) { 'not found'; exit }
   await evaluate(`location.hash = ${JSON.stringify(hash)}; true`);
 
   const V = `document.querySelector('[class*="player-container"] video')`;
+  // What the page sees while it starts, every 3 s
+  const watch = setInterval(async () => {
+    try {
+      console.log("    … " + JSON.stringify(await evaluate(`({ hash: location.hash.slice(0, 10), t: window.__dxbiMpvState?.["time-pos"], d: window.__dxbiMpvState?.duration, vp: !!window.__dxbiMpvState?.["video-params"], pfc: window.__dxbiMpvState?.["paused-for-cache"], proxy: !!${V}, rs: ${V}?.readyState, body: document.body.getAttribute("style"), spinner: !!document.querySelector('[class*="buffering"]'), err: document.querySelector('[class*="error-layer"]')?.textContent?.slice(0, 60) })`)));
+    } catch (e) { console.log("    … " + e.message); }
+  }, 3000);
+  setTimeout(() => screen("1b-starting", { x: 0, y: 0, width: 400, height: 300 }), 12000);
   try {
     const state = await waitFor("mpv to play", () => evaluate(`(() => { const v = ${V}; return v && v.readyState === 4 && v.currentTime > 2 ? { t: v.currentTime, w: v.videoWidth, h: v.videoHeight, cls: v.className } : null })()`), 60000);
     pass(`playing in mpv: ${state.w}×${state.h}, ${state.t.toFixed(1)} s in (${state.cls})`);
@@ -162,6 +169,7 @@ if ($script:target -eq [IntPtr]::Zero) { 'not found'; exit }
     fail(e.message);
     console.log("  page's view of mpv: " + JSON.stringify(await evaluate(`({ mpv: window.__dxbiMpvState, debug: window.__dxbiMpvDebug, proxy: !!${V}, body: document.body.getAttribute("style"), hash: location.hash.slice(0, 12), container: !!document.querySelector('[class*="player-container"]') })`)).slice(0, 1500));
   }
+  clearInterval(watch);
   const error = await evaluate(`document.querySelector('[class*="error-layer"]')?.textContent || ""`);
   if (error) fail(`player error: ${error.slice(0, 160)}`);
   if (await evaluate("document.documentElement.hasAttribute('data-dx-mpv-showing')")) pass("page is see-through over the video");
