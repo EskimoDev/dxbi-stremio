@@ -46,6 +46,7 @@ function mainWorld(): void {
 
     // ---- mpv's state, as Stremio's player hears it ----
     const mpv: Record<string, any> = { pause: true, volume: 100, mute: false, speed: 1, "time-pos": 0, duration: NaN };
+    w.__dxbiMpvState = mpv; // for problem reports
     let proxy: HTMLVideoElement | null = null;
     let lastTimeEvent = 0;
 

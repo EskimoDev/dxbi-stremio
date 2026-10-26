@@ -160,6 +160,7 @@ if ($script:target -eq [IntPtr]::Zero) { 'not found'; exit }
     pass(`playing in mpv: ${state.w}×${state.h}, ${state.t.toFixed(1)} s in (${state.cls})`);
   } catch (e) {
     fail(e.message);
+    console.log("  page's view of mpv: " + JSON.stringify(await evaluate(`({ mpv: window.__dxbiMpvState, proxy: !!${V}, body: document.body.getAttribute("style"), hash: location.hash.slice(0, 12), container: !!document.querySelector('[class*="player-container"]') })`)).slice(0, 1500));
   }
   const error = await evaluate(`document.querySelector('[class*="error-layer"]')?.textContent || ""`);
   if (error) fail(`player error: ${error.slice(0, 160)}`);
@@ -208,7 +209,7 @@ if (failures.length) {
   console.log("--- app output (last 3000 chars) ---\n" + appLog.slice(-3000));
   try {
     const log = readFileSync(join(userData, "mpv.log"), "utf8").split("\n");
-    console.log("--- mpv.log (errors, warnings and video output) ---\n" + log.filter((l) => /\]\[(e|w|f)\]|\[vo|\[d3d|\[gpu|\[libplacebo|\[cplayer\]/.test(l)).slice(-120).join("\n"));
+    console.log("--- mpv.log (errors, warnings and video output) ---\n" + log.filter((l) => /\]\[(e|w|f)\]|\]\[[vi]\]\[(cplayer|vo\/gpu-next)\]/.test(l) && !/libplacebo/.test(l)).slice(-120).join("\n"));
   } catch (e) { console.log(`no mpv.log: ${e.message}`); }
 } else {
   console.log("\nAll mpv checks passed.");
