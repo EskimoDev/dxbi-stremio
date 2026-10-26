@@ -19,6 +19,27 @@ import { getLogger } from "../utils/logger";
 // while a video plays Stremio makes the page background transparent, so the picture shows through.
 
 const logger = getLogger("MpvShell");
+
+// Windows leaves owned windows out of the taskbar and Alt+Tab unless they carry WS_EX_APPWINDOW,
+// and Electron has no option for it, so it's set through user32 (koffi). The style stays when the
+// owner changes (picture-in-picture), so once is enough.
+function keepInSwitcher(win: BrowserWindow): void {
+    if (process.platform !== "win32") return;
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const koffi = require("koffi");
+        const user32 = koffi.load("user32.dll");
+        const getLong = user32.func("intptr_t __stdcall GetWindowLongPtrW(intptr_t hwnd, int index)");
+        const setLong = user32.func("intptr_t __stdcall SetWindowLongPtrW(intptr_t hwnd, int index, intptr_t value)");
+        const buf = win.getNativeWindowHandle();
+        const hwnd = buf.length >= 8 ? buf.readBigInt64LE(0) : BigInt(buf.readInt32LE(0));
+        const GWL_EXSTYLE = -20, WS_EX_APPWINDOW = 0x40000;
+        const style = BigInt(getLong(hwnd, GWL_EXSTYLE));
+        setLong(hwnd, GWL_EXSTYLE, style | BigInt(WS_EX_APPWINDOW));
+    } catch (err) {
+        logger.warn(`Couldn't keep dx.bi in the taskbar and Alt+Tab: ${err}`);
+    }
+}
 const DEBUG = process.env.DXBI_MPV_DEBUG === "1";
 
 // Qt WebChannel message types that Stremio's shell transport speaks
@@ -123,6 +144,7 @@ export default class MpvShell {
 
         // The dx.bi window always stays above the video window, and still gets its own taskbar button
         mainWindow.setParentWindow(this.videoWindow);
+        keepInSwitcher(mainWindow);
         mainWindow.setSkipTaskbar(false);
 
         const follow = () => this.followMainWindow();

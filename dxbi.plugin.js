@@ -107,6 +107,7 @@
     introSound: true,
     uiSounds: true,
     soundVolume: "subtle",
+    trailerDelay: "0",
     watchParty: true,
     partyFollow: true,
     partyActivity: true,
@@ -273,6 +274,19 @@
     { key: "mdblistKey", type: "input", label: "Reviews: MDBList key (optional)", description: "Adds fresher scores, including Rotten Tomatoes audience, Letterboxd and Trakt. Free (1,000 titles a day): sign in at mdblist.com, then Preferences → API key. It's only sent to MDBList.", defaultValue: DEFAULTS.mdblistKey },
     { key: "trailers", type: "toggle", label: "Trailers in hover cards", description: "Rest on a title and its trailer starts playing in the card, muted (tap the speaker for sound).", defaultValue: DEFAULTS.trailers },
     {
+      key: "trailerDelay",
+      type: "select",
+      label: "Trailer delay",
+      description: "How long a hover card waits before its trailer starts.",
+      defaultValue: DEFAULTS.trailerDelay,
+      options: [
+        { label: "Right away", value: "0" },
+        { label: "1 second", value: "1" },
+        { label: "3 seconds", value: "3" },
+        { label: "5 seconds", value: "5" },
+      ],
+    },
+    {
       key: "upNext",
       type: "select",
       label: "Up next countdown",
@@ -310,6 +324,7 @@
       key: "soundVolume",
       type: "select",
       label: "Sound volume",
+      description: "For the intro and interface sounds.",
       defaultValue: DEFAULTS.soundVolume,
       options: [
         { label: "Subtle", value: "subtle" },
@@ -2935,6 +2950,8 @@
     const video = document.createElement("video");
     video.className = "dx-splash-video";
     video.muted = !settings.introSound;
+    // the intro follows the Sound volume setting too (it used to play at full volume)
+    video.volume = { subtle: 0.45, normal: 0.75, loud: 1 }[settings.soundVolume] ?? 0.45;
     video.playsInline = true;
     video.preload = "auto";
     video.setAttribute("aria-hidden", "true");
@@ -8523,7 +8540,7 @@
         const id = await this.idFor(info, meta);
         if (!id || token !== preview.token || !el.classList.contains("is-open")) return;
         this.start(el, id);
-      }, 600);
+      }, Math.max(600, (Number(settings.trailerDelay) || 0) * 1000));
     },
 
     start(el, id) {

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+- **Windows: dx.bi is back in the taskbar and Alt+Tab** while the mpv player is on (the window was left out of both).
+- **Windows: no more "Streaming server is not available"** after the first-run question. The app now runs Stremio's streaming server by itself, like on macOS and Linux, so there's nothing to choose or install. If you picked Stremio Service before, it's still used while installed.
+- **The intro follows Settings → Sound volume** instead of always playing at full volume.
+- **Trailer delay**: choose how long a hover card waits before its trailer starts (right away, 1, 3 or 5 seconds).
+
 ## 2.15.2
 - **Hover cards are clean in the app**: a grey band with the poster showing through sat above the card (most visible on Windows).
 - **Library is calmer**: no ring, lift or pop-out card when you point at a title, just a gentle brighten.
