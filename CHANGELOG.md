@@ -1,10 +1,14 @@
 # Changelog
 
-## Unreleased
+## 2.15.3
 - **Windows: dx.bi is back in the taskbar and Alt+Tab** while the mpv player is on (the window was left out of both).
 - **Windows: no more "Streaming server is not available"** after the first-run question. The app now runs Stremio's streaming server by itself, like on macOS and Linux, so there's nothing to choose or install. If you picked Stremio Service before, it's still used while installed.
 - **The intro follows Settings → Sound volume** instead of always playing at full volume.
 - **Trailer delay**: choose how long a hover card waits before its trailer starts (right away, 1, 3 or 5 seconds).
+- **Watch progress on TVs is kept** when Android restarts the page mid-video (common on low-memory sticks like Chromecast and Fire TV), and files with several audio tracks start in your audio language from Stremio's settings. Thanks @tanishvbuk (#9).
+- **TV: trailers can no longer reach the app's settings.** Every call from the page to the app now needs a secret only dx.bi's page knows (#9).
+- **Safer external players**: VLC's web remote gets a fresh password each time and only listens on your own computer, and only real web or file links are opened in mpv or VLC (#8).
+- **Stremio Service's broken ffprobe on Windows is repaired** when dx.bi starts, and zooming out can no longer crash the app (#8).
 
 ## 2.15.2
 - **Hover cards are clean in the app**: a grey band with the poster showing through sat above the card (most visible on Windows).
