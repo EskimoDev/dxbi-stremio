@@ -20,6 +20,11 @@ import { gpuRendererAPI } from "./api/gpuRenderer";
 import { externalPlayerAPI } from "./api/externalPlayer";
 import { pluginLogger } from "./api/pluginLogger";
 import Helpers from "../utils/Helpers";
+import { mpvShellEnabled, installMpvShell } from "./mpvShell";
+
+// Playing through mpv: Stremio must find the shell transport before its own scripts run
+const nativePlayer = mpvShellEnabled();
+if (nativePlayer) installMpvShell();
 
 export const stremioEnhancedAPI = {
     ...alertAPI,
@@ -92,8 +97,11 @@ window.addEventListener("load", () => {
         if (isTransparencyEnabled) addTitleBar();
         checkSettings();
         checkExternalPlayer();
-        EmbeddedSubtitles.checkWatching();
-        AudioTracks.checkWatching();
+        // mpv lists the embedded subtitle and audio tracks itself
+        if (!nativePlayer) {
+            EmbeddedSubtitles.checkWatching();
+            AudioTracks.checkWatching();
+        }
     });
 
     // Auto update check

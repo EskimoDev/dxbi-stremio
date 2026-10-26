@@ -66,6 +66,12 @@
 				{
 					"target": "portable"
 				}
+			],
+			"extraResources": [
+				{
+					"from": "mpv",
+					"to": "mpv"
+				}
 			]
 		},
 		"mac": {

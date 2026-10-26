@@ -21,6 +21,9 @@ import { setupWindowTransparency } from "./controllers/transparencyController";
 import { gpuController } from "./controllers/gpuController";
 import { externalPlayerController } from "./controllers/externalPlayerController";
 import { offerEnhancedImport, seedBuiltInPlugin } from "./core/BuiltIn";
+import MpvShell from "./core/MpvShell";
+import { ipcMain } from "electron";
+import { restoreWindowState } from "./core/WindowState";
 
 app.setName("dxbi");
 const userDataPath = app.getPath('userData');
@@ -30,7 +33,11 @@ const gotLock = app.requestSingleInstanceLock();
 const transparencyFlagPath = join(app.getPath("userData"), "transparency");
 const useStremioServiceFlagPath = join(app.getPath("userData"), "use_stremio_service_for_streaming");
 const useServerJSFlagPath = join(app.getPath("userData"), "use_server_js_for_streaming");
-const transparencyEnabled = existsSync(transparencyFlagPath);
+// Videos play in mpv behind a transparent window (core/MpvShell.ts), like the official Stremio app
+const mpvEnabled = MpvShell.isEnabled();
+const transparencyEnabled = existsSync(transparencyFlagPath) || mpvEnabled;
+ipcMain.on(IPC_CHANNELS.MPV_ENABLED, (event) => { event.returnValue = mpvEnabled; });
+MpvShell.setupSetting();
 
 app.commandLine.appendSwitch('disable-features', 'BlockInsecurePrivateNetworkRequests,PrivateNetworkAccessSendPreflights');
 app.commandLine.appendSwitch('ignore-connections-limit', 'localhost,127.0.0.1');
@@ -77,6 +84,7 @@ async function createWindow() {
         },
         width: 1500,
         height: 850,
+        show: false, // shown once its saved size and state are applied
         resizable: true,
         maximizable: true,
         fullscreenable: true,
@@ -90,6 +98,7 @@ async function createWindow() {
     });
     
     mainWindow.setMenu(null);
+    restoreWindowState(mainWindow);
     mainWindow.loadURL(URLS.STREMIO_WEB);
         
     if (transparencyEnabled) {
@@ -196,6 +205,7 @@ app.on("ready", async () => {
     setupPluginAlertAPI();
     createWindow();
     if(transparencyEnabled) setupWindowControls();
+    if(mpvEnabled && mainWindow) MpvShell.setup(mainWindow);
     setupUpdater();
     setupWindowTransparency(transparencyFlagPath, transparencyEnabled);
     gpuController.initIPC(userDataPath);

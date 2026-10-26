@@ -37,6 +37,14 @@ jobs:
 
       - run: npm ci
 
+      # Windows plays videos with mpv, bundled into the app (core/MpvShell.ts)
+      - name: mpv
+        if: matrix.target == 'win'
+        shell: bash
+        run: bash scripts/fetch-mpv.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Build
         run: npm run build:${{ matrix.target }}:${{ matrix.arch }} -- --publish never
         env:
