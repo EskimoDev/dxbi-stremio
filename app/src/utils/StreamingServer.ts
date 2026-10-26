@@ -201,7 +201,8 @@ class StreamingServer {
                         .on('error', reject);
                 });
                 
-                const extDir = join(this.streamingServerDir, "ffmpeg-master-latest-win64-gpl");
+                // the archive holds one folder named like the zip (win64 or winarm64)
+                const extDir = join(this.streamingServerDir, this.getFFmpegUrl().split("/").pop()!.replace(/\.zip$/, ""));
                 const ffmpegSource = join(extDir, "bin", "ffmpeg.exe");
                 const ffprobeSource = join(extDir, "bin", "ffprobe.exe");
                 

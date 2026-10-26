@@ -32,10 +32,9 @@ async function waitFor(what, fn, timeout = 60000, every = 500) {
   throw new Error(`timed out waiting for ${what}${last ? ` (last: ${last})` : ""}`);
 }
 
-// No first-run questions: a fresh setup, and server.js for streaming
+// A fresh setup with no saved choices: dx.bi must start its streaming server by itself
 const userData = join(process.env.APPDATA, "dxbi");
 mkdirSync(userData, { recursive: true });
-writeFileSync(join(userData, "use_server_js_for_streaming"), "1");
 
 console.log(`launching ${exe}`);
 const app = spawn(exe, [`--remote-debugging-port=${PORT}`], { env: { ...process.env, DXBI_IMPORT: "fresh", DXBI_MPV_DEBUG: "1" }, stdio: ["ignore", "pipe", "pipe"] });
@@ -302,6 +301,7 @@ $ex = [S]::GetWindowLongPtr($script:target, -20).ToInt64()
   else fail(`fullscreen doesn't show the video (${full} points changed)`);
   await evaluate(`window.chrome.webview.postMessage(JSON.stringify({ id: 0, type: 6, args: ["win-set-visibility", { fullscreen: false }] })); true`);
   await sleep(1500);
+  switcher("after fullscreen");
 
   // Leaving the player puts the page back
   await evaluate("history.back(); true");

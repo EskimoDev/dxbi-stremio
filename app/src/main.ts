@@ -1,5 +1,5 @@
 import { join } from "path";
-import { mkdirSync, existsSync, writeFileSync } from "fs";
+import { mkdirSync, existsSync } from "fs";
 import Updater from "./core/Updater";
 import Properties from "./core/Properties";
 import logger from "./utils/logger";
@@ -33,7 +33,6 @@ export let mainWindow: BrowserWindow | null;
 const gotLock = app.requestSingleInstanceLock();
 const transparencyFlagPath = join(app.getPath("userData"), "transparency");
 const useStremioServiceFlagPath = join(app.getPath("userData"), "use_stremio_service_for_streaming");
-const useServerJSFlagPath = join(app.getPath("userData"), "use_server_js_for_streaming");
 // Videos play in mpv behind a transparent window (core/MpvShell.ts), like the official Stremio app
 const mpvEnabled = MpvShell.isEnabled();
 const transparencyEnabled = existsSync(transparencyFlagPath) || mpvEnabled;
@@ -183,17 +182,13 @@ app.on("ready", async () => {
         if(!await StremioService.isProcessRunning()) {
             let platform = process.platform;
             
-            // If the user is on Windows, give the option to either use Stremio Service or server.js
-            if(platform === "win32") {
-                if(existsSync(useStremioServiceFlagPath)) {
-                    await useStremioService();
-                } else if(existsSync(useServerJSFlagPath)) {
-                    await useServerJS();
-                } else {
-                    await chooseStreamingServer();
-                }
-                // For macOS and Linux, just give the instruction to use server.js
-            } else if (platform === "darwin" || platform === "linux") {
+            // Windows used to ask "Stremio Service or server.js?" on first launch, and the
+            // recommended answer left people with "Streaming server is not available" when the
+            // Service installed somewhere dx.bi didn't look. Now every system runs server.js by
+            // itself; someone who chose the Service before keeps it while it's installed.
+            if(platform === "win32" && existsSync(useStremioServiceFlagPath) && await StremioService.isServiceInstalled()) {
+                await useStremioService();
+            } else if (platform === "win32" || platform === "darwin" || platform === "linux") {
                 useServerJS();
             }
         } else {
@@ -231,31 +226,6 @@ app.on("ready", async () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
 });
-
-// Handle the choice of streaming server on Windows. This is only used for Windows. macOS and Linux will always use server.js to avoid problems.
-async function chooseStreamingServer() {
-    const result = await Helpers.showAlert(
-        "info",
-        "Stremio Streaming Server",
-        "dx.bi requires a Stremio Streaming Server for playback to function properly. You can either use the Stremio Service or set up a local streaming server manually.\nThis is a one-time setup. The option you choose will be saved for future app launches.\n\n" +
-        "Would you like to use the Stremio Service for streaming?\n\n" +
-        "Click 'No' to attempt using server.js directly",
-        ["Yes, use Stremio Service (recommended on Windows)", "No, use server.js directly (manual setup required)"]
-    );
-    
-    if(result === 0) {
-        logger.info("User chose to use Stremio Service for streaming. User's choice will be saved for future launches.");
-        await useStremioService();
-        writeFileSync(useStremioServiceFlagPath, "1");
-    } else if(result === 1) {
-        logger.info("User chose to use server.js for streaming. User's choice will be saved for future launches.");
-        useServerJS();
-        writeFileSync(useServerJSFlagPath, "1");
-    } else {
-        logger.info("User closed the streaming server choice dialog. Closing app...");
-        app.quit();
-    }
-}
 
 async function useServerJS() {
     // Check for server.js updates from Cargo.toml first
