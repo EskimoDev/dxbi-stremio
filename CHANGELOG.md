@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.15.2
+- **Hover cards are clean in the app**: a grey band with the poster showing through sat above the card (most visible on Windows).
+- **Library is calmer**: no ring, lift or pop-out card when you point at a title, just a gentle brighten.
+- **The app's window buttons stay on top** of sheets like Reviews, and the watch party panel opens below the top bar instead of over the search box.
+- Settings shows the dx.bi app's version as the Shell Version.
+
 ## 2.15.1
 - **The app updates itself.** On Windows (installed version) and Linux, new versions download in the background and install when dx.bi restarts: no more downloading the app again. On a Mac, and with the portable Windows version, the update popup stays. This starts from the next update after 2.15.1, so install 2.15.1 once by hand.
 - **Discord shows the time left and when you pause** again while watching with mpv (it stayed on a plain "Watching").

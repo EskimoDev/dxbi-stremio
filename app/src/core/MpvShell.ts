@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, nativeImage, screen } from "electron";
 import { spawn, execSync, execFileSync, type ChildProcess } from "child_process";
-import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "fs";
 import { connect, type Socket } from "net";
 import { join } from "path";
 import { IPC_CHANNELS } from "../constants";
@@ -281,7 +281,7 @@ export default class MpvShell {
     private static onPageMessage(msg: { type: number; args?: unknown[] }): void {
         if (msg.type === INIT) {
             const properties = [
-                [0, "shellVersion", 0, `dx.bi ${app.getVersion()}`],
+                [0, "shellVersion", 0, `${this.appVersion()} (dx.bi)`],
                 [0, "gpuVideoProcessing", 0, "false"],
                 [0, "nativeAssSubtitles", 0, "false"],
                 [0, "cacheDirectoryPicker", 0, "false"],
@@ -421,6 +421,11 @@ export default class MpvShell {
             socket.on("data", listener);
             socket.write(JSON.stringify({ command: args, request_id: id }) + "\n");
         });
+    }
+
+    // The app's own version (the file the updater reads; app.getVersion() is Electron's in development)
+    private static appVersion(): string {
+        try { return readFileSync(join(__dirname, "..", "..", "version"), "utf8").trim(); } catch { return app.getVersion(); }
     }
 
     // Re-send a property's value as a change, for a player screen that observes it again

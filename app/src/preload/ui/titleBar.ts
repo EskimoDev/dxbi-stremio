@@ -13,13 +13,15 @@ export async function getTransparencyStatus(): Promise<boolean> {
 }
 
 export function addTitleBar(): void {
-    const activeRoute = document.querySelector(SELECTORS.ROUTE_CONTAINER);
-    if (!activeRoute || activeRoute.querySelector(".title-bar")) return;
+    // One bar on the page itself, above everything (inside a screen it sat under dx.bi's sheets
+    // and panels, and every screen got its own copy)
+    if (!document.body || document.querySelector(SELECTORS.ROUTE_CONTAINER) === null) return;
+    if (document.body.querySelector(":scope > .title-bar")) return;
     
     logger.info("Adding title bar...");
-    activeRoute.insertAdjacentHTML("afterbegin", getTitleBarTemplate());
+    document.body.insertAdjacentHTML("afterbegin", getTitleBarTemplate());
     
-    const titleBar = activeRoute.querySelector(".title-bar") as HTMLElement;
+    const titleBar = document.body.querySelector(":scope > .title-bar") as HTMLElement;
     if (!titleBar) return;
     
     let isWindowMaximized = false;

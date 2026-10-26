@@ -18,8 +18,19 @@
     </div>
 
     <style>
-		body > *:not(.title-bar) {
-			padding-top: 40px; 
+		/* only Stremio's page moves down under the bar: overlays placed on the page by plugins
+		   (hover cards, panels, toasts) position themselves and must not be padded */
+		body > #app {
+			padding-top: 40px;
+		}
+
+		/* the bar's height, for overlays that sit at the top of the window (0 in fullscreen) */
+		body {
+			--dx-chrome-top: 40px;
+		}
+
+		body.is-fullscreen {
+			--dx-chrome-top: 0px;
 		}
 
         .button {
@@ -40,7 +51,8 @@
             left: 0;
             right: 0;
             height: 40px;
-            z-index: 9999;
+            /* above every overlay: the window buttons stay usable while a sheet or panel is open */
+            z-index: 2147483000;
             display: flex;
             align-items: center;
             justify-content: flex-end;
@@ -65,7 +77,7 @@
             display: none !important;
         }
 
-        body.is-fullscreen > *:not(.title-bar) {
+        body.is-fullscreen > #app {
             padding-top: 0 !important;
         }
     </style>

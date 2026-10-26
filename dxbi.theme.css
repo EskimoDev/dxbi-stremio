@@ -1,7 +1,7 @@
 /**
  * @name dx.bi
  * @description Cinematic, Netflix-inspired interface for dx.bi. Pair it with the dx.bi plugin for the billboard, carousels, previews, ratings and player extras.
- * @version 2.15.1
+ * @version 2.15.2
  * @author dx.bi
  * @requirements ["dxbi.plugin.js"]
  * @updateUrl https://raw.githubusercontent.com/notdxbi/dxbi-stremio/main/dxbi.theme.css
@@ -603,6 +603,26 @@ body[data-dx-route="board"] #app [class*="board-container"] [class*="nav-content
     object-fit: cover;
 }
 
+
+/* Library: no ring, lift or zoom under the mouse (a grid of posters reads calmer); the poster
+   just brightens a little */
+#app [class*="library-content"] [class*="meta-item-container"]:is(.hovered, .active, .selected) [class*="poster-container"] {
+    box-shadow: none !important;
+    transform: none;
+}
+
+#app [class*="library-content"] [class*="meta-item-container"]:is(.hovered, .active, .selected) [class*="poster-container"]::after {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+#app [class*="library-content"] [class*="meta-item-container"] [class*="poster-image-layer"] {
+    transition: filter 0.25s var(--dx-ease) !important;
+}
+
+#app [class*="library-content"] [class*="meta-item-container"].hovered [class*="poster-image-layer"] {
+    transform: none !important;
+    filter: brightness(1.12);
+}
 
 /* Titles under cards: quiet, single line */
 #app [class*="meta-item-container"] [class*="title-bar-container"] {
