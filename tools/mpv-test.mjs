@@ -160,7 +160,7 @@ if ($script:target -eq [IntPtr]::Zero) { 'not found'; exit }
     pass(`playing in mpv: ${state.w}×${state.h}, ${state.t.toFixed(1)} s in (${state.cls})`);
   } catch (e) {
     fail(e.message);
-    console.log("  page's view of mpv: " + JSON.stringify(await evaluate(`({ mpv: window.__dxbiMpvState, proxy: !!${V}, body: document.body.getAttribute("style"), hash: location.hash.slice(0, 12), container: !!document.querySelector('[class*="player-container"]') })`)).slice(0, 1500));
+    console.log("  page's view of mpv: " + JSON.stringify(await evaluate(`({ mpv: window.__dxbiMpvState, debug: window.__dxbiMpvDebug, proxy: !!${V}, body: document.body.getAttribute("style"), hash: location.hash.slice(0, 12), container: !!document.querySelector('[class*="player-container"]') })`)).slice(0, 1500));
   }
   const error = await evaluate(`document.querySelector('[class*="error-layer"]')?.textContent || ""`);
   if (error) fail(`player error: ${error.slice(0, 160)}`);

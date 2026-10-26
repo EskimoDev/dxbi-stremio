@@ -82,15 +82,19 @@ function mainWorld(): void {
         }
     };
 
+    const debug = { received: 0, props: 0, errors: [] as string[], last: "" };
+    w.__dxbiMpvDebug = debug; // for problem reports
     bridge.listen((message: string) => {
+        debug.received++;
+        debug.last = message.slice(0, 120);
         try {
             const msg = JSON.parse(message);
             if (msg.type === 1 && Array.isArray(msg.args)) {
                 const [name, data] = msg.args;
-                if (name === "mpv-prop-change" && data) onProp(data.name, data.data);
+                if (name === "mpv-prop-change" && data) { debug.props++; onProp(data.name, data.data); }
                 else if (name === "mpv-event-ended" && data && data.reason === "eof") fire("ended");
             }
-        } catch { /* not ours */ }
+        } catch (err) { if (debug.errors.length < 5) debug.errors.push(String(err)); }
         for (const fn of listeners) {
             try { fn({ data: message }); } catch (err) { console.error("[dx.bi] shell listener", err); }
         }

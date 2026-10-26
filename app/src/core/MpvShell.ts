@@ -327,8 +327,10 @@ export default class MpvShell {
         this.toPage({ id: 0, type: SIGNAL, args: [name, data] });
     }
 
+    private static sent = 0;
     private static toPage(msg: unknown): void {
         if (!this.mainWindow || this.mainWindow.isDestroyed()) return;
+        if (DEBUG && ++this.sent % 25 === 0) logger.info(`sent ${this.sent} messages to the page (crashed: ${this.mainWindow.webContents.isCrashed()}, url: ${this.mainWindow.webContents.getURL().slice(0, 60)})`);
         this.mainWindow.webContents.send(IPC_CHANNELS.MPV_SHELL_EVENT, JSON.stringify(msg));
     }
 
