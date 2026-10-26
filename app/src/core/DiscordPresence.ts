@@ -40,7 +40,9 @@ class DiscordPresence {
                 this.ready = true;
                 this.logger.info('Connected to DiscordRPC.');
 
-                window.dispatchEvent(new HashChangeEvent('hashchange'));
+                // show what's on screen now (not a fake hashchange: that also re-ran the page's
+                // own navigation handlers)
+                window.dispatchEvent(new Event('dxbi-discord-ready'));
             });
 
             rpc.on('disconnected', () => {

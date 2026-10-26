@@ -46,10 +46,20 @@ function writeAbout(): void {
     }).catch(err => logger.error("Failed to write about section: " + err));
 }
 
+// The dx.bi section is built once per visit to Settings. (This used to look for a link the nav
+// doesn't have, so any hashchange on Settings, like the one Discord presence sent when it
+// connected, built the section again and listed every plugin twice.)
+let building = false;
+
 export function checkSettings() {
-    if (!location.href.includes("#/settings")) return;
-    if (document.querySelector(`a[href="#settings-enhanced"]`)) return;
-        
+    if (!location.href.includes("#/settings")) {
+        building = false;
+        return;
+    }
+    if (building || document.getElementById("enhanced")) return;
+    building = true;
+    Helpers.waitForElm("#enhanced").then(() => { building = false; }, () => { building = false; });
+
     const themesList = readdirSync(properties.themesPath).filter(f => f.endsWith(FILE_EXTENSIONS.THEME));
     const pluginsList = readdirSync(properties.pluginsPath).filter(f => f.endsWith(FILE_EXTENSIONS.PLUGIN));
     
