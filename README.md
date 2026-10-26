@@ -10,12 +10,15 @@
 
 <p align="center">
   <a href="#install"><b>⬇ Download dx.bi for Windows, Mac, Linux or your TV</b></a>
+  &nbsp;·&nbsp;
+  <a href="https://discord.gg/nnVBjqZ84F"><b>💬 Join the dx.bi Discord</b></a>
 </p>
 
 <p align="center">
   <a href="https://github.com/notdxbi/dxbi-stremio/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/notdxbi/dxbi-stremio?label=release&color=e50914&style=flat-square"></a>
   <img alt="Windows · macOS · Linux · Android TV" src="https://img.shields.io/badge/Windows%20·%20macOS%20·%20Linux%20·%20Android%20TV-222?style=flat-square">
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-222?style=flat-square"></a>
+  <a href="https://discord.gg/nnVBjqZ84F"><img alt="Discord" src="https://img.shields.io/badge/Discord-join-5865F2?style=flat-square&logo=discord&logoColor=white"></a>
 </p>
 
 <p align="center">
@@ -507,7 +510,7 @@ Check that you both typed the same code and are on dx.bi 2.6.0 or newer. Parties
 
 ### Something overlaps after a Stremio update
 
-Stremio changes its interface now and then. [Open an issue](https://github.com/notdxbi/dxbi-stremio/issues) with a screenshot.
+Stremio changes its interface now and then. Post it in **#bug-reports** on the [dx.bi Discord](https://discord.gg/nnVBjqZ84F) or [open an issue](https://github.com/notdxbi/dxbi-stremio/issues), with a screenshot.
 
 <br>
 
