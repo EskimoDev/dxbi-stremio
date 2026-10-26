@@ -101,6 +101,12 @@ async function main() {
   // The streaming server (server.js) and the ffmpeg it downloads
   await waitFor("the streaming server", () => fetch("http://127.0.0.1:11470/settings").then((r) => r.ok), 240000, 2000);
   pass("streaming server running");
+  // and Stremio itself sees it (no "Streaming server is not available"), even though the page
+  // loaded before server.js had finished downloading
+  try {
+    await waitFor("Stremio to see the streaming server", () => evaluate(`window.core.getState("streaming_server").then((s) => s && s.settings && s.settings.type === "Ready")`), 60000, 1000);
+    pass("Stremio sees the streaming server");
+  } catch (e) { fail(e.message); }
   const ffmpeg = join(userData, "streamingserver", "ffmpeg.exe");
   await waitFor("ffmpeg", () => existsSync(ffmpeg), 240000, 2000);
 

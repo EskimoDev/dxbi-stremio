@@ -190,6 +190,7 @@ app.on("ready", async () => {
                 await useStremioService();
             } else if (platform === "win32" || platform === "darwin" || platform === "linux") {
                 useServerJS();
+                tellStremioWhenServerIsUp();
             }
         } else {
             logger.info("Stremio Service is already running.");
@@ -226,6 +227,33 @@ app.on("ready", async () => {
         if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
 });
+
+// server.js starts in the background (the first time it also downloads, with ffmpeg), so the page
+// is often up first. Stremio checks for the server once when it loads and would keep showing
+// "Streaming server is not available", so it's told to check again as soon as the server answers.
+async function tellStremioWhenServerIsUp() {
+    const end = Date.now() + 10 * 60 * 1000;
+    while (Date.now() < end) {
+        try {
+            if ((await fetch("http://127.0.0.1:11470/settings")).ok) break;
+        } catch { /* not up yet */ }
+        await new Promise((r) => setTimeout(r, 1500));
+    }
+    if (Date.now() >= end) return;
+    const reload = () => mainWindow?.webContents.executeJavaScript(`(() => {
+        const action = { action: "StreamingServer", args: { action: "Reload" } };
+        const core = window.core || window.__permanentCore;
+        if (core && typeof core.dispatch === "function") { core.dispatch(action); return true; }
+        const transport = window.services && window.services.core && window.services.core.transport;
+        if (transport && typeof transport.dispatch === "function") { transport.dispatch(action); return true; }
+        return false;
+    })()`).catch(() => false);
+    // the page may still be loading its core: try for a little while
+    for (let i = 0; i < 20; i++) {
+        if (await reload()) { logger.info("Streaming server is up; Stremio told to reload it."); return; }
+        await new Promise((r) => setTimeout(r, 1000));
+    }
+}
 
 async function useServerJS() {
     // Check for server.js updates from Cargo.toml first
