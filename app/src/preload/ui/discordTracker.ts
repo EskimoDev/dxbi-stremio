@@ -18,6 +18,8 @@ export const discordTracker = {
     lastPlayerState: null as any,
 
     init: () => {
+        // switching presence off and on calls this again: one listener, not one per switch
+        window.removeEventListener('hashchange', discordTracker.handleNavigation);
         window.addEventListener('hashchange', discordTracker.handleNavigation);
         discordTracker.handleNavigation();
     },
