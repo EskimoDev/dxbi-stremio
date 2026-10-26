@@ -11,33 +11,49 @@ class DiscordPresence {
 
     private static ready = false;
 
+    // Only ever one connection to Discord and one pending retry: each live connection shows as its
+    // own activity, so a stale one (left by a retry, or by switching off and on quickly) appeared as
+    // a second, identical dx.bi in Discord
+    private static retryTimer: ReturnType<typeof setTimeout> | null = null;
+    private static generation = 0;
+
     public static start(): void {
         if (this.enabled) return;
         this.enabled = true;
-        this.ready = false; 
+        this.ready = false;
         this.connect();
     }
 
     private static connect(): void {
         if (!this.enabled) return;
+        this.clearRetry();
+        this.dropClient();
+        const generation = ++this.generation;
+        const current = () => this.enabled && generation === this.generation;
 
         try {
-            this.rpc = new DiscordClient({ clientId: DISCORD.CLIENT_ID });
+            const rpc = new DiscordClient({ clientId: DISCORD.CLIENT_ID });
+            this.rpc = rpc;
 
-            this.rpc.on('ready', () => {
+            rpc.on('ready', () => {
+                if (!current()) return;
                 this.ready = true;
                 this.logger.info('Connected to DiscordRPC.');
 
-                window.dispatchEvent(new HashChangeEvent('hashchange'));
+                // show what's on screen now (not a fake hashchange: that also re-ran the page's
+                // own navigation handlers)
+                window.dispatchEvent(new Event('dxbi-discord-ready'));
             });
 
-            this.rpc.on('disconnected', () => {
+            rpc.on('disconnected', () => {
+                if (!current()) return;
                 this.ready = false;
                 this.logger.warn(`DiscordRPC Disconnected! Attempting to reconnect...`);
                 this.handleReconnect();
             });
 
-            this.rpc.login().catch(() => {
+            rpc.login().catch(() => {
+                if (!current()) return;
                 this.logger.error("Failed to connect to DiscordRPC.");
                 this.handleReconnect();
             });
@@ -48,23 +64,34 @@ class DiscordPresence {
     }
 
     private static handleReconnect(): void {
-        if (!this.enabled) return;
-        setTimeout(() => {
+        if (!this.enabled || this.retryTimer) return;
+        this.retryTimer = setTimeout(() => {
+            this.retryTimer = null;
             this.connect();
         }, DISCORD.RECONNECT_INTERVAL);
+    }
+
+    private static clearRetry(): void {
+        if (this.retryTimer) clearTimeout(this.retryTimer);
+        this.retryTimer = null;
+    }
+
+    private static dropClient(): void {
+        const rpc = this.rpc;
+        this.rpc = null;
+        if (!rpc) return;
+        try { rpc.user?.clearActivity()?.catch?.(() => {}); } catch { /* not connected */ }
+        rpc.destroy().catch(() => {});
     }
 
     public static stop(): void {
         if (!this.enabled) return;
         this.enabled = false;
         this.ready = false;
-
-        if (this.rpc) {
-            this.logger.info('Clearing DiscordRPC.');
-            this.rpc.user?.clearActivity();
-            this.rpc.destroy();
-            this.rpc = null;
-        }
+        this.generation++;
+        this.clearRetry();
+        if (this.rpc) this.logger.info('Clearing DiscordRPC.');
+        this.dropClient();
     }
 
     public static setPlaying(
