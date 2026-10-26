@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.15.0
+- **Videos play in mpv inside the dx.bi app on Windows**, like Stremio's own app. Every format plays as it is (HEVC and 10-bit, Dolby Vision, AV1, DTS and TrueHD sound, MKV, the file's own subtitles) with hardware decoding: no more "Video is not supported", no converting, smooth seeking. Stremio's controls, menus and subtitles and all of dx.bi's player features stay on top. Picture enhancement (Anime4K and Sharpen) runs in mpv, and so do zoom, black-bar removal, Dialogue boost, Night mode and picture-in-picture. Switch it off under Settings → dx.bi → *Play videos with mpv*. Opening streams in VLC or the mpv app is still the External player setting.
+- **The app opens the way you left it**: maximized, or at its last size and place (maximized the first time).
+- **dx.bi TV no longer closes by itself** when the TV runs short of memory (seen on a Chromecast with Google TV): it starts its screen again, more lightly, and says so if it keeps happening.
+
 ## 2.14.3
 - **"Play in external player" works.** Choosing VLC (or mpv / IINA on a Mac) under Stremio's Settings → Player now opens streams straight in that player, including Play, Continue Watching and the next episode. Before, the video started in the built-in player instead, and you had to wait for it to fail and press VLC every time.
 - **Popups are a single card.** Every popup (updates, addons, plugin settings) drew a second, inset card inside the first, which looked cut off at the sides.
