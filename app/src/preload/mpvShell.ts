@@ -46,6 +46,7 @@ function mainWorld(): void {
 
     // ---- mpv's state, as Stremio's player hears it ----
     const mpv: Record<string, any> = { pause: true, volume: 100, mute: false, speed: 1, "time-pos": 0, duration: NaN };
+    const barsWaiting: ((bars: unknown) => void)[] = [];
     w.__dxbiMpvState = mpv; // for problem reports
     // For dx.bi's picture and sound features, which use mpv's own filters and shaders here
     w.__dxbiMpv = Object.freeze({
@@ -55,6 +56,13 @@ function mainWorld(): void {
         observe: (name: string) => send("mpv-observe-prop", name),
         // [{ name, source }] of mpv GLSL user shaders; [] removes them
         shaders: (list: { name: string; source: string }[]) => send("dxbi-shaders", list),
+        // Picture-in-picture on / off (the video in a small window on top while dx.bi minimizes)
+        pip: () => send("dxbi-pip", null),
+        // Black bars in the current frame: { t, b, l, r } as fractions, or null
+        measureBars: () => new Promise((resolve) => {
+            barsWaiting.push(resolve);
+            if (barsWaiting.length === 1) send("dxbi-measure-bars", null);
+        }),
     });
     let proxy: HTMLVideoElement | null = null;
     let lastTimeEvent = 0;
@@ -93,6 +101,7 @@ function mainWorld(): void {
                 const [name, data] = msg.args;
                 if (name === "mpv-prop-change" && data) { debug.props++; onProp(data.name, data.data); }
                 else if (name === "mpv-event-ended" && data && data.reason === "eof") fire("ended");
+                else if (name === "dxbi-bars") for (const resolve of barsWaiting.splice(0)) resolve(data);
             }
         } catch (err) { if (debug.errors.length < 5) debug.errors.push(String(err)); }
         for (const fn of listeners) {

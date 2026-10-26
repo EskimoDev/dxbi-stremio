@@ -1,6 +1,6 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, nativeImage, screen } from "electron";
 import { spawn, execSync, type ChildProcess } from "child_process";
-import { existsSync, mkdirSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "fs";
 import { connect, type Socket } from "net";
 import { join } from "path";
 import { IPC_CHANNELS } from "../constants";
@@ -76,7 +76,10 @@ export default class MpvShell {
             focusable: false,
             resizable: false,
             hasShadow: false,
-            backgroundColor: "#000000",
+            // Chromium draws its (empty) page over child windows: it must be see-through so mpv's
+            // picture, in a child window of this one, shows
+            transparent: true,
+            backgroundColor: "#00000000",
             webPreferences: { backgroundThrottling: false },
         });
         this.videoWindow.loadURL("about:blank");
@@ -90,8 +93,11 @@ export default class MpvShell {
         for (const event of ["move", "resize", "maximize", "unmaximize", "restore", "enter-full-screen", "leave-full-screen"] as const) {
             mainWindow.on(event as any, follow);
         }
-        mainWindow.on("minimize", () => this.videoWindow?.hide());
-        mainWindow.on("restore", () => { if (this.playing) this.videoWindow?.showInactive(); });
+        mainWindow.on("minimize", () => { if (!this.pip) this.videoWindow?.hide(); });
+        mainWindow.on("restore", () => {
+            if (this.pip) this.setPip(false);
+            else if (this.playing) this.videoWindow?.showInactive();
+        });
         mainWindow.on("enter-full-screen", () => this.sendVisibility());
         mainWindow.on("leave-full-screen", () => this.sendVisibility());
         mainWindow.on("closed", () => this.shutdown());
@@ -102,7 +108,7 @@ export default class MpvShell {
     }
 
     private static followMainWindow(): void {
-        if (!this.mainWindow || !this.videoWindow || this.mainWindow.isDestroyed()) return;
+        if (!this.mainWindow || !this.videoWindow || this.mainWindow.isDestroyed() || this.pip) return;
         this.videoWindow.setBounds(this.mainWindow.getContentBounds());
     }
 
@@ -224,6 +230,7 @@ export default class MpvShell {
 
     private static setPlaying(playing: boolean): void {
         this.playing = playing;
+        if (!playing && this.pip) this.setPip(false);
         if (!this.videoWindow || !this.mainWindow) return;
         if (playing && !this.mainWindow.isMinimized()) {
             this.followMainWindow();
@@ -289,6 +296,12 @@ export default class MpvShell {
                 this.command(["set_property", "glsl-shaders", paths]);
                 break;
             }
+            case "dxbi-pip":
+                this.setPip(!this.pip);
+                break;
+            case "dxbi-measure-bars":
+                this.measureBars().then((bars) => this.signal("dxbi-bars", bars)).catch(() => this.signal("dxbi-bars", null));
+                break;
             case "win-set-visibility":
                 if (data && typeof data.fullscreen === "boolean") this.mainWindow?.setFullScreen(data.fullscreen);
                 break;
@@ -299,6 +312,78 @@ export default class MpvShell {
                 // Discord, cache folder, interface scale and update notices are handled by dx.bi itself
                 break;
         }
+    }
+
+    // Picture-in-picture: the video window shrinks into a corner, on top of everything, while dx.bi
+    // minimizes. Bringing dx.bi back (taskbar, Alt+Tab) puts the video back behind it.
+    private static pip = false;
+    private static setPip(on: boolean): void {
+        const main = this.mainWindow, video = this.videoWindow;
+        if (!main || !video || on === this.pip || (on && !this.playing)) return;
+        this.pip = on;
+        if (on) {
+            const area = screen.getDisplayMatching(main.getBounds()).workArea;
+            const width = Math.round(area.width * 0.28);
+            const height = Math.round(width * 9 / 16);
+            main.setParentWindow(null); // the video window no longer drags dx.bi along
+            video.setAlwaysOnTop(true, "floating");
+            video.setBounds({ x: area.x + area.width - width - 24, y: area.y + area.height - height - 24, width, height });
+            video.showInactive();
+            main.minimize();
+        } else {
+            video.setAlwaysOnTop(false);
+            main.setParentWindow(video);
+            this.followMainWindow();
+            if (this.playing) video.showInactive();
+        }
+        this.signal("dxbi-pip", { active: on });
+    }
+
+    // Black bars baked into the picture, as fractions of each side: from a small snapshot of the
+    // frame mpv is showing (works with hardware decoding, unlike pixel reads in the page)
+    private static async measureBars(): Promise<{ t: number; b: number; l: number; r: number } | null> {
+        const file = join(app.getPath("temp"), `dxbi-frame-${process.pid}.jpg`);
+        const done = await this.request(["screenshot-to-file", file, "video"]);
+        if (!done) return null;
+        const image = nativeImage.createFromPath(file);
+        try { unlinkSync(file); } catch { /* already gone */ }
+        if (image.isEmpty()) return null;
+        const small = image.resize({ width: 320, quality: "good" });
+        const { width: w, height: h } = small.getSize();
+        const px = small.toBitmap(); // BGRA
+        const lit = (i: number) => px[i + 2] * 0.2126 + px[i + 1] * 0.7152 + px[i] * 0.0722 > 28;
+        const row = (y: number) => { let n = 0; for (let x = 0; x < w; x++) if (lit((y * w + x) * 4)) n++; return n > w * 0.02; };
+        const col = (x: number) => { let n = 0; for (let y = 0; y < h; y++) if (lit((y * w + x) * 4)) n++; return n > h * 0.02; };
+        let t = 0; while (t < h && !row(t)) t++;
+        if (t >= h) return null; // a black frame tells us nothing
+        let b = 0; while (b < h && !row(h - 1 - b)) b++;
+        let l = 0; while (l < w && !col(l)) l++;
+        let r = 0; while (r < w && !col(w - 1 - r)) r++;
+        if (h - t - b < h * 0.35 || w - l - r < w * 0.35) return null; // mostly dark: can't trust it
+        return { t: t / h, b: b / h, l: l / w, r: r / w };
+    }
+
+    // A command whose answer matters: resolves true when mpv says it worked
+    private static request(args: unknown[]): Promise<boolean> {
+        return new Promise((resolve) => {
+            const socket = this.socket;
+            if (!socket) { resolve(false); return; }
+            const id = ++this.requestId;
+            let buffer = "";
+            const timer = setTimeout(() => { socket.off("data", listener); resolve(false); }, 5000);
+            const listener = (chunk: Buffer) => {
+                buffer += String(chunk);
+                for (const line of buffer.split("\n")) {
+                    if (!line.includes(`"request_id":${id}`)) continue;
+                    clearTimeout(timer);
+                    socket.off("data", listener);
+                    try { resolve(JSON.parse(line).error === "success"); } catch { resolve(false); }
+                    return;
+                }
+            };
+            socket.on("data", listener);
+            socket.write(JSON.stringify({ command: args, request_id: id }) + "\n");
+        });
     }
 
     // Re-send a property's value as a change, for a player screen that observes it again
