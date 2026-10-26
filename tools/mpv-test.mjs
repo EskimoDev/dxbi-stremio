@@ -222,13 +222,33 @@ if ($script:target -eq [IntPtr]::Zero) { 'not found'; exit }
   else fail("Stremio's controls aren't showing");
 
   // The file's own subtitle track, drawn by mpv
-  await evaluate(`window.__dxbiMpv.observe("sub-text"); window.__dxbiMpv.set("sid", 1); true`);
-  await sleep(4000);
+  // picked like a viewer does: Subtitles button (in "More" on a small window) → the file's "Track 1"
+  await evaluate(`window.__dxbiMpv.observe("sub-text"); true`);
+  await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 420, y: 320 });
+  await sleep(400);
+  const opened = await evaluate(`(() => {
+    const b = document.querySelector('[class*="control-bar-buttons-container"] [data-dx-label="Subtitles"], [class*="control-bar-buttons-menu-container"] [data-dx-label="Subtitles"]');
+    if (!b) return "no Subtitles button";
+    b.click();
+    return "opened";
+  })()`);
+  await sleep(800);
+  const picked = await evaluate(`(() => {
+    const m = document.querySelector('[class*="subtitles-menu"]');
+    if (!m) return "no subtitles menu";
+    const el = [...m.querySelectorAll("*")].find((e) => e.childElementCount <= 1 && (e.textContent || "").trim() === "Track 1");
+    if (!el) return "no embedded track listed: " + m.innerText.slice(0, 120);
+    (el.closest('[class*="option"],[class*="language"],[role]') || el).click();
+    return "picked";
+  })()`);
+  console.log(`  (subtitles menu: ${opened}, ${picked})`);
+  await sleep(3500);
   const subText = await evaluate(`window.__dxbiMpv.get("sub-text") || ""`);
   if (/Embedded subtitle line/.test(subText)) pass(`embedded subtitles play in mpv ("${subText}")`);
   else fail(`embedded subtitles: mpv shows "${subText}"`);
   screen("3c-subtitles", area);
-  await evaluate(`window.__dxbiMpv.set("sid", "no"); true`);
+  // close the menu with its button (Escape would leave the player)
+  await evaluate(`document.querySelector('[data-dx-label="Subtitles"]')?.click(); true`);
 
   // Black bars are measured from mpv's frame (the test picture has none)
   const bars = await evaluate(`window.__dxbiMpv.measureBars().then((b) => JSON.stringify(b))`);
