@@ -97,6 +97,8 @@ export const IPC_CHANNELS = {
     MPV_SHELL_SEND: 'dxbi-mpv-shell-send',
     MPV_SHELL_EVENT: 'dxbi-mpv-shell-event',
     MPV_STATUS: 'dxbi-mpv-status',
+    AUTO_UPDATE_AVAILABLE: 'dxbi-auto-update-available',
+    AUTO_UPDATE_CHECK: 'dxbi-auto-update-check',
     MPV_SET_ENABLED: 'dxbi-mpv-set-enabled',
 } as const;
 

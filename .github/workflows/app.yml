@@ -58,12 +58,15 @@ jobs:
             app/release-builds/*.exe
             app/release-builds/*.dmg
             app/release-builds/*.AppImage
+            app/release-builds/latest*.yml
+            app/release-builds/*.blockmap
           if-no-files-found: error
 
       - name: Attach to the release
         if: github.event_name == 'release'
         shell: bash
-        # each platform only makes some of these kinds of file
-        run: gh release upload "${{ github.event.release.tag_name }}" $(ls release-builds/*.exe release-builds/*.dmg release-builds/*.AppImage 2>/dev/null) --clobber
+        # each platform only makes some of these kinds of file; latest*.yml and the block maps are
+        # what the app's self-updater reads (core/AutoUpdate.ts)
+        run: gh release upload "${{ github.event.release.tag_name }}" $(ls release-builds/*.exe release-builds/*.dmg release-builds/*.AppImage release-builds/latest*.yml release-builds/*.blockmap 2>/dev/null) --clobber
         env:
           GH_TOKEN: ${{ github.token }}

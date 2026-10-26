@@ -1,6 +1,15 @@
 import Helpers from "../../utils/Helpers";
 import PlaybackState from "../../utils/PlaybackState";
 import DiscordPresence from "../../core/DiscordPresence";
+import { nativePlayback, nativePlayerActive } from "../mpvShell";
+
+// What's playing: mpv's state when dx.bi plays through mpv, otherwise the page's <video>
+function currentVideo(): HTMLVideoElement | null {
+    if (nativePlayerActive) {
+        return nativePlayback as unknown as HTMLVideoElement;
+    }
+    return document.querySelector("video");
+}
 
 export let lastPlayerState: any = null;
 
@@ -30,7 +39,7 @@ export const discordTracker = {
 
         try {
             await Helpers.waitForElm('video');
-            const video = document.getElementsByTagName('video')[0] as HTMLVideoElement;
+            const video = currentVideo();
             if (!video) return;
 
             const playerState = await PlaybackState.getPlayerState();
@@ -50,8 +59,10 @@ export const discordTracker = {
                     Math.floor(Date.now() / 1000) -
                     Math.floor(video.currentTime);
 
-                const endTimestamp =
-                    startTimestamp + Math.floor(video.duration);
+                // no length yet (still loading): no end time rather than a broken one
+                const endTimestamp = isFinite(video.duration) && video.duration > 0
+                    ? startTimestamp + Math.floor(video.duration)
+                    : undefined;
 
                 if (metaDetails.type === "series") {
                     const { episode, season } = playerState.seriesInfoDetails!;
@@ -123,7 +134,7 @@ export const discordTracker = {
                 (window as any).__rpc_watcher = setInterval(() => {
                     if (!location.href.includes('#/player')) return;
 
-                    const v = document.querySelector('video') as HTMLVideoElement | null;
+                    const v = currentVideo();
                     if (!v) return;
 
                     const currentSource = v.currentSrc || v.src;

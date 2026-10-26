@@ -16,7 +16,8 @@ export function setupCheckUpdatesButton(): void {
             if (btn) btn.style.pointerEvents = "none";
             // Checked here, in the page: the main process has no page to show the update popup on,
             // so a check there failed with "check your internet connection" whenever an update existed
-            await Updater.checkForUpdates(true).catch(() => false);
+            if (ipcRenderer.sendSync(IPC_CHANNELS.AUTO_UPDATE_AVAILABLE)) ipcRenderer.send(IPC_CHANNELS.AUTO_UPDATE_CHECK, true);
+            else await Updater.checkForUpdates(true).catch(() => false);
             if (btn) btn.style.pointerEvents = "all";
         });
     }).catch(() => {});

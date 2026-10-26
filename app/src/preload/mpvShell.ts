@@ -13,7 +13,62 @@ export function mpvShellEnabled(): boolean {
     try { return ipcRenderer.sendSync(IPC_CHANNELS.MPV_ENABLED) === true; } catch { return false; }
 }
 
+/**
+ * mpv's playback as this script's own world sees it (the stand-in <video> only works in the page's
+ * world): for dx.bi's Discord status, which runs here. Same shape as a <video> for what it reads.
+ */
+class NativePlayback extends EventTarget {
+    currentTime = 0;
+    duration = NaN;
+    paused = true;
+    ended = false;
+    currentSrc = "";
+    get src() { return this.currentSrc; }
+    set onplaying(fn: (() => void) | null) { this.handler("playing", fn); }
+    set onpause(fn: (() => void) | null) { this.handler("pause", fn); }
+    private handlers: Record<string, (() => void) | null> = {};
+    private handler(type: string, fn: (() => void) | null) {
+        const old = this.handlers[type];
+        if (old) this.removeEventListener(type, old);
+        this.handlers[type] = fn;
+        if (fn) this.addEventListener(type, fn);
+    }
+}
+export const nativePlayback = new NativePlayback();
+
+function followPlayback(message: string): void {
+    let msg: any;
+    try { msg = JSON.parse(message); } catch { return; }
+    if (msg.type !== 1 || !Array.isArray(msg.args)) return;
+    const [name, data] = msg.args;
+    const p = nativePlayback;
+    if (name === "mpv-event-ended") {
+        p.ended = data?.reason === "eof";
+        return;
+    }
+    if (name !== "mpv-prop-change" || !data) return;
+    const value = data.data;
+    switch (data.name) {
+        case "time-pos": p.currentTime = typeof value === "number" ? value : 0; break;
+        case "duration": p.duration = typeof value === "number" && value > 0 ? value : NaN; break;
+        case "path": p.currentSrc = typeof value === "string" ? value : ""; p.ended = false; break;
+        case "pause":
+            if (value === p.paused) break;
+            p.paused = value === true;
+            p.dispatchEvent(new Event(p.paused ? "pause" : "playing"));
+            break;
+        case "seeking":
+            // a jump moves the timer: tell it again once playback picks up
+            if (value === false && !p.paused) p.dispatchEvent(new Event("playing"));
+            break;
+    }
+}
+
+export let nativePlayerActive = false;
+
 export function installMpvShell(): void {
+    nativePlayerActive = true;
+    ipcRenderer.on(IPC_CHANNELS.MPV_SHELL_EVENT, (_, message: string) => followPlayback(message));
     contextBridge.exposeInMainWorld("__dxbiShellBridge", {
         post: (message: string) => ipcRenderer.send(IPC_CHANNELS.MPV_SHELL_SEND, message),
         listen: (callback: (message: string) => void) => {
@@ -186,6 +241,8 @@ function mainWorld(): void {
             "html[data-dx-native-player] [class*=\"player-container\"] canvas.dx-enhance { display: none !important; }",
             // Stremio clears the page background once mpv shows a picture; themes paint html/body too
             "html[data-dx-mpv-showing], html[data-dx-mpv-showing] body { background: transparent !important; }",
+            // Stremio's own Discord switch appears for its desktop app; dx.bi has its own status
+            "html[data-dx-native-player] [class*=\"discord-container\"] { display: none !important; }",
         ].join("\n");
         document.head.appendChild(style);
         // Stremio's mpv player marks that moment by making <body> transparent (and undoes it after)

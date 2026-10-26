@@ -106,7 +106,9 @@ window.addEventListener("load", () => {
 
     // Auto update check
     if (localStorage.getItem(STORAGE_KEYS.CHECK_UPDATES_ON_STARTUP) === "true") {
-        Updater.checkForUpdates(false).catch(console.error);
+        // The whole app updates itself where it can (Windows installer, Linux AppImage); elsewhere the popup
+        if (ipcRenderer.sendSync(IPC_CHANNELS.AUTO_UPDATE_AVAILABLE)) ipcRenderer.send(IPC_CHANNELS.AUTO_UPDATE_CHECK, false);
+        else Updater.checkForUpdates(false).catch(console.error);
     }
 
     // Discord RPC

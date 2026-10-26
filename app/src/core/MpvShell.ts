@@ -460,7 +460,8 @@ export default class MpvShell {
         try { this.socket?.write(JSON.stringify({ command: ["quit"] }) + "\n"); } catch { /* gone */ }
         const mpv = this.mpv;
         this.mpv = null;
-        if (mpv) setTimeout(() => { try { mpv.kill(); } catch { /* gone */ } }, 500);
+        // gone at once: an update installing next must be able to replace mpv.exe
+        if (mpv) { try { mpv.kill(); } catch { /* gone */ } }
         if (this.videoWindow && !this.videoWindow.isDestroyed()) this.videoWindow.destroy();
         this.videoWindow = null;
     }

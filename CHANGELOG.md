@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.15.1
+- **The app updates itself.** On Windows (installed version) and Linux, new versions download in the background and install when dx.bi restarts: no more downloading the app again. On a Mac, and with the portable Windows version, the update popup stays. This starts from the next update after 2.15.1, so install 2.15.1 once by hand.
+- **Discord shows the time left and when you pause** again while watching with mpv (it stayed on a plain "Watching").
+- Stremio's own Discord switch no longer shows in Settings next to dx.bi's.
+
 ## 2.15.0
 - **Videos play in mpv inside the dx.bi app on Windows**, like Stremio's own app. Every format plays as it is (HEVC and 10-bit, Dolby Vision, AV1, DTS and TrueHD sound, MKV, the file's own subtitles) with hardware decoding: no more "Video is not supported", no converting, smooth seeking. Stremio's controls, menus and subtitles and all of dx.bi's player features stay on top. Picture enhancement (Anime4K and Sharpen) runs in mpv, and so do zoom, black-bar removal, Dialogue boost, Night mode and picture-in-picture. Switch it off under Settings → dx.bi → *Play videos with mpv*. Opening streams in VLC or the mpv app is still the External player setting.
 - **The app opens the way you left it**: maximized, or at its last size and place (maximized the first time).

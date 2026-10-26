@@ -24,6 +24,7 @@ import { offerEnhancedImport, seedBuiltInPlugin } from "./core/BuiltIn";
 import MpvShell from "./core/MpvShell";
 import { ipcMain } from "electron";
 import { restoreWindowState } from "./core/WindowState";
+import { setupAutoUpdate } from "./core/AutoUpdate";
 
 app.setName("dxbi");
 const userDataPath = app.getPath('userData');
@@ -207,6 +208,7 @@ app.on("ready", async () => {
     if(transparencyEnabled) setupWindowControls();
     if(mpvEnabled && mainWindow) MpvShell.setup(mainWindow);
     setupUpdater();
+    setupAutoUpdate(() => mainWindow);
     setupWindowTransparency(transparencyFlagPath, transparencyEnabled);
     gpuController.initIPC(userDataPath);
     externalPlayerController.initIPC();

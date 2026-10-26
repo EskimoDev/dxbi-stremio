@@ -1,6 +1,6 @@
 {
 	"name": "dxbi",
-	"version": "2.15.0",
+	"version": "2.15.1",
 	"description": "dx.bi: a Netflix-style desktop app for Stremio, with the dx.bi experience built in.",
 	"main": "./dist/main.js",
 	"scripts": {
@@ -33,6 +33,7 @@
 	"dependencies": {
 		"@xhayper/discord-rpc": "^1.2.1",
 		"discord-api-types": "^0.37.119",
+		"electron-updater": "^6.6.2",
 		"marked": "^15.0.7",
 		"p-limit": "^7.2.0",
 		"unzipper": "^0.12.3",
