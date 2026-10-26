@@ -38,7 +38,7 @@ mkdirSync(userData, { recursive: true });
 writeFileSync(join(userData, "use_server_js_for_streaming"), "1");
 
 console.log(`launching ${exe}`);
-const app = spawn(exe, [`--remote-debugging-port=${PORT}`], { env: { ...process.env, DXBI_IMPORT: "fresh" }, stdio: ["ignore", "pipe", "pipe"] });
+const app = spawn(exe, [`--remote-debugging-port=${PORT}`], { env: { ...process.env, DXBI_IMPORT: "fresh", DXBI_MPV_DEBUG: "1" }, stdio: ["ignore", "pipe", "pipe"] });
 let appLog = "";
 app.stdout.on("data", (d) => { appLog += d; });
 app.stderr.on("data", (d) => { appLog += d; });
@@ -206,7 +206,7 @@ try {
 if (failures.length) {
   exitCode = 1;
   console.log(`\n${failures.length} check(s) failed.`);
-  console.log("--- app output (last 3000 chars) ---\n" + appLog.slice(-3000));
+  console.log("--- app output (mpv lines) ---\n" + appLog.split("\n").filter((l) => /MpvShell/.test(l)).slice(0, 80).join("\n"));
   try {
     const log = readFileSync(join(userData, "mpv.log"), "utf8").split("\n");
     console.log("--- mpv.log (errors, warnings and video output) ---\n" + log.filter((l) => /\]\[(e|w|f)\]|\]\[[vi]\]\[(cplayer|vo\/gpu-next)\]/.test(l) && !/libplacebo/.test(l)).slice(-120).join("\n"));

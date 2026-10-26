@@ -19,6 +19,7 @@ import { getLogger } from "../utils/logger";
 // while a video plays Stremio makes the page background transparent, so the picture shows through.
 
 const logger = getLogger("MpvShell");
+const DEBUG = process.env.DXBI_MPV_DEBUG === "1";
 
 // Qt WebChannel message types that Stremio's shell transport speaks
 const SIGNAL = 1;
@@ -36,7 +37,6 @@ export default class MpvShell {
     private static requestId = 0;
     private static observed = new Map<string, number>(); // property name → observe id
     private static queue: string[] = [];
-    private static buffer = "";
     private static playing = false;
 
     /** mpv to use, if dx.bi should play through mpv on this computer */
@@ -155,21 +155,36 @@ export default class MpvShell {
     }
 
     private static connect(pipe: string, attempt: number): void {
+        if (!this.mpv) return;
         const socket = connect(pipe);
+        let buffer = ""; // per connection: a retry must never mix its bytes with another's
         socket.on("connect", () => {
+            if (this.socket) { socket.destroy(); return; } // another attempt got there first
             logger.info("Connected to mpv");
             this.socket = socket;
-            this.buffer = "";
             // Observations made before mpv was ready, then anything queued
             for (const [name, id] of this.observed) socket.write(JSON.stringify({ command: ["observe_property", id, name] }) + "\n");
             for (const line of this.queue.splice(0)) socket.write(line);
         });
-        socket.on("data", (chunk) => this.onMpvData(String(chunk)));
+        socket.on("data", (chunk) => {
+            if (this.socket !== socket) return;
+            buffer += String(chunk);
+            let nl;
+            while ((nl = buffer.indexOf("\n")) >= 0) {
+                const line = buffer.slice(0, nl);
+                buffer = buffer.slice(nl + 1);
+                if (line.trim()) this.onMpvLine(line);
+            }
+        });
         socket.on("error", () => {
             socket.destroy();
-            if (!this.socket && this.mpv && attempt < 50) setTimeout(() => this.connect(pipe, attempt + 1), 100);
+            if (!this.socket && attempt < 50) setTimeout(() => this.connect(pipe, attempt + 1), 100);
         });
-        socket.on("close", () => { if (this.socket === socket) this.socket = null; });
+        socket.on("close", () => {
+            if (this.socket !== socket) return;
+            this.socket = null;
+            if (this.mpv) setTimeout(() => this.connect(pipe, 0), 200);
+        });
     }
 
     private static command(args: unknown[]): void {
@@ -178,29 +193,23 @@ export default class MpvShell {
         else this.queue.push(line);
     }
 
-    private static onMpvData(chunk: string): void {
-        this.buffer += chunk;
-        let nl;
-        while ((nl = this.buffer.indexOf("\n")) >= 0) {
-            const line = this.buffer.slice(0, nl);
-            this.buffer = this.buffer.slice(nl + 1);
-            if (!line.trim()) continue;
-            let msg: any;
-            try { msg = JSON.parse(line); } catch { continue; }
-            if (msg.event === "property-change") {
-                this.signal("mpv-prop-change", { name: msg.name, data: this.propValue(msg.name, msg.data) });
-            } else if (msg.event === "end-file") {
-                const failed = msg.reason === "error";
-                if (msg.reason !== "redirect") this.setPlaying(false);
-                this.signal("mpv-event-ended", {
-                    reason: msg.reason,
-                    error: failed ? { code: 3, message: `Stream failed to load${msg.file_error ? ` (${msg.file_error})` : ""}`, critical: true } : undefined,
-                });
-            } else if (msg.event === "file-loaded") {
-                this.setPlaying(true);
-            } else if (msg.error && msg.error !== "success" && msg.error !== "property unavailable" && msg.request_id) {
-                logger.warn(`mpv request ${msg.request_id}: ${msg.error}`);
-            }
+    private static onMpvLine(line: string): void {
+        let msg: any;
+        try { msg = JSON.parse(line); } catch { logger.warn(`mpv sent something unreadable: ${line.slice(0, 120)}`); return; }
+        if (DEBUG && !(msg.event === "property-change" && msg.name === "time-pos")) logger.info(`mpv → ${line.slice(0, 200)}`);
+        if (msg.event === "property-change") {
+            this.signal("mpv-prop-change", { name: msg.name, data: this.propValue(msg.name, msg.data) });
+        } else if (msg.event === "end-file") {
+            const failed = msg.reason === "error";
+            if (msg.reason !== "redirect") this.setPlaying(false);
+            this.signal("mpv-event-ended", {
+                reason: msg.reason,
+                error: failed ? { code: 3, message: `Stream failed to load${msg.file_error ? ` (${msg.file_error})` : ""}`, critical: true } : undefined,
+            });
+        } else if (msg.event === "file-loaded") {
+            this.setPlaying(true);
+        } else if (msg.error && msg.error !== "success" && msg.error !== "property unavailable" && msg.request_id) {
+            logger.warn(`mpv request ${msg.request_id}: ${msg.error}`);
         }
     }
 
