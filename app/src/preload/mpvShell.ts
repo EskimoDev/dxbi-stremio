@@ -159,7 +159,12 @@ function mainWorld(): void {
             if (mpv.duration > 0) { fire("loadedmetadata"); fire("loadeddata"); fire("canplay"); if (!mpv.pause) fire("playing"); }
         }
     };
+    // Set up in the real page. This script can run while the window still holds its first, empty
+    // document (Chromium swaps it for Stremio's, keeping the window), so check until it's there
+    let setUpIn: Document | null = null;
     const start = () => {
+        if (setUpIn === document || !document.head || !document.body) return;
+        setUpIn = document;
         document.documentElement.setAttribute("data-dx-native-player", "mpv");
         // Pixel effects drawn from the browser video can't see mpv's picture: keep them from covering it
         const style = document.createElement("style");
@@ -176,10 +181,10 @@ function mainWorld(): void {
         };
         new MutationObserver(showing).observe(document.body, { attributes: true, attributeFilter: ["style"] });
         new MutationObserver(keepProxy).observe(document.body, { childList: true, subtree: true });
-        addEventListener("hashchange", keepProxy);
+        showing();
         keepProxy();
     };
-    if (document.body) start();
-    else document.addEventListener("DOMContentLoaded", start, { once: true });
-
+    addEventListener("hashchange", keepProxy);
+    addEventListener("DOMContentLoaded", start);
+    const until = setInterval(() => { start(); if (setUpIn === document) clearInterval(until); }, 250);
 }
