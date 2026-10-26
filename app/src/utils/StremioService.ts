@@ -1,6 +1,6 @@
 import { getLogger } from "./logger";
-import { basename, join, resolve } from "path";
-import { existsSync, createWriteStream, unlinkSync } from "fs";
+import { basename, dirname, join, resolve } from "path";
+import { existsSync, unlinkSync } from "fs";
 import { execFile, spawn } from "child_process";
 import { promisify } from "util";
 import * as process from 'process';
@@ -9,10 +9,12 @@ import { app, shell } from "electron";
 import https from "https";
 import { TIMEOUTS, URLS } from "../constants/index";
 import Helpers from "./Helpers";
+import StreamingServer from "./StreamingServer";
 
 class StremioService {
     private static logger = getLogger("StremioService");
     private static execFileAsync = promisify(execFile);
+    private static ffmpegRepair: Promise<void> | null = null;
 
     public static start(): Promise<void> {
         return new Promise((resolve, reject) => {
@@ -28,6 +30,7 @@ class StremioService {
                             return reject(new Error("Could not find Stremio Service executable"));
                         }
                         child = spawn(exe, [], { detached: true, stdio: "ignore" });
+                        this.repairFFmpeg();
                         break;
                     case "darwin": 
                         child = spawn("open", ["/Applications/StremioService.app"], { detached: true, stdio: "ignore" });
@@ -151,24 +154,9 @@ class StremioService {
         return asset ? { url: asset.browser_download_url } : null;
     }
     
-    private static async downloadFile(url: string, dest: string): Promise<void> {
-        return new Promise((resolve, reject) => {
-            const file = createWriteStream(dest);
-            const req = https.get(
-                url,
-                { headers: { "User-Agent": "Electron-AutoInstaller" } },
-                (res) => {
-                    if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                        https.get(res.headers.location, (r2) => r2.pipe(file));
-                    } else {
-                        res.pipe(file);
-                    }
-                    file.on("finish", () => file.close(() => resolve()));
-                    res.on("error", reject);
-                }
-            );
-            req.on("error", reject);
-        });
+    // Checks the HTTP status and follows every redirect, so an error page is never saved as the installer
+    private static downloadFile(url: string, dest: string): Promise<void> {
+        return StreamingServer.downloadFile(url, dest);
     }
     
     private static async waitForInstallCompletion(timeoutMs = TIMEOUTS.INSTALL_COMPLETION, installerPath?: string): Promise<boolean> {
@@ -180,7 +168,7 @@ class StremioService {
             
             const installed = await this.isServiceInstalled();
             if (installed) {
-                this.start();
+                await this.start().catch((err: Error) => this.logger.error("Failed to start Stremio Service: " + err.message));
                 if(installerPath && existsSync(installerPath)) {
                     try {
                         unlinkSync(installerPath); // delete installer file after successful install
@@ -278,12 +266,13 @@ class StremioService {
     }
 
     private static async installWindows(filePath: string) {
-        const ps = `Start-Process -FilePath "${filePath}" -ArgumentList '/S' -Verb RunAs`;
+        const ps = `Start-Process -FilePath "${filePath}" -ArgumentList '/S' -Verb RunAs -Wait`;
         await this.execFileAsync("powershell.exe", ["-ExecutionPolicy", "Bypass", "-NoProfile", "-Command", ps], {
             windowsHide: true,
         });
         
-        this.logger.info("Waiting for Stremio Service installation to finish...");
+        // -Wait: the installer has finished, so an older copy already on disk isn't mistaken for the new one
+        this.logger.info("Stremio Service installer finished. Checking the installation...");
         const success = await this.waitForInstallCompletion(TIMEOUTS.INSTALL_COMPLETION, filePath);
         
         if (success) {
@@ -342,6 +331,37 @@ class StremioService {
             }
         } catch (err) {
             this.logger.error(`Flatpak install failed: ${err}`);
+        }
+    }
+    
+    /**
+     * Windows: Stremio Service's download ships ffmpeg/ffprobe builds that need DLLs it leaves out,
+     * so they can't start (0xC0000135) and videos that need probing or converting fail. Replaces
+     * them with the self-contained build dx.bi uses for its own streaming server. Runs once per
+     * launch, in the background; the service starts ffprobe per video, so it picks up the new copy.
+     */
+    public static repairFFmpeg(): Promise<void> {
+        if (process.platform !== "win32") return Promise.resolve();
+        if (!this.ffmpegRepair) {
+            this.ffmpegRepair = this.doRepairFFmpeg().catch((err: Error) => {
+                this.logger.error("Couldn't repair Stremio Service's ffmpeg: " + err.message);
+            });
+        }
+        return this.ffmpegRepair;
+    }
+
+    private static async doRepairFFmpeg(): Promise<void> {
+        const exe = this.findExecutable();
+        if (!exe) return;
+        const dir = dirname(exe);
+        const broken = ["ffmpeg.exe", "ffprobe.exe"].filter((name) => !StreamingServer.canRun(join(dir, name)));
+        if (broken.length === 0) return;
+
+        this.logger.warn(`Stremio Service's ${broken.join(" and ")} can't start. Replacing them with a working copy...`);
+        if (await StreamingServer.downloadAndExtractFFmpeg(dir)) {
+            this.logger.info("Stremio Service's ffmpeg and ffprobe were replaced.");
+        } else {
+            this.logger.error("Failed to replace Stremio Service's ffmpeg and ffprobe.");
         }
     }
     

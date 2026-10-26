@@ -462,8 +462,8 @@ Stremio couldn't play that file, and DX.BI shows why underneath. Usually it's on
 
 Windows couldn't start the streaming server's video tool (ffprobe) because a file it needs is missing. To fix it, try these in order:
 
-- Switch to *Stremio Service*, which brings its own working copy. Install it and choose it when dx.bi starts.
-- Or close dx.bi and delete `ffmpeg.exe` and `ffprobe.exe` in `%APPDATA%\dxbi\streamingserver` (`%APPDATA%\stremio-enhanced\streamingserver` with the plugin). Fresh copies are downloaded on the next start.
+- Restart dx.bi. When it starts, it checks the streaming server's ffmpeg and ffprobe and replaces copies that can't run. This includes Stremio Service's: its Windows download comes without the files its ffprobe needs. (With the plugin in Stremio Enhanced, nothing repairs Stremio Service, so choose server.js instead.)
+- Using server.js, you can also close dx.bi and delete `ffmpeg.exe` and `ffprobe.exe` in `%APPDATA%\dxbi\streamingserver` (`%APPDATA%\stremio-enhanced\streamingserver` with the plugin). Fresh copies are downloaded on the next start.
 - If you've installed ffmpeg yourself, dx.bi uses that copy first when it's on your PATH. Update it or remove it from the PATH.
 
 ### A green screen says "Torrent is being downloaded to debrid…"

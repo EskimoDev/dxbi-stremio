@@ -1,7 +1,7 @@
-import { fork, execSync } from "child_process";
+import { fork, execSync, execFileSync } from "child_process";
 import * as unzipper from "unzipper";
 import { createWriteStream, existsSync, mkdirSync, chmodSync, unlinkSync, readFileSync, writeFileSync, statSync, renameSync } from "fs";
-import { join } from "path";
+import { basename, join } from "path";
 import { getLogger } from "./logger";
 import Properties from "../core/Properties";
 import https from "https";
@@ -51,19 +51,40 @@ class StreamingServer {
         shell.openPath(this.streamingServerDir);
     }
 
+    private static systemBinaryCache = new Map<string, string | null>();
+
     // Check if system ffmpeg/ffprobe are available and working
     private static getSystemBinaryPath(binary: string): string | null {
+        if (this.systemBinaryCache.has(binary)) return this.systemBinaryCache.get(binary)!;
+        let found: string | null = null;
         try {
-            const result = execSync(`which ${binary}`, { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
-            const path = result.trim();
+            // cmd.exe has no `which`; `where` lists every match, the first one is what runs
+            const lookup = process.platform === "win32" ? `where ${binary}` : `which ${binary}`;
+            const result = execSync(lookup, { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] });
+            const path = result.split(/\r?\n/)[0].trim();
             if (path && existsSync(path)) {
-                this.logger.info(`Found system ${binary} at: ${path}`);
-                return path;
+                if (this.canRun(path)) {
+                    this.logger.info(`Found system ${binary} at: ${path}`);
+                    found = path;
+                } else {
+                    this.logger.warn(`Ignoring system ${binary} at ${path}: it doesn't start.`);
+                }
             }
         } catch {
-            // which command failed, binary not found
+            // lookup failed, binary not found
         }
-        return null;
+        this.systemBinaryCache.set(binary, found);
+        return found;
+    }
+
+    // An incomplete copy (e.g. a shared build without its DLLs) exists but can't start
+    public static canRun(binaryPath: string): boolean {
+        try {
+            execFileSync(binaryPath, ["-version"], { stdio: "ignore", timeout: 10000, windowsHide: true });
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     // Get the best available ffmpeg path (prefer system, fallback to downloaded)
@@ -96,7 +117,7 @@ class StreamingServer {
         return downloadedPath;
     }
 
-    private static async downloadFile(url: string, dest: string): Promise<void> {
+    public static async downloadFile(url: string, dest: string): Promise<void> {
         return new Promise((resolve, reject) => {
             const file = createWriteStream(dest);
 
@@ -134,16 +155,17 @@ class StreamingServer {
         });
     }
 
-    private static async downloadAndExtractFFmpeg(): Promise<boolean> {
+    // Downloads ffmpeg and ffprobe into targetDir (dx.bi's own streaming server folder by default)
+    public static async downloadAndExtractFFmpeg(targetDir: string = this.streamingServerDir): Promise<boolean> {
         const archiveUrl = this.getFFmpegUrl();
-        const archivePath = join(this.streamingServerDir, (process.platform == "win32" || process.platform == "darwin") ? "ffmpeg-release.zip" : "ffmpeg-release.tar.xz");
-        
+        const archivePath = join(targetDir, (process.platform == "win32" || process.platform == "darwin") ? "ffmpeg-release.zip" : "ffmpeg-release.tar.xz");
+
         const ffmpegPath = process.platform == "win32"
-            ? join(this.streamingServerDir, "ffmpeg.exe")
-            : join(this.streamingServerDir, "ffmpeg");
+            ? join(targetDir, "ffmpeg.exe")
+            : join(targetDir, "ffmpeg");
         const ffprobePath = process.platform == "win32"
-            ? join(this.streamingServerDir, "ffprobe.exe")
-            : join(this.streamingServerDir, "ffprobe");
+            ? join(targetDir, "ffprobe.exe")
+            : join(targetDir, "ffprobe");
 
         try {
             this.logger.info(`Downloading FFmpeg from ${archiveUrl}...`);
@@ -157,10 +179,10 @@ class StreamingServer {
                 const extractDir = listOutput.trim().split("/")[0];
 
                 // Extract the archive
-                execSync(`tar -xf "${archivePath}" -C "${this.streamingServerDir}"`, { encoding: "utf8" });
+                execSync(`tar -xf "${archivePath}" -C "${targetDir}"`, { encoding: "utf8" });
 
                 // Move ffmpeg and ffprobe to the streamingserver directory
-                const extractedDir = join(this.streamingServerDir, extractDir);
+                const extractedDir = join(targetDir, extractDir);
                 execSync(`mv "${join(extractedDir, "ffmpeg")}" "${ffmpegPath}"`, { encoding: "utf8" });
                 execSync(`mv "${join(extractedDir, "ffprobe")}" "${ffprobePath}"`, { encoding: "utf8" });
 
@@ -176,18 +198,18 @@ class StreamingServer {
                 return true;
             } else if (process.platform === "darwin") {
                 // Handle macOS zip file
-                execSync(`unzip -o "${archivePath}" -d "${this.streamingServerDir}"`, { encoding: "utf8" });
+                execSync(`unzip -o "${archivePath}" -d "${targetDir}"`, { encoding: "utf8" });
                 chmodSync(ffmpegPath, 0o755);
                 unlinkSync(archivePath);
 
                 this.logger.info(`FFmpeg extracted successfully. Downloading FFprobe from ${this.getMacOSFFprobeUrl()}...`);
 
-                const ffprobeArchivePath = join(this.streamingServerDir, "ffprobe-release.zip");
+                const ffprobeArchivePath = join(targetDir, "ffprobe-release.zip");
                 await this.downloadFile(this.getMacOSFFprobeUrl(), ffprobeArchivePath);
                 this.logger.info("FFprobe archive downloaded. Extracting...");
                 
                 // Extract ffprobe
-                execSync(`unzip -o "${ffprobeArchivePath}" -d "${this.streamingServerDir}"`, { encoding: "utf8" });
+                execSync(`unzip -o "${ffprobeArchivePath}" -d "${targetDir}"`, { encoding: "utf8" });
                 chmodSync(ffprobePath, 0o755);
                 unlinkSync(ffprobeArchivePath);
                 return true;
@@ -196,20 +218,22 @@ class StreamingServer {
                 const fs = require('fs');
                 await new Promise<void>((resolve, reject) => {
                     fs.createReadStream(archivePath)
-                        .pipe(unzipper.Extract({ path: this.streamingServerDir }))
+                        .pipe(unzipper.Extract({ path: targetDir }))
                         .on('close', resolve)
                         .on('error', reject);
                 });
                 
-                const extDir = join(this.streamingServerDir, "ffmpeg-master-latest-win64-gpl");
+                // The archive unpacks into a folder named like the archive (win64 or winarm64 build)
+                const extDir = join(targetDir, basename(new URL(archiveUrl).pathname, ".zip"));
                 const ffmpegSource = join(extDir, "bin", "ffmpeg.exe");
                 const ffprobeSource = join(extDir, "bin", "ffprobe.exe");
-                
-                if (fs.existsSync(ffmpegSource)) {
-                    fs.renameSync(ffmpegSource, join(this.streamingServerDir, "ffmpeg.exe"));
-                }
-                if (fs.existsSync(ffprobeSource)) {
-                    fs.renameSync(ffprobeSource, join(this.streamingServerDir, "ffprobe.exe"));
+                const extracted = fs.existsSync(ffmpegSource) && fs.existsSync(ffprobeSource);
+
+                if (extracted) {
+                    fs.renameSync(ffmpegSource, ffmpegPath);
+                    fs.renameSync(ffprobeSource, ffprobePath);
+                } else {
+                    this.logger.error(`FFmpeg archive didn't contain ${ffmpegSource} and ${ffprobeSource}.`);
                 }
                 
                 if (fs.existsSync(extDir)) {
@@ -217,7 +241,7 @@ class StreamingServer {
                 }
 
                 unlinkSync(archivePath);
-                return true;
+                return extracted;
             }
 
             return false;

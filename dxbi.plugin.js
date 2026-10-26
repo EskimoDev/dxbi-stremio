@@ -6975,8 +6975,8 @@
         if (!r.ok && typeof r.text === "function") report.serverSaid = (await r.text().catch(() => "")).slice(0, 300);
         if (r.ok && segments.length) return { kind: "file" };
         // 3221225781 = 0xC0000135: Windows couldn't start ffmpeg/ffprobe because a DLL is missing.
-        // Enhanced's own download (BtbN win64-gpl) only needs DLLs every Windows has, but Enhanced
-        // prefers any ffprobe it finds on the PATH, which may be an incomplete copy.
+        // The BtbN win64-gpl download only needs DLLs every Windows has; Stremio Service's Windows
+        // download ships builds whose DLLs it leaves out, and an ffprobe on the PATH may be incomplete.
         if (/3221225781|c0000135/i.test(report.serverSaid || "")) return { kind: "dll" };
         return { kind: "converter" };
       }
@@ -7049,9 +7049,11 @@
             fixHardware = true;
             text = `<b>Stremio's streaming server couldn't convert this video.</b> It's set to convert with hardware acceleration (<i>${esc(why.profile)}</i>), which often doesn't work on a PC's graphics card or driver. Converting without it is slower but works everywhere. (Settings → Streaming → Transcode profile.)`;
           } else if (why.kind === "dll") {
-            text = `<b>Windows can't start the streaming server's video tool (ffprobe): a file it needs is missing.</b> The easiest fix is <i>Stremio Service</i>, which brings its own working copy: install it and choose it when ${APP_NAME} starts. Or close ${APP_NAME}, delete <i>ffmpeg.exe</i> and <i>ffprobe.exe</i> in <i>%APPDATA%\\${IN_APP ? "dxbi" : "stremio-enhanced"}\\streamingserver</i> so fresh copies are downloaded, and if you've installed ffmpeg yourself (it's used first when it's on your PATH), remove or update it. Meanwhile, open this one in mpv or VLC.`;
+            text = IN_APP
+              ? `<b>Windows can't start the streaming server's video tool (ffprobe): a file it needs is missing.</b> Restart ${APP_NAME}: when it starts, it checks the streaming server's ffmpeg and ffprobe and replaces copies that can't run, including the ones Stremio Service's Windows download comes with. If you've installed ffmpeg yourself (it's used first when it's on your PATH), remove or update it. Meanwhile, open this one in mpv or VLC.`
+              : `<b>Windows can't start the streaming server's video tool (ffprobe): a file it needs is missing.</b> If you use <i>Stremio Service</i>, its Windows download comes without the files its ffprobe needs: the dx.bi app repairs that by itself, or choose server.js when ${APP_NAME} starts instead. With server.js, close ${APP_NAME} and delete <i>ffmpeg.exe</i> and <i>ffprobe.exe</i> in <i>%APPDATA%\\stremio-enhanced\\streamingserver</i> so fresh copies are downloaded. If you've installed ffmpeg yourself (it's used first when it's on your PATH), remove or update it. Meanwhile, open this one in mpv or VLC.`;
           } else if (why.kind === "converter") {
-            text = `<b>Stremio's streaming server couldn't convert this video.</b> Its converter (ffmpeg) failed or is missing. Restart ${APP_NAME}; on Windows, reinstalling <i>Stremio Service</i> brings the converter back. Meanwhile pick an x264/H.264 or WEB-DL release, or open this one in mpv or VLC.`;
+            text = `<b>Stremio's streaming server couldn't convert this video.</b> Its converter (ffmpeg) failed or is missing. Restart ${APP_NAME}${IN_APP ? ", which checks the converter when it starts and replaces a copy that can't run" : ""}. Meanwhile pick an x264/H.264 or WEB-DL release, or open this one in mpv or VLC.`;
           } else {
             text = "<b>This release can't play here, even converted.</b> The file may be damaged or in an unusual format. Pick another release (x264/H.264 or WEB-DL are the safest), or open this one in mpv or VLC.";
           }

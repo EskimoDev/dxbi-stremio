@@ -1,6 +1,7 @@
 import * as net from 'net';
 import { existsSync } from 'fs';
-import { execFile } from 'child_process';
+import { spawn, type ChildProcess } from 'child_process';
+import { randomBytes } from 'crypto';
 import { getLogger } from '../utils/logger';
 import { IPC_CHANNELS } from '../constants';
 import { ipcMain, BrowserWindow } from 'electron';
@@ -11,7 +12,9 @@ const logger = getLogger("ExternalPlayerController");
 // Common socket paths per platform
 const MPV_SOCKET = process.platform === 'win32' ? '\\\\.\\pipe\\mpvsocket' : '/tmp/mpvsocket';
 const VLC_HTTP_PORT = 9090;
-const VLC_HTTP_PASSWORD = 'stremio';
+// VLC's web remote can browse files: a fresh password each launch, and only reachable from this computer
+const VLC_HTTP_HOST = '127.0.0.1';
+const VLC_HTTP_PASSWORD = randomBytes(18).toString('base64url');
 
 // Common install paths per platform
 const PLAYER_PATHS: Record<string, Record<string, string[]>> = {
@@ -30,7 +33,17 @@ const PLAYER_PATHS: Record<string, Record<string, string[]>> = {
 };
 
 let pollInterval: ReturnType<typeof setInterval> | null = null;
-let activeChild: ReturnType<typeof execFile> | null = null;
+let activeChild: ChildProcess | null = null;
+
+// Stream links come from addons: only real web or file links, so one can't pass itself off as a player option
+function isPlayableUrl(streamUrl: unknown): streamUrl is string {
+    if (typeof streamUrl !== 'string') return false;
+    try {
+        return ['http:', 'https:', 'file:'].includes(new URL(streamUrl).protocol);
+    } catch {
+        return false;
+    }
+}
 
 function findPlayerPath(player: 'vlc' | 'mpv'): string | null {
     const paths = PLAYER_PATHS[process.platform]?.[player] ?? [];
@@ -81,7 +94,7 @@ async function getMpvStatus(): Promise<{ position: number; state: 'playing' | 'p
 async function getVlcStatus(): Promise<{ position: number; state: 'playing' | 'paused' | 'stopped' } | null> {
     try {
         const auth = Buffer.from(`:${VLC_HTTP_PASSWORD}`).toString('base64');
-        const res = await fetch(`http://localhost:${VLC_HTTP_PORT}/requests/status.json`, {
+        const res = await fetch(`http://${VLC_HTTP_HOST}:${VLC_HTTP_PORT}/requests/status.json`, {
             headers: { Authorization: `Basic ${auth}` }
         });
         if (!res.ok) return null;
@@ -93,7 +106,7 @@ async function getVlcStatus(): Promise<{ position: number; state: 'playing' | 'p
     }
 }
 
-function startPolling(player: ExternalPlayer, child: ReturnType<typeof execFile>) {
+function startPolling(player: ExternalPlayer, child: ChildProcess) {
     if (pollInterval) clearInterval(pollInterval);
 
     pollInterval = setInterval(async () => {
@@ -124,6 +137,11 @@ export const externalPlayerController = {
                 return { success: false, error: `Invalid player: ${player}` };
             }
 
+            if (!isPlayableUrl(streamUrl)) {
+                logger.error(`Refusing to open a stream that isn't a web or file link in ${player}.`);
+                return { success: false, error: "This stream link can't be opened in an external player." };
+            }
+
             const playerPath = customPath || findPlayerPath(player as 'vlc' | 'mpv');
             if (!playerPath) {
                 logger.error(`${player} not found at any known path.`);
@@ -140,14 +158,14 @@ export const externalPlayerController = {
             }
 
             const args = player === 'mpv'
-                ? [streamUrl, `--input-ipc-server=${MPV_SOCKET}`]
-                : [streamUrl, '--extraintf=http', `--http-password=${VLC_HTTP_PASSWORD}`, `--http-port=${VLC_HTTP_PORT}`];
+                ? [`--input-ipc-server=${MPV_SOCKET}`, streamUrl]
+                : ['--extraintf=http', `--http-host=${VLC_HTTP_HOST}`, `--http-password=${VLC_HTTP_PASSWORD}`, `--http-port=${VLC_HTTP_PORT}`, streamUrl];
 
             logger.info(`Launching ${player} at ${playerPath} with URL: ${streamUrl}`);
 
-            const child = execFile(playerPath, args, (err) => {
-                if (err) logger.error(`Failed to launch ${player}: ${err.message}`);
-            });
+            // spawn, not execFile: execFile buffers the player's output and kills it past 1 MB
+            const child = spawn(playerPath, args, { stdio: 'ignore' });
+            child.on('error', (err) => logger.error(`Failed to launch ${player}: ${err.message}`));
 
             activeChild = child;
 
