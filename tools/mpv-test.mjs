@@ -155,7 +155,34 @@ if ($script:target -eq [IntPtr]::Zero) { 'not found'; exit }
     await sleep(2000);
     return { x: left + width * 0.3, y: top + height * 0.3, width: width * 0.4, height: height * 0.4 };
   };
+  // The dx.bi window must have a taskbar button and show in Alt+Tab. It's owned by the video window,
+  // and Windows leaves owned windows out of both unless they carry WS_EX_APPWINDOW.
+  const switcher = (when) => {
+    const ps = `
+Add-Type @"
+using System; using System.Runtime.InteropServices; using System.Text;
+public class S {
+  public delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc f, IntPtr l);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
+  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr h, uint c);
+  [DllImport("user32.dll")] public static extern IntPtr GetWindowLongPtr(IntPtr h, int i);
+}
+"@
+$script:target = [IntPtr]::Zero
+[S]::EnumWindows({ param($h, $l) $sb = New-Object Text.StringBuilder 512; [S]::GetWindowText($h, $sb, 512) | Out-Null; if ([S]::IsWindowVisible($h) -and $sb.ToString() -eq '${title.replace(/'/g, "''")}') { $script:target = $h }; $true }, [IntPtr]::Zero) | Out-Null
+if ($script:target -eq [IntPtr]::Zero) { 'not found'; exit }
+$owner = [S]::GetWindow($script:target, 4)
+$ex = [S]::GetWindowLongPtr($script:target, -20).ToInt64()
+"$($owner -ne [IntPtr]::Zero) $(($ex -band 0x40000) -ne 0) $(($ex -band 0x80) -ne 0)"`;
+    const [owned, appWindow, toolWindow] = execFileSync("powershell", ["-NoProfile", "-Command", ps], { encoding: "utf8" }).trim().split(" ").map((v) => v === "True");
+    if ((!owned || appWindow) && !toolWindow) pass(`dx.bi is in the taskbar and Alt+Tab ${when}`);
+    else fail(`dx.bi is missing from the taskbar and Alt+Tab ${when} (owned: ${owned}, WS_EX_APPWINDOW: ${appWindow}, tool window: ${toolWindow})`);
+  };
+
   let area = await place(Math.round(sw * 0.05), Math.round(sh * 0.05), Math.round(sw * 0.8), Math.round(sh * 0.8));
+  switcher("on start");
   const home = screen("1-home", area);
 
   const stream = { url: `http://127.0.0.1:${CLIP_PORT}/clip.mkv`, name: "dx.bi test", title: "10-bit HEVC + AC3" };
@@ -265,6 +292,7 @@ if ($script:target -eq [IntPtr]::Zero) { 'not found'; exit }
   await evaluate(`window.__dxbiMpv.pip(); true`);
   await sleep(2500);
   area = await place(Math.round(sw * 0.25), Math.round(sh * 0.2), Math.round(sw * 0.7), Math.round(sh * 0.75));
+  switcher("after picture-in-picture");
 
   // Fullscreen through Stremio's own button path
   await evaluate(`window.chrome.webview.postMessage(JSON.stringify({ id: 0, type: 6, args: ["win-set-visibility", { fullscreen: true }] })); true`);
