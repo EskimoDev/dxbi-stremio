@@ -184,7 +184,8 @@ function mainWorld(): void {
         define("paused", () => mpv.pause !== false);
         define("ended", () => mpv["eof-reached"] === true);
         define("seeking", () => mpv.seeking === true);
-        define("volume", () => Math.max(0, Math.min(1, (Number(mpv.volume) || 0) / 100)), (x) => { if (isFinite(x)) send("mpv-set-prop", ["volume", Math.round(Math.max(0, Math.min(1, +x)) * 100)]); });
+        // This is mpv's stand-in, so preserve Stremio's 0–200% range for remembered volume too.
+        define("volume", () => Math.max(0, Math.min(2, (Number(mpv.volume) || 0) / 100)), (x) => { if (isFinite(x)) send("mpv-set-prop", ["volume", Math.round(Math.max(0, Math.min(2, +x)) * 100)]); });
         define("muted", () => mpv.mute === true, (m) => send("mpv-set-prop", ["mute", m ? "yes" : "no"]));
         define("playbackRate", () => Number(mpv.speed) || 1, (r) => { if (isFinite(r) && r > 0) send("mpv-set-prop", ["speed", +r]); });
         define("defaultPlaybackRate", () => 1);

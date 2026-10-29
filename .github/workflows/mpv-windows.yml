@@ -8,6 +8,7 @@ on:
     paths:
       - "app/**"
       - "tools/mpv-test.mjs"
+      - "tools/volume-test.mjs"
       - "dxbi.plugin.js"
       - ".github/workflows/mpv-windows.yml"
   workflow_dispatch:
@@ -36,6 +37,10 @@ jobs:
           bash scripts/fetch-mpv.sh
           npm run dist
           npx electron-builder --win --x64 --dir --publish never
+
+      - name: Check boosted volume and remembered playback
+        shell: bash
+        run: node tools/volume-test.mjs "app/mpv/mpv.exe"
 
       - name: Play through mpv
         shell: bash

@@ -9773,7 +9773,8 @@
         const saved = store.get(viewers.key("playback"), null);
         if (!saved) return;
         this.quietUntil = performance.now() + 1500;
-        if (typeof saved.volume === "number") v.volume = Math.min(1, Math.max(0, saved.volume));
+        // mpv supports Stremio's 200% boost; real browser videos are limited to 100%.
+        if (typeof saved.volume === "number") v.volume = Math.min(v.classList.contains("dx-mpv-video") ? 2 : 1, Math.max(0, saved.volume));
         if (typeof saved.muted === "boolean") v.muted = saved.muted;
         // the watch party keeps everyone at normal speed
         if (SPEEDS.includes(saved.rate) && !this.partyActive()) v.playbackRate = saved.rate;
