@@ -244,6 +244,7 @@ export default class MpvShell {
             "--background-color=#000000",
             "--hwdec=auto-safe",
             "--audio-fallback-to-null=yes", // no sound device (headset unplugged, broken driver): keep playing
+            "--volume-max=200", // Stremio's volume slider and shortcuts allow up to 200% (mpv defaults to 130%)
             "--vo=gpu-next",
             "--sub-auto=no",
             "--audio-file-auto=no",
