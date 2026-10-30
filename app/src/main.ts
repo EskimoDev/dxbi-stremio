@@ -38,6 +38,9 @@ const useStremioServiceFlagPath = join(app.getPath("userData"), "use_stremio_ser
 // Videos play in mpv behind a transparent window (core/MpvShell.ts), like the official Stremio app
 const mpvEnabled = MpvShell.isEnabled();
 const transparencyEnabled = existsSync(transparencyFlagPath) || mpvEnabled;
+// Native resizing breaks transparent Windows windows, covering mpv with an opaque surface.
+// The custom edge controls resize with setBounds(), which still works with native resizing off.
+const nativeResizeEnabled = process.platform !== "win32" || !transparencyEnabled;
 ipcMain.on(IPC_CHANNELS.MPV_ENABLED, (event) => { event.returnValue = mpvEnabled; });
 MpvShell.setupSetting();
 const MIN_ZOOM = 0.3;
@@ -89,7 +92,7 @@ async function createWindow() {
         width: 1500,
         height: 850,
         show: false, // shown once its saved size and state are applied
-        resizable: true,
+        resizable: nativeResizeEnabled,
         maximizable: true,
         fullscreenable: true,
         useContentSize: true,
@@ -220,7 +223,7 @@ app.on("ready", async () => {
     setupPluginAlertAPI();
     createWindow();
     MiniPlayer.setup(() => mainWindow);
-    if(transparencyEnabled) setupWindowControls();
+    if(transparencyEnabled) setupWindowControls(nativeResizeEnabled);
     if(mpvEnabled && mainWindow) MpvShell.setup(mainWindow);
     setupUpdater();
     setupAutoUpdate(() => mainWindow);

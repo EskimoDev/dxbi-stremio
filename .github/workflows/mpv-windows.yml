@@ -9,6 +9,7 @@ on:
       - "app/**"
       - "tools/mpv-test.mjs"
       - "tools/volume-test.mjs"
+      - "tools/window-test.mjs"
       - "dxbi.plugin.js"
       - ".github/workflows/mpv-windows.yml"
   workflow_dispatch:
@@ -37,6 +38,10 @@ jobs:
           bash scripts/fetch-mpv.sh
           npm run dist
           npx electron-builder --win --x64 --dir --publish never
+
+      - name: Check transparent window controls
+        shell: bash
+        run: node tools/window-test.mjs
 
       - name: Check boosted volume and remembered playback
         shell: bash
