@@ -9,7 +9,7 @@ const isWindows = process.platform === 'win32';
 const MIN_WIDTH = 760;
 const MIN_HEIGHT = 480;
 
-export function setupWindowControls() {
+export function setupWindowControls(nativeResizeEnabled = true) {
     ipcMain.on(IPC_CHANNELS.MINIMIZE_WINDOW, () => {
         mainWindow?.minimize();
     });
@@ -38,7 +38,7 @@ export function setupWindowControls() {
     });
 
     mainWindow?.on('unmaximize', () => {
-        if (isWindows) mainWindow?.setResizable(true);
+        if (isWindows) mainWindow?.setResizable(nativeResizeEnabled);
         mainWindow?.webContents.send(IPC_CHANNELS.WINDOW_MAXIMIZED, false);
     });
 
@@ -49,7 +49,7 @@ export function setupWindowControls() {
 
     mainWindow?.on('leave-full-screen', () => {
         if (isWindows && mainWindow && !isMaximized(mainWindow)) {
-            mainWindow?.setResizable(true); 
+            mainWindow?.setResizable(nativeResizeEnabled);
         }
         
         mainWindow?.webContents.send(IPC_CHANNELS.FULLSCREEN_CHANGED, false);
@@ -88,7 +88,9 @@ export function setupWindowControls() {
         if (!resize || !mainWindow || mainWindow.isDestroyed()) return stopResize();
         const { x, y } = screen.getCursorScreenPoint();
         const b = resize.bounds, edge = resize.edge;
-        const [minW, minH] = mainWindow.getMinimumSize().map((v) => v || 0);
+        // A non-resizable Windows window reports its current size as its minimum. That is a
+        // native constraint, not our custom edges' minimum: otherwise they can never shrink it.
+        const [minW, minH] = nativeResizeEnabled ? mainWindow.getMinimumSize().map((v) => v || 0) : [0, 0];
         const dx = x - resize.x;
         const dy = y - resize.y;
         let { x: left, y: top, width, height } = b;
@@ -100,12 +102,13 @@ export function setupWindowControls() {
         const now = mainWindow.getBounds();
         if (now.x !== next.x || now.y !== next.y || now.width !== next.width || now.height !== next.height) mainWindow.setBounds(next);
     };
-    ipcMain.on(IPC_CHANNELS.WINDOW_RESIZE, (_, phase: string, edge: string) => {
+    ipcMain.on(IPC_CHANNELS.WINDOW_RESIZE, (_, phase: string, edge: string, x?: number, y?: number) => {
         if (!mainWindow || isMaximized(mainWindow) || isFullScreen(mainWindow)) return stopResize();
         if (phase === "start") {
             stopResize();
-            const { x, y } = screen.getCursorScreenPoint();
-            resize = { x, y, bounds: mainWindow.getBounds(), edge, timer: setInterval(follow, 16) };
+            const start = typeof x === "number" && Number.isFinite(x) && typeof y === "number" && Number.isFinite(y)
+                ? { x, y } : screen.getCursorScreenPoint();
+            resize = { ...start, bounds: mainWindow.getBounds(), edge, timer: setInterval(follow, 16) };
             return;
         }
         if (phase === "end") { follow(); stopResize(); }

@@ -280,6 +280,35 @@ $ex = [S]::GetWindowLongPtr($script:target, -20).ToInt64()
   if (await evaluate(`!!document.querySelector('[class*="control-bar-container"]') && getComputedStyle(document.querySelector('[class*="control-bar-container"]')).opacity !== "0"`)) pass("Stremio's controls show over the video");
   else fail("Stremio's controls aren't showing");
 
+  // Window buttons are outside Stremio's player: entering them fires the player's mouseleave.
+  // During playback that hides the overlay. The caption buttons must stay usable under the mouse.
+  const wasPaused = await evaluate(`${V}.paused`);
+  try {
+    for (const paused of [true, false]) {
+      await evaluate(`${V}.${paused ? "pause()" : "play()"}; true`);
+      await sleep(250);
+      for (const id of ["minimizeApp-btn", "maximizeApp-btn", "closeApp-btn"]) {
+        await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 400, y: 300 });
+        await sleep(100);
+        const box = await evaluate(`(() => { const r = document.getElementById(${JSON.stringify(id)}).getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, width: r.width }; })()`);
+        let stable = box.width > 0;
+        for (let i = 0; i < 8; i++) {
+          await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: box.x + i % 2, y: box.y });
+          await sleep(80);
+          stable = (await evaluate(`(() => { const b = document.querySelector(".title-bar-buttons"); const s = getComputedStyle(b); return b.matches(":hover") && s.pointerEvents === "auto" && Number(s.opacity) > 0.99; })()`)) && stable;
+        }
+        if (stable) pass(`${id} stays interactive while hovered (${paused ? "paused" : "playing"})`);
+        else fail(`${id} flickers or loses mouse input (${paused ? "paused" : "playing"})`);
+      }
+    }
+    await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 400, y: 300 });
+    await sleep(3600);
+    if (await evaluate(`getComputedStyle(document.querySelector(".title-bar-buttons")).opacity === "0"`)) pass("window buttons still hide with the idle player after the pointer leaves");
+    else fail("window buttons stayed visible after the player became idle");
+  } finally {
+    await evaluate(`${V}.${wasPaused ? "pause()" : "play()"}; true`);
+  }
+
   // The file's own subtitle track, drawn by mpv
   // picked like a viewer does: Subtitles button (in "More" on a small window) → the file's "Track 1"
   await evaluate(`window.__dxbiMpv.observe("sub-text"); true`);

@@ -83,7 +83,9 @@ export function addTitleBar(): void {
             e.stopPropagation();
             handle.setPointerCapture(e.pointerId);
             // the main process follows the cursor until the button is let go
-            ipcRenderer.send(IPC_CHANNELS.WINDOW_RESIZE, "start", handle.dataset.edge);
+            // Keep where the press happened: by the time the main process hears this, a fast
+            // drag may already have moved the cursor (or even ended).
+            ipcRenderer.send(IPC_CHANNELS.WINDOW_RESIZE, "start", handle.dataset.edge, e.screenX, e.screenY);
             // (any release, or the window losing focus, ends it: it must never keep following the cursor)
             const end = () => {
                 handle.removeEventListener("pointerup", end);
