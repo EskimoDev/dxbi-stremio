@@ -89,8 +89,9 @@
             height: 18px;
         }
 
-        /* the player's controls hide while it plays: the window buttons go with them */
-        body.dx-player-idle .title-bar-buttons {
+        /* These buttons sit outside Stremio's player, so hovering them can mark the player idle.
+           Keep them interactive while in use instead of hiding them out from under the pointer. */
+        body.dx-player-idle .title-bar-buttons:not(:hover):not(:focus-within) {
             opacity: 0;
             pointer-events: none;
         }
