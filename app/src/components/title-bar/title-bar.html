@@ -99,6 +99,8 @@
         .dx-edge {
             position: absolute;
             pointer-events: auto;
+            /* Fully clear pixels pass mouse input through a transparent Windows window. */
+            background: rgba(0, 0, 0, 0.01);
         }
 
         .dx-edge[data-edge="n"] { top: 0; left: 10px; right: 10px; height: 5px; cursor: ns-resize; }
