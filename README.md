@@ -465,6 +465,10 @@ The settings are grouped, with a list to jump between groups and a search box:
 
 For a custom subtitle font on desktop, choose *Subtitles → Subtitle font → Custom installed font* and enter its family name in *Custom subtitle font* (for example, *Tahoma* or *Noto Naskh Arabic*). The font must be installed on your computer. This applies to the built-in mpv player and browser subtitles; picture-based subtitles and ASS subtitles with original styling enabled keep their own appearance.
 
+The Home billboard, dx.bi previews and wide Continue Watching cards use your configured catalog and metadata addons. To see French (or another language's) titles and descriptions, configure an addon that supplies that language; changing Stremio's interface language alone does not translate addon content. Unavailable metadata falls back to Cinemeta.
+
+French interface settings also translate the billboard controls. Artwork comes from the addon; when localized title art is unavailable, the billboard displays the title as text instead of forcing an English logo. The IMDb-rated and children's billboard selections keep their existing rosters.
+
 <br>
 
 ## Everything built in
