@@ -26,7 +26,7 @@ function setup() {
             { type: "series", id: "search", extra: [{ name: "search", isRequired: true }] },
         ] },
     };
-    const state = { profile: { uid: "fixture-account", settings: { interfaceLanguage: "fr-FR" }, addons: [stock, configured] }, metaFailure: false, catalogFailure: false, malformedMeta: false, ctxAvailable: true, slowCatalog: null, slowMeta: null, kids: false };
+    const state = { profile: { uid: "fixture-account", settings: { interfaceLanguage: "fr-FR" }, addons: [stock, configured] }, metaFailure: false, catalogFailure: false, malformedMeta: false, canonicalMeta: false, ctxAvailable: true, slowCatalog: null, slowMeta: null, kids: false };
     const requests = [], images = [], persisted = new Map();
     const settings = { billboardSource: "mixed", billboard: true, billboardInterval: "0" };
     const movie = (id, french = true) => ({ id, type: "movie", name: french ? "Le Voyage des étoiles" : "Journey to the Stars", description: french ? "Une aventure française à travers les étoiles." : "An English journey through the stars.", genres: [french ? "Aventure" : "Adventure"], releaseInfo: "2026", imdbRating: "8.1", runtime: "108 min", poster: "https://images.example/poster.jpg", background: "https://images.example/background.jpg" });
@@ -43,7 +43,10 @@ function setup() {
             } else {
                 if (state.slowMeta) await state.slowMeta;
                 const id = decodeURIComponent(url.pathname.split("/").at(-1).replace(/\.json$/, ""));
-                result = state.metaFailure ? null : { meta: movie(state.malformedMeta ? "wrong-id" : id, french) };
+                const meta = movie(state.canonicalMeta && id.startsWith("tt") ? "tmdb:42" : id, french);
+                if (state.canonicalMeta) meta.imdb_id = id.startsWith("tt") ? id : "tt1234567";
+                if (state.malformedMeta) meta.type = "series";
+                result = state.metaFailure ? null : { meta };
             }
         } else if (url.hostname === "v3-cinemeta.strem.io") {
             result = url.pathname.includes("/catalog/") ? { metas: [movie("tt1234567", false)] } : { meta: { ...movie("tt1234567", false), logo: "https://images.example/english-logo.png" } };
@@ -156,8 +159,15 @@ assert.equal((await errors.getInfo("movie", "tt1234567")).name, "Le Voyage des �
 errors.state.malformedMeta = true;
 errors.state.profile.uid = "another-fixture-account";
 await errors.refresh();
-assert.equal((await errors.getInfo("movie", "tt1234567")).name, "Journey to the Stars", "mismatched IDs must not overwrite a title");
-console.log("PASS provider errors, retry cooldown, account isolation and mismatched metadata IDs");
+assert.equal((await errors.getInfo("movie", "tt1234567")).name, "Journey to the Stars", "mismatched resource types must not overwrite a title");
+const aliases = setup(); aliases.state.canonicalMeta = true;
+const aliased = await aliases.getInfo("movie", "tt1234567");
+assert.equal(aliased.name, "Le Voyage des étoiles", "canonical TMDB IDs must not discard a valid IMDb lookup");
+assert.equal(aliased.imdbId, "tt1234567");
+await aliases.hero.load();
+assert.equal(aliases.hero.items[0].id, "tmdb:42");
+assert.equal(aliases.hero.items[0].imdbId, "tt1234567");
+console.log("PASS provider errors, retry cooldown, account isolation, canonical IDs and resource-type validation");
 
 const race = setup();
 await race.metadataSource.refresh();

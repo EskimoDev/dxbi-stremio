@@ -1388,7 +1388,7 @@
     const generation = metadataSource.generation;
     await coreMeta.refresh();
     const fromAddon = coreMeta.get(type, id);
-    const imdbId = isImdb(id) ? id : fromAddon && fromAddon.imdbId;
+    let imdbId = isImdb(id) ? id : fromAddon && fromAddon.imdbId;
     let info = fromAddon ? { ...fromAddon } : {};
     if (catalogMeta) {
       info = mergeMetadata(info, slimMeta(catalogMeta));
@@ -1398,6 +1398,8 @@
     if (configured) {
       info = mergeMetadata(info, slimMeta(configured));
       info.logo = configured.logo || null;
+      const externalId = configured.imdb_id || configured.id;
+      if (!imdbId && isImdb(externalId)) imdbId = externalId;
     }
     if (generation !== metadataSource.generation) return {};
     info._configuredMeta = !!configured;
@@ -12913,7 +12915,9 @@
           const j = await fetch(url, { signal: AbortSignal.timeout(6000) })
             .then((r) => (r.ok ? r.json() : null)).catch(() => null);
           if (generation !== metadataSource.generation) return null;
-          if (j && j.meta && (!j.meta.id || j.meta.id === id) && (!j.meta.type || j.meta.type === type)) return j.meta;
+          // Providers may canonicalize tt… requests to tmdb:… (or the reverse). Keep the original
+          // navigation ID at the call site; a different returned ID alone is not a lookup failure.
+          if (j && j.meta && typeof j.meta === "object" && !Array.isArray(j.meta) && (!j.meta.type || j.meta.type === type)) return j.meta;
         }
         entry.failed = true;
         return null;
