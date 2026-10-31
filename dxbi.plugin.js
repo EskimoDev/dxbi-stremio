@@ -12919,6 +12919,7 @@
         return null;
       })();
       addonMetaCache.set(key, entry);
+      if (addonMetaCache.size > 256) addonMetaCache.delete(addonMetaCache.keys().next().value);
     }
     return addonMetaCache.get(key).promise;
   }
